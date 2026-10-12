@@ -1,0 +1,67 @@
+/* Chizi: hazard stripes and mech-cockpit panels, from Gearstorm Arena and SCP: Blackout. */
+
+.t-hazard {
+  --bg: #141412;
+  --panel: #1c1c19;
+  --line: #36352f;
+  --yellow: #ffc400;
+  --text: #eceae2;
+  --muted: #a9a79d;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Chakra Petch", system-ui, sans-serif;
+  font-size: 1.0625rem;
+  line-height: 1.55;
+}
+.t-hazard .k-page::before,
+.t-hazard .k-page::after {
+  content: "";
+  display: block;
+  height: 14px;
+  background: repeating-linear-gradient(-45deg, var(--yellow) 0 16px, var(--bg) 16px 32px);
+}
+.t-hazard .k-sibs a { color: var(--muted); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+.t-hazard .k-sibs a:hover { color: var(--yellow); }
+
+.t-hazard .k-name {
+  color: var(--yellow);
+  font-family: "Big Shoulders Stencil Display", "Chakra Petch", sans-serif;
+  font-weight: 900;
+  font-size: clamp(7rem, 24vw, 18rem);
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+.t-hazard .k-count { display: flex; align-items: center; gap: 12px; color: var(--muted); font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; }
+.t-hazard .k-count::before { content: ""; width: 12px; height: 12px; background: var(--yellow); }
+
+.t-hazard .k-item {
+  padding: 18px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  clip-path: polygon(18px 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%, 0 18px);
+  transition: border-color 0.2s;
+}
+.t-hazard .k-item:hover { border-color: var(--yellow); }
+.t-hazard .k-title {
+  color: #fff;
+  font-family: "Big Shoulders Stencil Display", "Chakra Petch", sans-serif;
+  font-weight: 800;
+  font-size: clamp(2.25rem, 4vw, 3.25rem);
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+.t-hazard .k-blurb { color: var(--muted); }
+.t-hazard .k-meta { color: var(--muted); font-size: 0.875rem; letter-spacing: 0.08em; text-transform: uppercase; }
+.t-hazard .k-new { padding: 2px 8px; background: var(--yellow); color: var(--bg); font-weight: 700; }
+.t-hazard .k-play {
+  background: var(--yellow);
+  color: var(--bg);
+  font-family: "Big Shoulders Stencil Display", "Chakra Petch", sans-serif;
+  font-weight: 900;
+  font-size: 1.5rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
+}
+.t-hazard .k-play:hover { background: #fff; }
+.t-hazard .k-foot { color: var(--muted); }

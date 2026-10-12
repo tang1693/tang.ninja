@@ -1,0 +1,75 @@
+/* Liangzi: case files on an army desk, from Frontline Command and Chernobyl. */
+
+.t-dossier {
+  --desk: #383b2a;
+  --paper: #ebe3cc;
+  --ink: #26241d;
+  --faded: #6b6656;
+  --stamp: #b3261e;
+  background-color: var(--desk);
+  background-image: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.07) 0 1px, transparent 1px 5px);
+  color: var(--paper);
+  font-family: "Courier Prime", ui-monospace, monospace;
+  font-size: 1.0625rem;
+  line-height: 1.55;
+}
+.t-dossier .k-sibs a { color: var(--paper); font-weight: 700; }
+.t-dossier .k-sibs a:hover { text-decoration: underline; text-underline-offset: 4px; }
+
+.t-dossier .k-name {
+  color: var(--paper);
+  font-family: "Stardos Stencil", "Courier Prime", serif;
+  font-weight: 700;
+  font-size: clamp(5.5rem, 17vw, 13rem);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.t-dossier .k-count {
+  display: inline-block;
+  padding: 4px 14px;
+  border: 2px solid currentColor;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transform: rotate(-2deg);
+}
+
+.t-dossier .k-list { gap: clamp(40px, 5vw, 56px); padding-top: 16px; }
+.t-dossier .k-item {
+  padding: 28px;
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 0 4px 4px 4px;
+  box-shadow: 0 22px 40px -18px rgba(0, 0, 0, 0.7);
+}
+/* folder tab */
+.t-dossier .k-item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: -16px;
+  width: 150px;
+  height: 16px;
+  border-radius: 6px 6px 0 0;
+  background: var(--paper);
+}
+.t-dossier .k-shot { border: 10px solid #fff; box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25); transform: rotate(-1.5deg); }
+.t-dossier .k-item:nth-child(even) .k-shot { transform: rotate(1.2deg); }
+.t-dossier .k-title { font-family: "Stardos Stencil", "Courier Prime", serif; font-weight: 700; font-size: clamp(2rem, 3.6vw, 2.75rem); line-height: 1.05; }
+.t-dossier .k-blurb { color: #3d3a30; }
+.t-dossier .k-meta { color: var(--faded); font-size: 0.9375rem; }
+.t-dossier .k-new { padding: 1px 8px; border: 2px solid var(--stamp); color: var(--stamp); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; transform: rotate(-3deg); }
+.t-dossier .k-play {
+  border: 3px solid var(--stamp);
+  background: transparent;
+  color: var(--stamp);
+  box-shadow: inset 0 0 0 3px var(--paper), inset 0 0 0 5px var(--stamp);
+  font-family: "Stardos Stencil", "Courier Prime", serif;
+  font-weight: 700;
+  font-size: 1.625rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transform: rotate(-3deg);
+}
+.t-dossier .k-play:hover { background: var(--stamp); color: var(--paper); box-shadow: inset 0 0 0 3px var(--stamp), inset 0 0 0 5px var(--paper); }
+.t-dossier .k-foot { color: rgba(235, 227, 204, 0.72); }

@@ -1,0 +1,8 @@
+{
+  "domain": "tang.ninja",
+  "kids": [
+    { "id": "chizi", "name": "Chizi", "theme": "hazard" },
+    { "id": "mozi", "name": "Mozi", "theme": "comic" },
+    { "id": "liangzi", "name": "Liangzi", "theme": "dossier" }
+  ]
+}

@@ -1,0 +1,50 @@
+/* Layout shared by every kid's games page. Each kid's look lives in shared/themes/<theme>.css. */
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; }
+img { display: block; max-width: 100%; }
+:focus-visible { outline: 3px solid currentColor; outline-offset: 3px; }
+
+.k-page { min-height: 100vh; }
+.k-wrap { max-width: 1120px; margin: 0 auto; padding-left: 24px; padding-right: 24px; }
+@media (max-width: 640px) { .k-wrap { padding-left: 16px; padding-right: 16px; } }
+
+.k-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 4px 20px; padding-top: 18px; padding-bottom: 18px; }
+.k-sibs a { display: inline-flex; align-items: center; min-height: 44px; text-decoration: none; }
+.k-sibs { display: flex; flex-wrap: wrap; gap: 0 20px; }
+
+.k-hero { padding: clamp(20px, 5vw, 56px) 0 clamp(32px, 5vw, 56px); }
+.k-name { margin: 0; line-height: 0.85; }
+.k-count { margin: 18px 0 0; }
+
+.k-list { display: grid; gap: clamp(28px, 4vw, 44px); margin: 0; padding: 0; list-style: none; }
+.k-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  align-items: center;
+  gap: clamp(20px, 3vw, 40px);
+}
+.k-shot { display: block; aspect-ratio: 16 / 10; overflow: hidden; background: #000; }
+.k-shot img { width: 100%; height: 100%; object-fit: cover; }
+.k-title { margin: 0; }
+.k-blurb { max-width: 46ch; margin: 10px 0 0; }
+.k-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 12px 0 0; }
+.k-new { display: none; }
+.k-item.is-new .k-new { display: inline-flex; }
+.k-play {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  margin-top: 20px;
+  padding: 0 28px;
+  text-decoration: none;
+}
+.k-foot { padding-top: clamp(48px, 7vw, 80px); padding-bottom: 40px; }
+.k-foot p { margin: 0; }
+
+@media (max-width: 720px) {
+  .k-item { grid-template-columns: minmax(0, 1fr); }
+}

@@ -1,0 +1,275 @@
+<div class="scene" aria-hidden="true">
+  <style>
+    @keyframes orbit-sat { 0.0% { translate: -580.6% 191.3%; } 4.2% { translate: -541.2% 166.2%; } 8.3% { translate: -501.9% 142.9%; } 12.5% { translate: -462.5% 121.4%; } 16.7% { translate: -423.1% 101.6%; } 20.8% { translate: -383.8% 83.6%; } 25.0% { translate: -344.4% 67.3%; } 29.2% { translate: -305.1% 52.8%; } 33.3% { translate: -265.7% 40.1%; } 37.5% { translate: -226.4% 29.1%; } 41.7% { translate: -187.0% 19.9%; } 45.8% { translate: -147.7% 12.4%; } 50.0% { translate: -108.3% 6.7%; } 54.2% { translate: -69.0% 2.7%; } 58.3% { translate: -29.6% 0.5%; } 62.5% { translate: 9.7% 0.1%; } 66.7% { translate: 49.1% 1.4%; } 70.8% { translate: 88.4% 4.4%; } 75.0% { translate: 127.8% 9.3%; } 79.2% { translate: 167.1% 15.8%; } 83.3% { translate: 206.5% 24.2%; } 87.5% { translate: 245.8% 34.3%; } 91.7% { translate: 285.2% 46.2%; } 95.8% { translate: 324.5% 59.8%; } 100.0% { translate: 363.9% 75.1%; } }
+    @keyframes orbit-beam { 0.0% { rotate: -78.7deg; scale: 1 3.270; opacity: 0.00; } 4.2% { rotate: -77.1deg; scale: 1 3.067; opacity: 0.00; } 8.3% { rotate: -75.3deg; scale: 1 2.867; opacity: 0.00; } 12.5% { rotate: -73.2deg; scale: 1 2.669; opacity: 0.00; } 16.7% { rotate: -70.9deg; scale: 1 2.473; opacity: 0.00; } 20.8% { rotate: -68.3deg; scale: 1 2.281; opacity: 0.00; } 25.0% { rotate: -65.4deg; scale: 1 2.093; opacity: 0.00; } 29.2% { rotate: -61.9deg; scale: 1 1.911; opacity: 0.00; } 33.3% { rotate: -57.8deg; scale: 1 1.735; opacity: 0.00; } 37.5% { rotate: -52.9deg; scale: 1 1.567; opacity: 0.00; } 41.7% { rotate: -47.0deg; scale: 1 1.412; opacity: 0.00; } 45.8% { rotate: -39.9deg; scale: 1 1.273; opacity: 0.28; } 50.0% { rotate: -31.2deg; scale: 1 1.155; opacity: 0.67; } 54.2% { rotate: -21.0deg; scale: 1 1.065; opacity: 1.00; } 58.3% { rotate: -9.3deg; scale: 1 1.012; opacity: 1.00; } 62.5% { rotate: 3.1deg; scale: 1 1.001; opacity: 1.00; } 66.7% { rotate: 15.2deg; scale: 1 1.034; opacity: 1.00; } 70.8% { rotate: 26.2deg; scale: 1 1.105; opacity: 0.90; } 75.0% { rotate: 35.7deg; scale: 1 1.210; opacity: 0.47; } 79.2% { rotate: 43.6deg; scale: 1 1.339; opacity: 0.11; } 83.3% { rotate: 50.1deg; scale: 1 1.487; opacity: 0.00; } 87.5% { rotate: 55.5deg; scale: 1 1.649; opacity: 0.00; } 91.7% { rotate: 59.9deg; scale: 1 1.821; opacity: 0.00; } 95.8% { rotate: 63.7deg; scale: 1 2.000; opacity: 0.00; } 100.0% { rotate: 66.9deg; scale: 1 2.186; opacity: 0.00; } }
+  </style>
+  <div class="layer l-sky" data-depth="0.02" style="--delay:0s;--rise:0%">
+    <img class="art" src="/hero/sky.svg" alt="">
+  </div>
+  <div class="layer l-clouds" data-depth="0.05" style="--delay:0.2s;--rise:0%">
+    <img class="fx fx-cloud" src="/hero/cloud-a.svg" alt="" style="left:48.125%;top:40.556%;width:31.25%">
+    <div class="fx mover fx-dart" style="left:9.375%;top:10.278%;width:2.75%;height:3.611%;--ax:104.5%;--ay:-30.8%;--dur:14s">
+  <img class="fx" src="/hero/ufo.svg" alt="" style="left:0%;top:7.692%;width:100%">
+  <div class="anchor" style="left:0%;top:7.692%;width:100%;height:84.615%;--i:0"></div>
+    </div>
+    <img class="fx fx-cloud" src="/hero/cloud-b.svg" alt="" style="left:6%;top:10.556%;width:23.75%;animation-delay:-20s">
+    <img class="fx fx-cloud" src="/hero/cloud-c.svg" alt="" style="left:81%;top:31.389%;width:18.125%;animation-delay:-35s">
+    <img class="fx fx-birds" src="/hero/birds.svg" alt="" style="left:66.25%;top:15.278%;width:8.125%">
+  </div>
+  <div class="layer l-far" data-depth="0.1" style="--delay:0.1s;--rise:4%">
+    <img class="art" src="/hero/far.svg" alt="">
+    <img class="fx fx-search" src="/hero/searchlight.svg" alt="" style="left:20.438%;top:3.611%;width:4.375%;--a0:-24deg;--a1:6deg;--dur:13s">
+    <img class="fx fx-search" src="/hero/searchlight.svg" alt="" style="left:43.312%;top:4.444%;width:4.375%;--a0:14deg;--a1:-10deg;--dur:11s">
+    <img class="fx fx-search" src="/hero/searchlight.svg" alt="" style="left:80.188%;top:2.778%;width:4.375%;--a0:-8deg;--a1:22deg;--dur:15s">
+    <img class="fx fx-light" src="/hero/light.svg" alt="" style="left:20.25%;top:38.333%;width:2.5%;animation-delay:-.4s">
+    <div class="fx mover fx-cross" style="left:-0.625%;top:9.722%;width:18.75%;height:15.278%;--ay:12.7%;--x0:-203.3%;--x1:636.7%;--dur:42s">
+  <img class="fx" src="/hero/jets.svg" alt="" style="left:0%;top:9.091%;width:100%">
+  <div class="anchor" style="left:60%;top:36.364%;width:22.667%;height:32.727%;--i:1"></div>
+  <div class="anchor" style="left:35.173%;top:13.855%;width:18.587%;height:26.836%;--i:2"></div>
+  <div class="anchor" style="left:39.173%;top:70.218%;width:18.587%;height:26.836%;--i:3"></div>
+    </div>
+    <img class="fx fx-wheel" src="/hero/wheel.svg" alt="" style="left:44.375%;top:48.889%;width:6.25%">
+    <div class="anchor" style="left:44.5%;top:49.167%;width:6%;height:13.333%;--i:4"></div>
+  </div>
+  <div class="layer l-monster" data-depth="0.22" style="--delay:0.6s;--rise:24%">
+    <img class="fx fx-burst" src="/hero/burst.svg" alt="" style="left:49.875%;top:27.222%;width:7.5%">
+    <img class="art" src="/hero/monster.svg" alt="">
+    <img class="fx fx-blink" src="/hero/eyelid.svg" alt="" style="left:59.125%;top:26.944%;width:4.5%">
+    <img class="fx fx-dizzy" src="/hero/dizzy.svg" alt="" style="left:58.625%;top:11.111%;width:5.5%">
+    <div class="fx mover fx-orbit-beam" style="left:56.25%;top:10.972%;width:16.75%;height:54.306%;transform-origin:50.00% 100.00%">
+  <img class="fx fx-beam" src="/hero/beam.svg" alt="" style="left:0%;top:0%;width:100%">
+  <div class="fx scan" style="left:0%;top:0%;width:100%;height:100%;clip-path:polygon(48.1% 0.0%, 51.9% 0.0%, 98.5% 100.0%, 1.5% 100.0%)"><i></i></div>
+    </div>
+    <div class="fx mover fx-orbit-sat" style="left:57.875%;top:1.389%;width:13.5%;height:10.278%">
+  <img class="fx" src="/hero/satellite.svg" alt="" style="left:0%;top:0%;width:100%">
+  <div class="anchor" style="left:0%;top:0%;width:100%;height:100%;--i:5"></div>
+    </div>
+    <div class="anchor" style="left:52.25%;top:13.056%;width:26.75%;height:76.111%;--i:6"></div>
+  </div>
+  <div class="layer l-mid" data-depth="0.3" style="--delay:0.25s;--rise:7%">
+    <img class="art" src="/hero/mid.svg" alt="">
+    <img class="art lights" src="/hero/mid-lights.svg" alt="" style="--on:1.3s">
+    <img class="art lights lights-a" src="/hero/mid-lights-a.svg" alt="" style="--on:1.3s">
+    <img class="art lights lights-b" src="/hero/mid-lights-b.svg" alt="" style="--on:1.6s">
+    <img class="art lights lights-c" src="/hero/mid-lights-c.svg" alt="" style="--on:1.9s">
+    <img class="fx clock-h" src="/hero/clock-h.svg" alt="" style="left:44.938%;top:64.722%;width:5%;transform-origin:50% 50%">
+    <img class="fx clock-m" src="/hero/clock-m.svg" alt="" style="left:44.938%;top:64.722%;width:5%;transform-origin:50% 50%">
+    <img class="fx clock-s" src="/hero/clock-s.svg" alt="" style="left:44.938%;top:64.722%;width:5%;transform-origin:50% 50%">
+    <div class="anchor" style="left:44.688%;top:64.167%;width:5.5%;height:12.222%;--i:10"></div>
+    <img class="fx fx-wobble" src="/hero/city-reflection.svg" alt="" style="left:-1.25%;top:86.389%;width:102.5%">
+    <img class="fx fx-wobble" src="/hero/water-lights.svg" alt="" style="left:-1.25%;top:86.389%;width:102.5%">
+    <img class="fx fx-ripples" src="/hero/ripples-a.svg" alt="" style="left:-1.25%;top:86.389%;width:102.5%;--dur:9s;--ax:1.1%">
+    <img class="fx fx-ripples" src="/hero/ripples-b.svg" alt="" style="left:-1.25%;top:86.389%;width:102.5%;--dur:13s;--ax:-1.1%">
+    <img class="fx fx-wobble" src="/hero/robot-reflection.svg" alt="" style="left:18.125%;top:86.667%;width:26.25%">
+    <img class="fx fx-ring" src="/hero/ring.svg" alt="" style="left:28.938%;top:85.278%;width:5%;--k:1.0;animation-delay:-0.0s">
+    <img class="fx fx-ring" src="/hero/ring.svg" alt="" style="left:33%;top:85.278%;width:5%;--k:1.1;animation-delay:-1.1s">
+    <img class="fx fx-ring" src="/hero/ring.svg" alt="" style="left:18.142%;top:85.278%;width:5%;--k:0.5;animation-delay:-2.2s">
+    <div class="fx mover fx-cross" style="left:69.75%;top:85.833%;width:8.75%;height:7.5%;--ay:2.8%;--x0:-711.4%;--x1:245.7%;--dur:75s;animation-delay:-30s">
+  <img class="fx" src="/hero/ferry.svg" alt="" style="left:0%;top:0%;width:100%">
+  <div class="anchor" style="left:1.429%;top:3.704%;width:97.143%;height:85.185%;--i:11"></div>
+    </div>
+    <div class="fx mover fx-cross" style="left:43.5%;top:86.389%;width:5.125%;height:6.944%;--ay:4.0%;--x0:-629.3%;--x1:882.9%;--dur:48s;animation-delay:-7s">
+  <img class="fx" src="/hero/tug.svg" alt="" style="left:0%;top:0%;width:100%">
+  <div class="anchor" style="left:2.439%;top:4%;width:95.122%;height:84%;--i:12"></div>
+    </div>
+    <div class="fx mover fx-bob" style="left:74.75%;top:86.944%;width:2.625%;height:4.444%;--ax:33.3%;--ay:9.4%;--dur:5s">
+  <img class="fx" src="/hero/duck.svg" alt="" style="left:0%;top:0%;width:100%">
+  <div class="anchor" style="left:0%;top:0%;width:100%;height:100%;--i:13"></div>
+    </div>
+    <div class="fx mover fx-tofro" style="left:51.625%;top:86.944%;width:1.625%;height:5.278%;--ax:-153.8%;--ay:0.0%;--dur:23s;animation-delay:-5s;overflow:hidden">
+  <img class="fx fx-sink" src="/hero/periscope.svg" alt="" style="left:0%;top:0%;width:100%">
+  <div class="anchor" style="left:0%;top:0%;width:100%;height:100%;--i:14"></div>
+    </div>
+    <div class="fx mover fx-lift" style="left:76.875%;top:35.556%;width:12.875%;height:34.167%;--ax:7.8%;--ay:25.2%;--dur:9s;animation-delay:-3s">
+  <img class="fx fx-beam" src="/hero/heli-light.svg" alt="" style="left:0.971%;top:42.276%;width:53.398%">
+  <img class="fx" src="/hero/heli.svg" alt="" style="left:17.476%;top:26.829%;width:54.369%">
+  <div class="anchor" style="left:15.534%;top:26.829%;width:58.252%;height:24.39%;--i:15"></div>
+    </div>
+    <img class="fx fx-shimmer" src="/hero/shimmer.svg" alt="" style="left:59.375%;top:86.944%;width:7.5%">
+    <img class="fx fx-light" src="/hero/light.svg" alt="" style="left:16.375%;top:54.861%;width:2.5%;animation-delay:-0.6s">
+    <img class="fx fx-light" src="/hero/light.svg" alt="" style="left:48.75%;top:53.472%;width:2.5%;animation-delay:-0.6s">
+    <img class="fx fx-light" src="/hero/light.svg" alt="" style="left:72.25%;top:46.389%;width:2.5%;animation-delay:-0.0s">
+    <img class="fx fx-light" src="/hero/light.svg" alt="" style="left:54%;top:84.722%;width:2.5%;animation-delay:-0.6s">
+    <div class="fx mover fx-patrol" style="left:37.875%;top:77.778%;width:4.25%;height:7.778%;--ax:55.9%;--dur:23s;animation-delay:0s">
+  <img class="fx" src="/hero/tank-1.svg" alt="" style="left:2.941%;top:25%;width:94.118%">
+  <img class="fx fx-muzzle" src="/hero/muzzle.svg" alt="" style="left:79.905%;top:15.816%;width:26.471%;--fire:2.90s">
+  <div class="anchor" style="left:5.882%;top:32.143%;width:88.235%;height:67.857%;--i:16"></div>
+    </div>
+    <div class="fx mover fx-patrol" style="left:42.625%;top:77.778%;width:4.25%;height:7.778%;--ax:132.4%;--dur:15s;animation-delay:-5s">
+  <img class="fx" src="/hero/tank-2.svg" alt="" style="left:2.941%;top:25%;width:94.118%">
+  <img class="fx fx-muzzle" src="/hero/muzzle.svg" alt="" style="left:77.901%;top:11.172%;width:26.471%;--fire:3.75s">
+  <div class="anchor" style="left:5.882%;top:32.143%;width:88.235%;height:67.857%;--i:17"></div>
+    </div>
+    <div class="fx mover fx-patrol" style="left:47.375%;top:77.778%;width:4.25%;height:7.778%;--ax:35.3%;--dur:31s;animation-delay:-10s">
+  <img class="fx" src="/hero/tank-3.svg" alt="" style="left:2.941%;top:25%;width:94.118%">
+  <img class="fx fx-muzzle" src="/hero/muzzle.svg" alt="" style="left:74.146%;top:4.651%;width:26.471%;--fire:4.60s">
+  <div class="anchor" style="left:5.882%;top:32.143%;width:88.235%;height:67.857%;--i:18"></div>
+    </div>
+    <div class="fx mover fx-patrol" style="left:76.75%;top:77.778%;width:4.25%;height:7.778%;--ax:-102.9%;--dur:19s;animation-delay:-15s">
+  <img class="fx" src="/hero/tank-4.svg" alt="" style="left:2.941%;top:25%;width:94.118%">
+  <img class="fx fx-muzzle" src="/hero/muzzle.svg" alt="" style="left:-4.301%;top:11.027%;width:26.471%;--fire:5.45s">
+  <div class="anchor" style="left:5.882%;top:32.143%;width:88.235%;height:67.857%;--i:19"></div>
+    </div>
+  </div>
+  <div class="layer l-robot" data-depth="0.38" style="--delay:0.8s;--rise:20%">
+    <div class="fx mover fx-swing" style="left:16.75%;top:22.222%;width:14.75%;height:40.278%;--ay:3.4%;--th:13deg;transform-origin:91.95% 55.52%;--dur:11s">
+  <img class="fx" src="/hero/drone-a.svg" alt="" style="left:0%;top:0%;width:100%">
+  <div class="anchor" style="left:0.847%;top:-0.69%;width:24.576%;height:11.034%;--i:7"></div>
+    </div>
+    <div class="fx mover fx-swing" style="left:36.875%;top:15.556%;width:8%;height:44.444%;--ay:2.5%;--th:-11deg;transform-origin:7.03% 65.31%;--dur:8.5s;animation-delay:-3s">
+  <img class="fx" src="/hero/drone-b.svg" alt="" style="left:0%;top:0%;width:100%">
+  <div class="anchor" style="left:54.688%;top:-0.625%;width:45.312%;height:10%;--i:8"></div>
+    </div>
+    <img class="art" src="/hero/robot.svg" alt="">
+    <img class="fx fx-punch" src="/hero/arm.svg" alt="" style="left:37.25%;top:31.389%;width:18.125%;transform-origin:6.9% 64.4%">
+    <img class="fx" src="/hero/shoulder.svg" alt="" style="left:35.625%;top:35.556%;width:5.75%">
+    <img class="fx fx-visor" src="/hero/visor-bar.svg" alt="" style="left:31.5%;top:30%;width:0.75%">
+    <img class="fx fx-glow" src="/hero/runes.svg" alt="" style="left:21.348%;top:72.179%;width:4.046%">
+    <img class="fx fx-flash" src="/hero/flash.svg" alt="" style="left:49.25%;top:25.833%;width:8.75%">
+    <img class="fx fx-sparks" src="/hero/sparks.svg" alt="" style="left:46.75%;top:21.667%;width:13.75%">
+    <div class="anchor" style="left:18.75%;top:18.333%;width:35.25%;height:70.278%;--i:9"></div>
+    <img class="fx fx-light" src="/hero/light.svg" alt="" style="left:34.125%;top:17.778%;width:2.5%;animation-delay:-.8s">
+  </div>
+  <div class="layer l-near" data-depth="0.6" style="--delay:0.45s;--rise:9%">
+    <div class="anchor" style="left:2.625%;top:44.028%;width:5.125%;height:4.167%;--i:20"></div>
+    <img class="fx fx-sway" src="/hero/hook.svg" alt="" style="left:93%;top:27.083%;width:1.5%;transform-origin:50% 0;--th:3deg;--dur:5.5s">
+    <div class="anchor" style="left:90.062%;top:40.694%;width:4.125%;height:4.444%;--i:21"></div>
+    <div class="anchor" style="left:84.188%;top:72.222%;width:1.25%;height:2.778%;--i:22"></div>
+    <div class="anchor" style="left:81.625%;top:60.833%;width:5.75%;height:6.111%;--i:23"></div>
+    <img class="art" src="/hero/near.svg" alt="">
+    <img class="art lights" src="/hero/near-lights.svg" alt="" style="--on:1.55s">
+    <img class="art lights lights-a" src="/hero/near-lights-a.svg" alt="" style="--on:1.55s;animation-delay:-0s">
+    <img class="art lights lights-b" src="/hero/near-lights-b.svg" alt="" style="--on:1.80s;animation-delay:-3s">
+    <img class="art lights lights-c" src="/hero/near-lights-c.svg" alt="" style="--on:2.05s;animation-delay:-6s">
+    <div class="fx mover " style="left:1.5%;top:60.556%;width:1.5%;height:2.639%;overflow:hidden">
+  <img class="fx fx-walk" src="/hero/walker.svg" alt="" style="left:30.139%;top:20%;width:47.5%;--dur:9.9s;--span:32%;animation-delay:-9.6s">
+    </div>
+    <div class="fx mover " style="left:-0.625%;top:65%;width:1.5%;height:2.639%;overflow:hidden">
+  <img class="fx fx-walk" src="/hero/walker.svg" alt="" style="left:24.171%;top:20%;width:47.5%;--dur:12.6s;--span:60%;animation-delay:-5.1s">
+    </div>
+    <div class="fx mover " style="left:1.5%;top:65%;width:1.5%;height:2.639%;overflow:hidden">
+  <img class="fx fx-walk" src="/hero/walker.svg" alt="" style="left:4.537%;top:20%;width:47.5%;--dur:6.4s;--span:65%;animation-delay:-10.3s">
+    </div>
+    <div class="fx mover " style="left:10%;top:69.444%;width:1.5%;height:2.639%;overflow:hidden">
+  <img class="fx fx-walk" src="/hero/walker.svg" alt="" style="left:48.514%;top:20%;width:47.5%;--dur:8.0s;--span:48%;animation-delay:-4.4s">
+    </div>
+    <div class="fx mover " style="left:10%;top:78.333%;width:1.5%;height:2.639%;overflow:hidden">
+  <img class="fx fx-walk" src="/hero/walker.svg" alt="" style="left:9.463%;top:20%;width:47.5%;--dur:6.3s;--span:57%;animation-delay:-2.2s">
+    </div>
+    <div class="fx mover " style="left:1.5%;top:91.667%;width:1.5%;height:2.639%;overflow:hidden">
+  <img class="fx fx-walk" src="/hero/walker.svg" alt="" style="left:30.619%;top:20%;width:47.5%;--dur:8.7s;--span:58%;animation-delay:-9.6s">
+    </div>
+    <div class="fx mover " style="left:3.625%;top:91.667%;width:1.5%;height:2.639%;overflow:hidden">
+  <img class="fx fx-walk" src="/hero/walker.svg" alt="" style="left:10.375%;top:20%;width:47.5%;--dur:10.3s;--span:50%;animation-delay:-0.9s">
+    </div>
+    <div class="fx mover " style="left:15.438%;top:79.444%;width:1%;height:2.222%;overflow:hidden">
+  <img class="fx fx-walk" src="/hero/walker.svg" alt="" style="left:4.206%;top:20%;width:60%;--dur:14.9s;--span:41%;animation-delay:-3.2s">
+    </div>
+    <div class="fx mover " style="left:17%;top:79.444%;width:1%;height:2.222%;overflow:hidden">
+  <img class="fx fx-walk" src="/hero/walker.svg" alt="" style="left:36.456%;top:20%;width:60%;--dur:6.7s;--span:41%;animation-delay:-9.6s">
+    </div>
+    <div class="fx mover " style="left:15.438%;top:87.222%;width:1%;height:2.222%;overflow:hidden">
+  <img class="fx fx-walk" src="/hero/walker.svg" alt="" style="left:30.229%;top:20%;width:60%;--dur:7.0s;--span:36%;animation-delay:-4.2s">
+    </div>
+    <div class="fx mover " style="left:13.875%;top:91.111%;width:1%;height:2.222%;overflow:hidden">
+  <img class="fx fx-walk" src="/hero/walker.svg" alt="" style="left:-1.592%;top:20%;width:60%;--dur:12.5s;--span:39%;animation-delay:-2.9s">
+    </div>
+    <div class="fx mover " style="left:15.438%;top:95%;width:1%;height:2.222%;overflow:hidden">
+  <img class="fx fx-walk" src="/hero/walker.svg" alt="" style="left:16.676%;top:20%;width:60%;--dur:10.1s;--span:49%;animation-delay:-1.8s">
+    </div>
+    <div class="fx mover " style="left:91.625%;top:68.333%;width:1.5%;height:2.639%;overflow:hidden">
+  <img class="fx fx-walk" src="/hero/walker.svg" alt="" style="left:1.545%;top:20%;width:47.5%;--dur:11.7s;--span:48%;animation-delay:-7.4s">
+    </div>
+    <div class="fx mover " style="left:98%;top:68.333%;width:1.5%;height:2.639%;overflow:hidden">
+  <img class="fx fx-walk" src="/hero/walker.svg" alt="" style="left:22.693%;top:20%;width:47.5%;--dur:9.7s;--span:68%;animation-delay:-1.6s">
+    </div>
+    <div class="fx mover " style="left:89.5%;top:72.778%;width:1.5%;height:2.639%;overflow:hidden">
+  <img class="fx fx-walk" src="/hero/walker.svg" alt="" style="left:49.163%;top:20%;width:47.5%;--dur:9.1s;--span:39%;animation-delay:-9.9s">
+    </div>
+    <div class="fx mover " style="left:91.625%;top:72.778%;width:1.5%;height:2.639%;overflow:hidden">
+  <img class="fx fx-walk" src="/hero/walker.svg" alt="" style="left:38.897%;top:20%;width:47.5%;--dur:12.6s;--span:44%;animation-delay:-2.4s">
+    </div>
+    <div class="fx mover " style="left:93.75%;top:77.222%;width:1.5%;height:2.639%;overflow:hidden">
+  <img class="fx fx-walk" src="/hero/walker.svg" alt="" style="left:9.647%;top:20%;width:47.5%;--dur:10.8s;--span:47%;animation-delay:-1.7s">
+    </div>
+    <div class="fx mover " style="left:95.875%;top:77.222%;width:1.5%;height:2.639%;overflow:hidden">
+  <img class="fx fx-walk" src="/hero/walker.svg" alt="" style="left:10.909%;top:20%;width:47.5%;--dur:8.8s;--span:44%;animation-delay:-0.7s">
+    </div>
+    <div class="fx mover " style="left:95.875%;top:81.667%;width:1.5%;height:2.639%;overflow:hidden">
+  <img class="fx fx-walk" src="/hero/walker.svg" alt="" style="left:1.745%;top:20%;width:47.5%;--dur:10.9s;--span:33%;animation-delay:-0.2s">
+    </div>
+    <div class="fx mover " style="left:91.625%;top:86.111%;width:1.5%;height:2.639%;overflow:hidden">
+  <img class="fx fx-walk" src="/hero/walker.svg" alt="" style="left:34.729%;top:20%;width:47.5%;--dur:11.5s;--span:37%;animation-delay:-8.2s">
+    </div>
+    <div class="fx mover " style="left:98%;top:90.556%;width:1.5%;height:2.639%;overflow:hidden">
+  <img class="fx fx-walk" src="/hero/walker.svg" alt="" style="left:15.064%;top:20%;width:47.5%;--dur:10.1s;--span:66%;animation-delay:-5.6s">
+    </div>
+    <div class="fx mover " style="left:89.5%;top:95%;width:1.5%;height:2.639%;overflow:hidden">
+  <img class="fx fx-walk" src="/hero/walker.svg" alt="" style="left:23.102%;top:20%;width:47.5%;--dur:11.9s;--span:50%;animation-delay:-10.2s">
+    </div>
+    <div class="fx mover " style="left:95.875%;top:95%;width:1.5%;height:2.639%;overflow:hidden">
+  <img class="fx fx-walk" src="/hero/walker.svg" alt="" style="left:14.218%;top:20%;width:47.5%;--dur:11.5s;--span:56%;animation-delay:-2.6s">
+    </div>
+    <div class="fx mover " style="left:82.75%;top:68.611%;width:1%;height:2.222%;overflow:hidden">
+  <img class="fx fx-walk" src="/hero/walker.svg" alt="" style="left:-1.781%;top:20%;width:60%;--dur:8.4s;--span:39%;animation-delay:-8.1s">
+    </div>
+    <div class="fx mover " style="left:82.75%;top:72.5%;width:1%;height:2.222%;overflow:hidden">
+  <img class="fx fx-walk" src="/hero/walker.svg" alt="" style="left:26.335%;top:20%;width:60%;--dur:12.8s;--span:43%;animation-delay:-11.6s">
+    </div>
+    <div class="fx mover " style="left:84.312%;top:88.056%;width:1%;height:2.222%;overflow:hidden">
+  <img class="fx fx-walk" src="/hero/walker.svg" alt="" style="left:44.321%;top:20%;width:60%;--dur:11.2s;--span:51%;animation-delay:-10.9s">
+    </div>
+    <div class="fx mover " style="left:85.875%;top:95.833%;width:1%;height:2.222%;overflow:hidden">
+  <img class="fx fx-walk" src="/hero/walker.svg" alt="" style="left:-1.025%;top:20%;width:60%;--dur:14.6s;--span:55%;animation-delay:-10.9s">
+    </div>
+    <img class="fx fx-ember" src="/hero/embers.svg" alt="" style="left:84.25%;top:62.222%;width:1.75%">
+    <img class="fx fx-light" src="/hero/light.svg" alt="" style="left:0.125%;top:35.694%;width:2.5%;animation-delay:-0.8s">
+    <img class="fx fx-light" src="/hero/light.svg" alt="" style="left:97.125%;top:20%;width:2.5%;animation-delay:-1.6s">
+    <img class="fx fx-phone" src="/hero/phone-flash.svg" alt="" style="left:90.125%;top:40.278%;width:1.25%">
+  </div>
+  <div class="layer l-front" data-depth="0.9" style="--delay:0.35s;--rise:12%">
+    <img class="art" src="/hero/front.svg" alt="">
+    <div class="fx mover fx-cross" style="left:17.75%;top:87.5%;width:20.625%;height:9.722%;--ay:0.0%;--x0:453.3%;--x1:-213.3%;--dur:24s;animation-delay:6s">
+  <img class="fx" src="/hero/car.svg" alt="" style="left:0%;top:0%;width:100%">
+  <div class="anchor" style="left:47.273%;top:5.714%;width:52.727%;height:94.286%;--i:24"></div>
+    </div>
+  </div>
+  <div class="layer l-close" data-depth="1.3" style="--delay:0.5s;--rise:14%">
+    <img class="art" src="/hero/close.svg" alt="">
+    <div class="fx mover fx-pan" style="left:86.875%;top:73.333%;width:8.25%;height:8.056%;--th:4deg;transform-origin:42.42% 110.34%;--dur:7s">
+  <img class="fx" src="/hero/camera.svg" alt="" style="left:0%;top:0%;width:100%">
+  <img class="fx fx-rec" src="/hero/rec.svg" alt="" style="left:86.364%;top:25.862%;width:7.576%">
+    </div>
+    <div class="anchor" style="left:3.625%;top:77.222%;width:5.75%;height:6.389%;--i:25"></div>
+    <div class="anchor" style="left:87%;top:73.333%;width:11.5%;height:25%;--i:26"></div>
+  </div>
+  <div class="layer hud" data-depth="0" style="--delay:0s;--rise:0%">
+    <div class="det det-more det-s" style="--i:0"><span>ufo 0.12</span></div>
+    <div class="det det-more det-s" style="--i:1"><span>jet 0.84</span></div>
+    <div class="det det-more det-s" style="--i:2"><span>jet 0.89</span></div>
+    <div class="det det-more det-s" style="--i:3"><span>jet 0.89</span></div>
+    <div class="det det-more" style="--i:4"><span>ferris wheel 0.76</span></div>
+    <div class="det det-more" style="--i:5"><span>satellite 0.99</span></div>
+    <div class="det det-more" style="--i:6"><span>monster 0.98</span></div>
+    <div class="det det-more det-s det-below" style="--i:7"><span>drone 0.72</span></div>
+    <div class="det det-more det-s" style="--i:8"><span>drone 0.82</span></div>
+    <div class="det det-more" style="--i:9"><span>robot 0.99</span></div>
+    <div class="det det-more det-s" style="--i:10"><span>clock 0.79</span></div>
+    <div class="det det-more det-s" style="--i:11"><span>ferry 0.93</span></div>
+    <div class="det det-more det-s" style="--i:12"><span>boat 0.90</span></div>
+    <div class="det det-more det-s" style="--i:13"><span>duck 0.99</span></div>
+    <div class="det det-more det-s" style="--i:14"><span>periscope 0.66</span></div>
+    <div class="det det-more" style="--i:15"><span>helicopter 0.88</span></div>
+    <div class="det det-more det-s" style="--i:16"><span>tank 0.87</span></div>
+    <div class="det det-more det-s" style="--i:17"><span>tank 0.89</span></div>
+    <div class="det det-more det-s" style="--i:18"><span>tank 0.76</span></div>
+    <div class="det det-more det-s" style="--i:19"><span>tank 0.83</span></div>
+    <div class="det det-more det-s" style="--i:20"><span>people 0.76</span></div>
+    <div class="det det-more det-s" style="--i:21"><span>people 0.96</span></div>
+    <div class="det det-more det-s" style="--i:22"><span>cat 0.93</span></div>
+    <div class="det det-more det-s" style="--i:23"><span>forge and fire 0.91</span></div>
+    <div class="det det-more" style="--i:24"><span>car 0.74</span></div>
+    <div class="det det-more det-s" style="--i:25"><span>seagull eating a fry 0.87</span></div>
+    <div class="det det-more" style="--i:26"><span>journalist 0.93</span></div>
+  </div>
+</div>

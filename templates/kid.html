@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{name}}'s games | tang.ninja</title>
+  <meta name="description" content="Games by {{name}}. {{count_text}}.">
+  <meta name="theme-color" content="{{theme_color}}">
+  <meta property="og:title" content="Games by {{name}}">
+  <meta property="og:description" content="{{count_text}}.">
+  {{og_image}}
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="{{fonts}}">
+  <link rel="stylesheet" href="kid.css">
+  <link rel="stylesheet" href="theme.css">
+</head>
+<body class="t-{{theme}}">
+  <div class="k-page">
+    <header class="k-top k-wrap">
+      <nav class="k-sibs" aria-label="More games">{{siblings}}</nav>
+    </header>
+
+    <main class="k-wrap">
+      <section class="k-hero">
+        <h1 class="k-name">{{name}}</h1>
+        <p class="k-count">{{count_text}}</p>
+      </section>
+
+      <ol class="k-list">
+{{items}}
+      </ol>
+    </main>
+
+    <footer class="k-foot k-wrap"><p>Best on a computer with a keyboard and mouse.</p></footer>
+  </div>
+  <script>
+    // Mark games added in the last 14 days as new.
+    for (const li of document.querySelectorAll(".k-item[data-added]")) {
+      const days = (Date.now() - new Date(li.dataset.added + "T12:00:00")) / 864e5;
+      if (days >= 0 && days <= 14) li.classList.add("is-new");
+    }
+  </script>
+</body>
+</html>
