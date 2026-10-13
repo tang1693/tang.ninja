@@ -199,7 +199,7 @@ body.touch .deskonly{display:none}
     <div id="stick"><div id="knob"></div></div>
     <button class="tbtn" id="tFire" data-act="fire">FIRE</button>
     <button class="tbtn" id="tMissile" data-act="missile">MSL<small id="tMslN">8</small></button>
-    <button class="tbtn" id="tMelee" data-act="melee">BLADE</button>
+    <button class="tbtn" id="tMelee" data-act="melee">MELEE</button>
     <button class="tbtn" id="tFly" data-act="fly">FLY</button>
     <button class="tbtn" id="tBoost" data-act="boost">BOOST</button>
     <button class="tbtn" id="tX" data-act="xform">JET</button>
@@ -835,7 +835,7 @@ function touchAct(act, down) {
   }
 }
 touchLayer.addEventListener('pointerdown', e => {
-  if (e.pointerType === 'mouse') return;
+  if (e.pointerType === 'mouse' && !e.target.closest('.tbtn')) return;
   e.preventDefault(); SFX.init();
   const btn = e.target.closest('.tbtn');
   if (btn) {
@@ -2484,7 +2484,9 @@ function setClass(id, cls, on) { const k = id + cls; if (hudCache[k] !== on) { h
 const _v = new V3();
 function project(p) { _v.copy(p).project(camera); return _v; }
 
+let hudFont = null;
 function drawHUD(dt) {
+  if (!hudFont) hudFont = getComputedStyle(document.body).fontFamily;
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const W = ov.width, H = ov.height;
   oc.clearRect(0, 0, W, H);
@@ -2555,7 +2557,7 @@ function drawHUD(dt) {
           oc.beginPath();
           for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { oc.moveTo(x + sx * R, y + sy * (R - c)); oc.lineTo(x + sx * R, y + sy * R); oc.lineTo(x + sx * (R - c), y + sy * R); }
           oc.stroke();
-          oc.fillStyle = '#ffb23e'; oc.font = '700 11px ' + getComputedStyle(document.body).fontFamily; oc.textAlign = 'center';
+          oc.fillStyle = '#ffb23e'; oc.font = '700 11px ' + hudFont; oc.textAlign = 'center';
           oc.fillText('LOCK', x, y + R + 14);
         }
       }
@@ -2608,7 +2610,7 @@ function drawHUD(dt) {
   // missile warning
   const incoming = missiles.some(ms => !ms.friendly && ms.target === player && ms.pos.distanceTo(p.pos) < 140);
   if (incoming && (gameTime * 4 % 1) < 0.6) {
-    oc.fillStyle = '#ff5340'; oc.font = '700 15px ' + getComputedStyle(document.body).fontFamily; oc.textAlign = 'center';
+    oc.fillStyle = '#ff5340'; oc.font = '700 15px ' + hudFont; oc.textAlign = 'center';
     oc.fillText('MISSILE WARNING', cx, cy + 62);
   }
   oc.restore();
@@ -2667,7 +2669,7 @@ function clearCombat() {
   recallDrones();
 }
 function startGame() {
-  SFX.init(); Voice.stop();
+  SFX.init(); Voice.stop(); if (!Voice.voice) Voice.pick();
   clearCombat(); resetTanks();
   const p = player;
   Object.assign(p, { hp: p.ch.hp, energy: 100, thrLock: false, heat: 0, overheat: false, missiles: p.ch.msl.cap, regen: 0, salvoCd: 0, fireCd: 0, meleeCd: 0, melee: -1, dashT: 0, mode: 0, grounded: true, airT: 0, alive: true, roll: 0, pitch: 0, yaw: 0, queuedMelee: 0, queuedX: false, lastHurt: 0, climb: null, diving: false, tankSpeed: 0 });
