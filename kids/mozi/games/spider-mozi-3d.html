@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <title>Mozi Skyline</title>
 <style>
   /* One deliberate night-city look: dark panels, teal for Mozi, gold for goals, comic-style condensed type. */
@@ -13,8 +15,9 @@
     --teal: #5ff0de; --teal-deep: #14a897; --orange: #ff8a3d; --gold: #ffd23d; --red: #ff4d4d;
     --font: "Avenir Next Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
   }
-  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--ink); color: var(--text); font-family: var(--font); }
-  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--ink); color: var(--text); font-family: var(--font);
+    touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
+  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
   .screen { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box;
     background: radial-gradient(ellipse at 50% 40%, rgba(13, 11, 22, 0.35), rgba(13, 11, 22, 0.86)); }
   .screen.on { display: flex; }
@@ -45,14 +48,11 @@
   #focus .bar { height: 7px; } #focus-fill { background: #3fa7c9; }
   #focus.ready #focus-fill { background: var(--teal); box-shadow: 0 0 10px var(--teal); }
   #focus span { font-size: 12px; color: var(--muted); letter-spacing: 0.08em; }
-  #boss, #compass { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); display: none; text-align: center; padding: 8px 16px; }
-  #boss.on, #compass.on { display: block; }
-  #boss { width: min(520px, 60vw); }
+  #ring { position: absolute; top: 6px; left: 50%; transform: translateX(-50%); width: 148px; height: 148px; }
+  #boss { position: absolute; top: 158px; left: 50%; transform: translateX(-50%); display: none; text-align: center; padding: 8px 16px; width: min(520px, 60vw); }
+  #boss.on { display: block; }
   #boss-name { font: 900 italic 20px var(--font); letter-spacing: 0.05em; }
   #boss .bar { height: 14px; }
-  #compass { font: 800 italic 18px var(--font); display: none; align-items: center; gap: 10px; }
-  #compass.on { display: flex; }
-  #compass-arrow { display: inline-block; width: 0; height: 0; border-left: 9px solid transparent; border-right: 9px solid transparent; border-bottom: 18px solid var(--gold); }
   #mini { position: absolute; right: 16px; top: 16px; width: 180px; height: 180px; border-radius: 50%; border: 2px solid var(--line); background: var(--ink); }
   #list { position: absolute; right: 16px; top: 206px; margin: 0; padding: 8px 12px; list-style: none; font: 800 italic 15px var(--font); letter-spacing: 0.05em; }
   #list li { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
@@ -74,7 +74,36 @@
   #help { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 18px 22px; display: none; width: min(720px, 92vw); }
   #help.on { display: block; }
   #help h2 { margin: 0 0 6px; font: 900 italic 26px var(--font); color: var(--gold); }
-  @media (max-width: 720px) { #mini, #list { display: none; } #hint { white-space: normal; width: 90vw; } }
+  /* touch controls (iPad): thumbstick on the left, buttons on the right, drag the right side to look */
+  #touch { position: fixed; inset: 0; display: none; touch-action: none; }
+  #touch.on { display: block; }
+  #stick { position: absolute; width: 136px; height: 136px; margin: -68px 0 0 -68px; border-radius: 50%; pointer-events: none;
+    border: 2px solid rgba(255, 255, 255, 0.4); background: rgba(13, 11, 22, 0.35); opacity: 0.6;
+    left: calc(118px + env(safe-area-inset-left)); top: calc(100% - 132px - env(safe-area-inset-bottom)); }
+  #stick.live { opacity: 1; }
+  #knob { position: absolute; left: 50%; top: 50%; width: 60px; height: 60px; margin: -30px 0 0 -30px; border-radius: 50%;
+    background: rgba(95, 240, 222, 0.5); border: 2px solid var(--teal); }
+  .tb { position: absolute; width: 68px; height: 68px; padding: 0; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font: 900 italic 15px var(--font); letter-spacing: 0.04em; color: #fff; background: rgba(13, 11, 22, 0.55); border: 2px solid rgba(255, 255, 255, 0.4);
+    box-shadow: none; touch-action: none; -webkit-user-select: none; user-select: none; }
+  .tb.big { width: 94px; height: 94px; font-size: 21px; }
+  .tb small { font: 700 10px var(--font); letter-spacing: 0.02em; opacity: 0.85; margin-top: 1px; }
+  .tb.down { background: rgba(95, 240, 222, 0.42); transform: scale(0.93); }
+  #tb-jump { right: calc(22px + env(safe-area-inset-right)); bottom: calc(30px + env(safe-area-inset-bottom)); border-color: var(--teal); }
+  #tb-atk { right: calc(132px + env(safe-area-inset-right)); bottom: calc(18px + env(safe-area-inset-bottom)); border-color: var(--orange); }
+  #tb-atk.down { background: rgba(255, 138, 61, 0.45); }
+  #tb-dodge { right: calc(240px + env(safe-area-inset-right)); bottom: calc(22px + env(safe-area-inset-bottom)); }
+  #tb-zip { right: calc(36px + env(safe-area-inset-right)); bottom: calc(142px + env(safe-area-inset-bottom)); }
+  #tb-zip.ready { border-color: var(--teal); box-shadow: 0 0 14px var(--teal); }
+  #tb-snare { right: calc(130px + env(safe-area-inset-right)); bottom: calc(122px + env(safe-area-inset-bottom)); }
+  #tb-snare.dim { opacity: 0.45; }
+  #tb-pause { top: calc(16px + env(safe-area-inset-top)); right: calc(210px + env(safe-area-inset-right)); width: 50px; height: 50px; border-radius: 12px; font-size: 18px; font-style: normal; }
+  #tb-rematch { display: none; left: 50%; top: 52%; transform: translateX(-50%); width: auto; height: auto; border-radius: 999px; padding: 12px 30px;
+    background: var(--gold); color: var(--ink); border-color: var(--ink); box-shadow: 4px 4px 0 var(--orange); font-size: 22px; }
+  #tb-rematch.on { display: block; }
+  body.touch #hint { bottom: calc(250px + env(safe-area-inset-bottom)); white-space: normal; width: min(560px, 82vw); box-sizing: border-box; text-align: center; }
+  body.touch #toast { bottom: calc(320px + env(safe-area-inset-bottom)); }
+  @media (max-width: 720px) { #mini, #list { display: none; } #hint { white-space: normal; width: 90vw; } #tb-pause { right: calc(16px + env(safe-area-inset-right)); } }
   @media (prefers-reduced-motion: reduce) { .bar > i, #toast, #banner { transition: none; } }
 </style>
 </head>
@@ -85,7 +114,7 @@
     <div id="focus"><div class="bar"><i id="focus-fill"></i></div><span>FOCUS · snare costs 30</span></div></div>
   <div id="stars" class="panel">★ 0 / 31</div>
   <div id="boss" class="panel"><div id="boss-name"></div><div class="bar"><i id="boss-fill"></i></div></div>
-  <div id="compass" class="panel"><span id="compass-arrow"></span><span id="compass-text"></span></div>
+  <canvas id="ring" width="148" height="148"></canvas>
   <canvas id="mini" width="180" height="180"></canvas>
   <ul id="list" class="panel"></ul>
   <div id="reticle"></div>
@@ -95,13 +124,23 @@
   <div id="hint" class="panel"><b>WASD</b> move · <b>Space</b> jump, hold in the air to swing · run into a wall to climb · <b>E</b> zip · <b>Click</b> attack · <b>H</b> all controls</div>
   <div id="help" class="panel"><h2>Controls</h2><div class="keys" id="help-keys"></div></div>
 </div>
+<div id="touch">
+  <div id="stick"><div id="knob"></div></div>
+  <button class="tb big" id="tb-jump" data-key="Space">JUMP<small>hold: swing</small></button>
+  <button class="tb big" id="tb-atk" data-key="KeyJ">HIT</button>
+  <button class="tb" id="tb-dodge" data-key="KeyQ">DODGE</button>
+  <button class="tb" id="tb-zip" data-key="KeyE">ZIP</button>
+  <button class="tb" id="tb-snare" data-key="KeyK">SNARE</button>
+  <button class="tb" id="tb-pause" aria-label="Pause">II</button>
+  <button class="tb" id="tb-rematch">REMATCH</button>
+</div>
 <div id="title" class="screen on">
   <div class="card">
     <h1 class="logo">MOZI<small>SKYLINE</small></h1>
     <p class="tag">Swing between the towers, run up their walls, and stop five villains, including Bob the Brick Monster in the park.</p>
     <div class="row"><button class="go" id="play">PLAY</button><button class="alt" data-q>Graphics: Low</button></div>
     <div class="keys" id="title-keys"></div>
-    <p class="note">Click PLAY, then move the mouse to look around. Esc pauses.</p>
+    <p class="note" id="title-note">Click PLAY, then move the mouse to look around. Esc pauses.</p>
   </div>
 </div>
 <div id="pause" class="screen">
@@ -112,14 +151,23 @@
   </div>
 </div>
 <script>
-  // controls list, shared by the title, pause and help panels
-  (function () {
-    const K = [['W A S D', 'move'], ['Mouse', 'look (arrow keys work too)'], ['Space', 'jump'], ['Hold Space', 'in the air: swing on a line'],
-      ['Into a wall', 'run up it (W climbs, Space jumps off)'], ['E', 'zip to the point under the crosshair'], ['Shift', 'sprint, or dive while falling'],
-      ['Click / J', 'attack, 3 hits make a combo'], ['Right-click / K', 'snare a villain (30 focus)'], ['Q', 'dodge'], ['Esc', 'pause'], ['M', 'music on/off']];
+  // controls list, shared by the title, pause and help panels; touch screens get their own list
+  function fillControls(touch) {
+    const K = touch
+      ? [['Left thumb', 'move (push to the edge to sprint)'], ['Right thumb', 'drag to look around'], ['JUMP', 'jump'], ['Hold JUMP', 'in the air: swing on a line'],
+        ['Into a wall', 'run up it (push up to climb, JUMP kicks off)'], ['ZIP', 'zip to the point under the crosshair'], ['HIT', 'attack, 3 hits make a combo'],
+        ['SNARE', 'tie up a villain (30 focus)'], ['DODGE', 'roll out of the way'], ['II', 'pause']]
+      : [['W A S D', 'move'], ['Mouse', 'look (arrow keys work too)'], ['Space', 'jump'], ['Hold Space', 'in the air: swing on a line'],
+        ['Into a wall', 'run up it (W climbs, Space jumps off)'], ['E', 'zip to the point under the crosshair'], ['Shift', 'sprint, or dive while falling'],
+        ['Click / J', 'attack, 3 hits make a combo'], ['Right-click / K', 'snare a villain (30 focus)'], ['Q', 'dodge'], ['Esc', 'pause'], ['M', 'music on/off']];
     const html = K.map(([k, v]) => `<div><b>${k}</b><span>${v}</span></div>`).join('');
     for (const id of ['title-keys', 'pause-keys', 'help-keys']) document.getElementById(id).innerHTML = html;
-  })();
+    document.getElementById('title-note').textContent = touch ? 'Tap PLAY. Left thumb moves, right thumb turns the camera.' : 'Click PLAY, then move the mouse to look around. Esc pauses.';
+    document.getElementById('hint').innerHTML = touch
+      ? '<b>Left thumb</b> move · <b>right thumb</b> look · hold <b>JUMP</b> in the air to swing · run into a wall to climb'
+      : '<b>WASD</b> move · <b>Space</b> jump, hold in the air to swing · run into a wall to climb · <b>E</b> zip · <b>Click</b> attack · <b>H</b> all controls';
+  }
+  fillControls(false);
 </script>
 
 <script>
@@ -156,6 +204,8 @@ const $ = id => document.getElementById(id);
 // ===================================================================== input
 const KEYS = Object.create(null), TAPS = Object.create(null);
 const MOUSE = { dx: 0, dy: 0, left: false, right: false, leftTap: false, rightTap: false, locked: false, drag: false };
+// touch play (iPad): on = touch controls shown; stick = the left thumb is down; mx/mz = analog stick, mag = how far it is pushed
+const TOUCH = { on: false, stick: false, mx: 0, mz: 0, mag: 0, last: 0 };
 const NO_SCROLL = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'Tab']);
 addEventListener('keydown', e => {
   if (e.metaKey || e.ctrlKey) return;
@@ -311,12 +361,23 @@ function districtHeight(cx, cz) {
 const PAL_TALL = ['#5d7488', '#6f8494', '#7b8a99', '#8a98a3', '#54677a', '#b6aa96', '#9aa3a8'];
 const PAL_MID = ['#a6896b', '#b5a184', '#8d6e5a', '#9c7b63', '#c2b29a', '#7d6a5c', '#a39887'];
 const PAL_LOW = ['#7a4b3a', '#8c5a44', '#6e4636', '#a0634a', '#5f4a42', '#916b55', '#7f5f4f'];
+// facade styles, read by the window shader: -1 blank, 0 masonry, 1 glass grid, 2 ribbon office, 3 brownstone, 4 glass tower (+0.5 = lit crown), 5 art deco
+const ST = { BLANK: -1, MASON: 0, GRID: 1, RIBBON: 2, BROWN: 3, GLASS: 4, DECO: 5 };
+const PAL_ST = {
+  1: PAL_TALL,
+  2: ['#d6d2c8', '#c4c0b6', '#b9b4a8', '#e0dbd0', '#a9aeb3', '#cbc6bd'],
+  3: ['#6b3f30', '#7a4636', '#5c3a2e', '#8a5240', '#704a3c', '#9b6a4f', '#4f3a33', '#83604a'],
+  4: ['#3f6f96', '#4d82a8', '#2f5f80', '#5a8fb3', '#3b6a7c', '#49768f', '#6c93b8', '#35607a'],
+  5: ['#cfc2a6', '#c2b394', '#d8ccb2', '#b9a988', '#a89a80', '#d2c7b8'],
+};
+const CAP_COLS = ['#4f8f7a', '#4f8f7a', '#3a3f4a', '#5b6470', '#c9a24a'];
 function addBox(x0, y0, z0, x1, y1, z1, col, win, extra) { const b = Object.assign({ x0, y0, z0, x1, y1, z1, col: new THREE.Color(col), win, id: BOXES.length }, extra); BOXES.push(b); return b; }
-const ROOF_DECO = [];   // {type, x, y, z, s}
-const BUILDINGS = [];   // top-level lots: {x0,z0,x1,z1,h (total), roofY (first tier)}
+const ROOF_DECO = [];   // {type, x, y, z, s} and pyramid caps {type:'pyr', x0, z0, x1, z1, y, h, col}
+const BUILDINGS = [];   // top-level lots: {x0,z0,x1,z1,h (total), roofY (first roof), star:{x,z} (a clear spot on that roof)}
 let TOWER_TOP = null;
 
 (function generateCity() {
+  const corner = (x0, z0) => ({ x: x0 + 1.6, z: z0 + 1.6 });
   for (let i = 0; i < BX; i++) for (let j = 0; j < BZ; j++) {
     if (isParkBlock(i, j)) continue;
     const bx0 = i * PX + STX / 2 + SIDE, bx1 = (i + 1) * PX - STX / 2 - SIDE, bz0 = j * PZ + STZ / 2 + SIDE, bz1 = (j + 1) * PZ - STZ / 2 - SIDE;
@@ -331,30 +392,76 @@ let TOWER_TOP = null;
       let h = Math.max(10, dh * (0.4 + 0.8 * Math.pow(rng(), 1.3)));
       if (nearSquare) h = Math.max(h, 42 + rng() * 30);
       if (tower) h = 150;
-      const pal = h > 85 ? PAL_TALL : h > 36 ? PAL_MID : PAL_LOW;
-      const col = pick(pal), win = h > 85 && rng() < 0.7 ? 1 : 0;
-      addBox(x0, 0, z0, x1, h, z1, col, win);
-      let top = h, ix0 = x0, ix1 = x1, iz0 = z0, iz1 = z1;
-      const lot = { x0, z0, x1, z1, roofY: h, h };
-      // setbacks: narrower tiers stacked on tall buildings
-      if (h > 60 && wx > 14 && wz > 12) {
+      // pick a facade style for this lot
+      let style;
+      if (tower) style = ST.DECO;
+      else if (h > 85) { const q = rng(); style = q < 0.4 ? ST.GLASS : q < 0.72 ? ST.DECO : ST.GRID; }
+      else if (h > 36) { const q = rng(); style = q < 0.28 ? ST.RIBBON : q < 0.48 ? ST.GLASS : q < 0.64 ? ST.DECO : ST.MASON; }
+      else style = h < 24 && rng() < 0.55 ? ST.BROWN : rng() < 0.15 ? ST.RIBBON : ST.MASON;
+      const col = style === ST.MASON ? pick(h > 36 ? PAL_MID : PAL_LOW) : pick(PAL_ST[style]);
+
+      // brownstone rows: narrow houses of slightly different heights and colours
+      if (style === ST.BROWN) {
+        const alongX = x1 - x0 >= z1 - z0, L = alongX ? x1 - x0 : z1 - z0, nU = Math.max(1, Math.round(L / 7.5));
+        for (let u = 0; u < nU; u++) {
+          const ua = (alongX ? x0 : z0) + u * L / nU, ub = ua + L / nU, hu = clamp(h + (rng() - 0.5) * 4.5, 10, 26);
+          const ux0 = alongX ? ua : x0, ux1 = alongX ? ub : x1, uz0 = alongX ? z0 : ua, uz1 = alongX ? z1 : ub;
+          addBox(ux0, 0, uz0, ux1, hu, uz1, pick(PAL_ST[ST.BROWN]), ST.BROWN);
+          if (rng() < 0.5) ROOF_DECO.push({ type: 'ac', x: lerp(ux0 + 2, ux1 - 2, rng()), y: hu, z: lerp(uz0 + 3, uz1 - 3, rng()), s: 0.8 + rng() * 0.6 });
+          BUILDINGS.push({ x0: ux0, z0: uz0, x1: ux1, z1: uz1, roofY: hu, h: hu, star: { x: (ux0 + ux1) / 2, z: (uz0 + uz1) / 2 } });
+        }
+        continue;
+      }
+
+      const lot = { x0, z0, x1, z1, roofY: h, h, star: { x: (x0 + x1) / 2, z: (z0 + z1) / 2 } };
+      let top = h, ix0 = x0, ix1 = x1, iz0 = z0, iz1 = z1, shaped = false;
+      const crownFlag = style === ST.GLASS && h > 50 && rng() < 0.55 ? 0.5 : 0;
+
+      // podium with a tower set flush on one corner
+      if (!tower && h > 50 && wx > 20 && wz > 18 && (style === ST.GLASS || style === ST.RIBBON) && rng() < 0.5) {
+        const ph = 9 + rng() * 9, left = rng() < 0.5, near = rng() < 0.5, fx = 0.55 + rng() * 0.2, fz = 0.55 + rng() * 0.2;
+        addBox(x0, 0, z0, x1, ph, z1, rng() < 0.5 ? pick(PAL_ST[ST.RIBBON]) : pick(PAL_MID), rng() < 0.5 ? ST.RIBBON : ST.MASON);
+        ix0 = left ? x0 : x1 - (x1 - x0) * fx; ix1 = ix0 + (x1 - x0) * fx; iz0 = near ? z0 : z1 - (z1 - z0) * fz; iz1 = iz0 + (z1 - z0) * fz;
+        addBox(ix0, ph, iz0, ix1, h, iz1, col, style + crownFlag);
+        lot.roofY = ph; lot.star = { x: left ? x1 - 1.6 : x0 + 1.6, z: near ? z1 - 1.6 : z0 + 1.6 }; shaped = true;
+      } else addBox(x0, 0, z0, x1, h, z1, col, style + crownFlag);
+
+      // setbacks: narrower tiers stacked on tall buildings (classic for deco and grid towers, sometimes on glass)
+      const wantTiers = tower || (!shaped && h > 60 && wx > 14 && wz > 12 && (style !== ST.GLASS || rng() < 0.35));
+      if (wantTiers) {
+        lot.star = corner(x0, z0);
         const ins = 2.5 + rng() * 2.5; ix0 += ins; ix1 -= ins; iz0 += ins; iz1 -= ins;
-        const h2 = tower ? 70 : h * (0.18 + rng() * 0.2); addBox(ix0, top, iz0, ix1, top + h2, iz1, col, win); top += h2;
-        if ((h > 105 || tower) && ix1 - ix0 > 10 && iz1 - iz0 > 9) {
+        const h2 = tower ? 70 : h * (0.18 + rng() * 0.2); addBox(ix0, top, iz0, ix1, top + h2, iz1, col, style + crownFlag); top += h2;
+        if ((h > 105 || tower || style === ST.DECO) && ix1 - ix0 > 10 && iz1 - iz0 > 9) {
           const ins2 = 2 + rng() * 2; ix0 += ins2; ix1 -= ins2; iz0 += ins2; iz1 -= ins2;
-          const h3 = tower ? 34 : h * (0.1 + rng() * 0.12); addBox(ix0, top, iz0, ix1, top + h3, iz1, col, win); top += h3;
+          const h3 = tower ? 34 : h * (0.1 + rng() * 0.12); addBox(ix0, top, iz0, ix1, top + h3, iz1, col, style + crownFlag); top += h3;
         }
         if (tower || (h > 130 && rng() < 0.6)) {
           const mx = (ix0 + ix1) / 2, mz = (iz0 + iz1) / 2, sh = tower ? 40 : 12 + rng() * 16;
           addBox(mx - 1.2, top, mz - 1.2, mx + 1.2, top + sh, mz + 1.2, '#c9ccd2', -1);
           if (tower) TOWER_TOP = new V3(mx, top, mz);
           top += sh;
+        } else if (style !== ST.GLASS && rng() < 0.7) {
+          // pyramid cap (copper green, slate or gold); a low box inside it keeps Mozi from walking through
+          const capH = Math.min(ix1 - ix0, iz1 - iz0) * (0.45 + rng() * 0.35);
+          ROOF_DECO.push({ type: 'pyr', x0: ix0, z0: iz0, x1: ix1, z1: iz1, y: top, h: capH, col: pick(CAP_COLS) });
+          const kx = (ix1 - ix0) * 0.22, kz = (iz1 - iz0) * 0.22;
+          addBox(ix0 + kx, top, iz0 + kz, ix1 - kx, top + capH * 0.5, iz1 - kz, '#000000', -1, { deco: true });
+          top += capH;
+        }
+      } else if (style === ST.GLASS || style === ST.RIBBON) {
+        // mechanical penthouse on the roof
+        if (rng() < 0.65 && ix1 - ix0 > 10 && iz1 - iz0 > 10) {
+          const mx = (ix0 + ix1) / 2, mz = (iz0 + iz1) / 2, hw = (ix1 - ix0) * 0.2, hd = (iz1 - iz0) * 0.2, ph = 3 + rng() * 2.5;
+          addBox(mx - hw, top, mz - hd, mx + hw, top + ph, mz + hd, '#5b5f68', -1); top += ph;
+          if (!shaped) lot.star = corner(x0, z0);
         }
       } else if (h < 70 && wx > 10 && wz > 10 && rng() < 0.38) {
         // classic rooftop water tower (also a grapple point)
         const tx = lerp(x0 + 4, x1 - 4, rng()), tz = lerp(z0 + 4, z1 - 4, rng());
         ROOF_DECO.push({ type: 'tank', x: tx, y: h, z: tz });
         addBox(tx - 2.2, h, tz - 2.2, tx + 2.2, h + 8.2, tz + 2.2, '#6e4b2c', -1, { deco: true });
+        lot.star = corner(x0, z0);
       } else if (rng() < 0.7) {
         for (let k = 0; k < 1 + (rng() * 3 | 0); k++) ROOF_DECO.push({ type: 'ac', x: lerp(x0 + 3, x1 - 3, rng()), y: h, z: lerp(z0 + 3, z1 - 3, rng()), s: 1 + rng() * 1.5 });
       }
@@ -423,11 +530,14 @@ function raycastCity(o, d, maxT) {
   const mat = new THREE.MeshLambertMaterial({ color: '#ffffff' });
   mat.onBeforeCompile = sh => {
     sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute float aWin;\nvarying vec3 vWPos;\nvarying vec3 vWNrm;\nvarying float vWin;')
+      .replace('#include <common>', '#include <common>\nattribute float aWin;\nvarying vec3 vWPos;\nvarying vec3 vWNrm;\nvarying float vWin;\nvarying float vTop;')
       .replace('#include <project_vertex>', `#include <project_vertex>
         vec4 wp = vec4(transformed, 1.0);
         #ifdef USE_INSTANCING
           wp = instanceMatrix * wp;
+          vTop = (1.0 - position.y) * length(instanceMatrix[1].xyz);
+        #else
+          vTop = 100.0;
         #endif
         wp = modelMatrix * wp; vWPos = wp.xyz;
         vec3 wn = objectNormal;
@@ -437,31 +547,61 @@ function raycastCity(o, d, maxT) {
         vWNrm = normalize(mat3(modelMatrix) * wn); vWin = aWin;`);
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `#include <common>
-        varying vec3 vWPos; varying vec3 vWNrm; varying float vWin; float gGlow = 0.0;
+        varying vec3 vWPos; varying vec3 vWNrm; varying float vWin; varying float vTop;
+        float gGlow = 0.0; float gCrown = 0.0; vec3 gRefl = vec3(0.0);
         float hash12(vec2 p){ vec3 p3 = fract(vec3(p.xyx) * .1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }`)
       .replace('#include <color_fragment>', `#include <color_fragment>
         {
           vec3 base = diffuseColor.rgb;
           float wall = step(abs(vWNrm.y), 0.5);
+          float st = floor(vWin + 0.01);            // facade style
+          float crown = step(0.25, vWin - st);       // glass tower with a lit crown
           if (wall < 0.5) diffuseColor.rgb = base * 0.5 + vec3(0.03);
-          if (wall > 0.5 && vWin > -0.5) {
+          if (wall > 0.5 && st > -0.5) {
             float side = step(abs(vWNrm.z), abs(vWNrm.x));
             float u = mix(vWPos.x, vWPos.z, side);
-            vec2 cs = vWin > 0.5 ? vec2(2.4, 3.6) : vec2(3.4, 3.9);
+            float seed = floor(vWPos.x * 0.013 + vWPos.z * 0.017) * 11.0 + side * 37.0;
+            // window cell size and margins (left, bottom, right, top) per style
+            vec2 cs = vec2(3.4, 3.9); vec4 mg = vec4(0.3, 0.26, 0.3, 0.156);
+            if (st == 1.0) { cs = vec2(2.4, 3.6); mg = vec4(0.08, 0.16, 0.08, 0.096); }
+            else if (st == 2.0) { cs = vec2(1.6, 3.6); mg = vec4(0.03, 0.34, 0.03, 0.06); }
+            else if (st == 3.0) { cs = vec2(2.7, 3.4); mg = vec4(0.3, 0.2, 0.3, 0.12); }
+            else if (st == 4.0) { cs = vec2(1.7, 3.6); mg = vec4(0.045, 0.06, 0.045, 0.0); }
+            else if (st == 5.0) { cs = vec2(2.2, 3.6); mg = vec4(0.24, 0.22, 0.24, 0.06); }
             vec2 g = vec2(u, vWPos.y) / cs; vec2 f = fract(g); vec2 id = floor(g);
-            float wx = vWin > 0.5 ? 0.08 : 0.3, wy = vWin > 0.5 ? 0.16 : 0.26;
-            float w = step(wx, f.x) * step(f.x, 1.0 - wx) * step(wy, f.y) * step(f.y, 1.0 - wy * 0.6) * step(4.6, vWPos.y);
-            float h = hash12(id + vec2(side * 37.0, floor(vWPos.x * 0.013 + vWPos.z * 0.017) * 11.0));
-            diffuseColor.rgb = mix(base, vec3(0.09, 0.11, 0.16), w * 0.85);
-            gGlow = w * step(0.68, h) * (0.28 + 0.42 * hash12(id * 1.7 + 3.1));
-            float shop = 1.0 - step(4.6, vWPos.y);
+            float w = step(mg.x, f.x) * step(f.x, 1.0 - mg.z) * step(mg.y, f.y) * step(f.y, 1.0 - mg.w) * step(st == 3.0 ? 1.2 : 4.6, vWPos.y);
+            float lh = st == 2.0 ? hash12(vec2(floor(u / 9.0), id.y) + seed) : st == 4.0 ? hash12(vec2(floor(u / 12.0), id.y) + seed) : hash12(id + vec2(side * 37.0, seed));
+            float thr = st == 3.0 ? 0.6 : st == 4.0 ? 0.8 : 0.68;
+            if (st == 4.0) {
+              // tinted glass that mirrors the dusk sky, with pale mullions
+              vec3 vd = normalize(cameraPosition - vWPos); float hh = reflect(-vd, vWNrm).y;
+              vec3 sky = hh > 0.0 ? mix(vec3(0.95, 0.62, 0.46), mix(vec3(0.40, 0.36, 0.58), vec3(0.10, 0.15, 0.34), smoothstep(0.25, 0.8, hh)), smoothstep(0.0, 0.3, hh)) : vec3(0.16, 0.14, 0.2);
+              float fr = pow(1.0 - abs(dot(vd, vWNrm)), 2.0);
+              diffuseColor.rgb = mix(base * 1.05 + vec3(0.06), base * 0.42, w);
+              gRefl = sky * w * (0.26 + 0.6 * fr) * mix(vec3(1.0), base * 1.6, 0.35);
+              gGlow = w * step(thr, lh) * (0.16 + 0.22 * hash12(id * 1.3 + 7.0));
+              gCrown = crown * (1.0 - step(1.6, vTop)) * step(0.4, vTop);
+            } else {
+              diffuseColor.rgb = mix(base, vec3(0.09, 0.11, 0.16), w * 0.85);
+              gGlow = w * step(thr, lh) * (0.28 + 0.42 * hash12(id * 1.7 + 3.1));
+              // art deco: darker spandrels under each window make tall vertical stripes
+              if (st == 5.0) diffuseColor.rgb *= 1.0 - 0.45 * step(f.y, mg.y) * step(mg.x, f.x) * step(f.x, 1.0 - mg.z);
+            }
+            // shopfronts along the street (brownstones have homes on the ground floor)
+            float shop = (1.0 - step(4.6, vWPos.y)) * (st == 3.0 ? 0.0 : 1.0);
             diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.15, 0.13, 0.14), shop * 0.65);
             float lit = step(0.45, hash12(vec2(floor(u / 7.0), side + floor(vWPos.x * 0.02))));
             gGlow += shop * lit * step(0.6, vWPos.y) * step(vWPos.y, 3.4) * step(0.15, fract(u / 7.0)) * step(fract(u / 7.0), 0.85) * 0.8;
+            // cornice along the top of masonry, brownstone and deco boxes: a dark band with a pale lip
+            float corn = (st == 0.0 || st == 3.0 || st == 5.0) ? 1.0 : 0.0, cw = st == 3.0 ? 1.1 : 0.8;
+            float band = corn * (1.0 - step(cw, vTop)), lip = corn * step(cw, vTop) * (1.0 - step(cw + 0.28, vTop));
+            diffuseColor.rgb = mix(diffuseColor.rgb, base * 0.62, band);
+            diffuseColor.rgb = mix(diffuseColor.rgb, base * 1.22 + vec3(0.05), lip);
+            gGlow *= 1.0 - corn * (1.0 - step(cw + 0.5, vTop));
           }
           diffuseColor.rgb *= mix(0.55, 1.0, clamp(vWPos.y / 22.0, 0.0, 1.0));
         }`)
-      .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += vec3(1.0, 0.74, 0.42) * gGlow;');
+      .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += vec3(1.0, 0.74, 0.42) * gGlow + gRefl + vec3(0.55, 0.95, 1.0) * gCrown;');
   };
   const mesh = new THREE.InstancedMesh(geo, mat, list.length);
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), p = new V3(), s = new V3();
@@ -480,7 +620,12 @@ function raycastCity(o, d, maxT) {
   tanks.forEach((d, k) => { m.makeTranslation(d.x, d.y, d.z); tankM.setMatrixAt(k, m); capM.setMatrixAt(k, m); legM.setMatrixAt(k, m); });
   const acM = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0), new THREE.MeshLambertMaterial({ color: '#8b8f98' }), acs.length);
   acs.forEach((d, k) => acM.setMatrixAt(k, m.compose(p.set(d.x, d.y, d.z), q, s.set(2.2 * d.s, 1.3 * d.s, 1.6 * d.s))));
-  for (const im of [tankM, capM, legM, acM]) { im.computeBoundingSphere(); scene.add(im); }
+  // pyramid caps on stepped towers: a 4-sided cone turned to line up with the box
+  const pyrs = ROOF_DECO.filter(d => d.type === 'pyr');
+  const pyrM = new THREE.InstancedMesh(new THREE.ConeGeometry(Math.SQRT1_2, 1, 4, 1).rotateY(Math.PI / 4).translate(0, 0.5, 0), new THREE.MeshLambertMaterial({ color: '#ffffff', flatShading: true }), pyrs.length);
+  const cc = new THREE.Color();
+  pyrs.forEach((d, k) => { pyrM.setMatrixAt(k, m.compose(p.set((d.x0 + d.x1) / 2, d.y, (d.z0 + d.z1) / 2), q, s.set(d.x1 - d.x0, d.h, d.z1 - d.z0))); pyrM.setColorAt(k, cc.set(d.col)); });
+  for (const im of [tankM, capM, legM, acM, pyrM]) { im.computeBoundingSphere(); scene.add(im); }
 })();
 
 // ----- the street map (ground texture) and the minimap
@@ -496,6 +641,7 @@ const GROUND = (() => {
   for (let i = 1; i < BX; i++) { const x = i * PX; g.strokeStyle = '#d9b545'; g.beginPath(); g.moveTo(x - 0.25, 0); g.lineTo(x - 0.25, CITY_D); g.moveTo(x + 0.25, 0); g.lineTo(x + 0.25, CITY_D); g.stroke(); }
   g.strokeStyle = 'rgba(240,240,240,0.7)'; g.setLineDash([3, 4]);
   for (let j = 1; j < BZ; j++) { const z = j * PZ; g.beginPath(); g.moveTo(0, z); g.lineTo(CITY_W, z); g.stroke(); }
+  for (let i = 1; i < BX; i++) for (const o of [-3.8, 3.8]) { const x = i * PX + o; g.beginPath(); g.moveTo(x, 0); g.lineTo(x, CITY_D); g.stroke(); }
   g.setLineDash([]);
   // blocks: sidewalks and lots
   for (let i = 0; i < BX; i++) for (let j = 0; j < BZ; j++) {
@@ -575,28 +721,97 @@ const GROUND = (() => {
 
 
 // ===================================================================== traffic
+// Every lane carries a looping train of vehicles, but only the stretch within WIN metres of the camera is drawn,
+// so the streets around Mozi stay busy while the cost stays flat. All vehicles in a lane share its speed, so they never overlap.
 const TRAFFIC = (() => {
+  const WIN = 380, PERIOD = 2 * WIN, r = mulberry32(9);
   const lanes = [];
-  for (let i = 1; i < BX; i++) { if (i > PARK.i0 && i <= PARK.i1) continue; lanes.push({ ax: 'z', c: i * PX + 3.4, dir: 1 }, { ax: 'z', c: i * PX - 3.4, dir: -1 }); }
-  for (let j = 1; j < BZ; j++) { if (j > PARK.j0 && j <= PARK.j1) continue; lanes.push({ ax: 'x', c: j * PZ - 3.0, dir: 1 }, { ax: 'x', c: j * PZ + 3.0, dir: -1 }); }
-  const N = 150, r = mulberry32(9), cars = [];
-  for (let k = 0; k < N; k++) { const ln = lanes[(r() * lanes.length) | 0]; cars.push({ ln, t: r() * (ln.ax === 'z' ? CITY_D : CITY_W), v: 8 + r() * 7 }); }
-  const body = new THREE.InstancedMesh(new THREE.BoxGeometry(2, 1.0, 4.4).translate(0, 0.85, 0), new THREE.MeshLambertMaterial({ color: '#ffffff' }), N);
-  const cab = new THREE.InstancedMesh(new THREE.BoxGeometry(1.8, 0.75, 2.2).translate(0, 1.72, -0.2), new THREE.MeshLambertMaterial({ color: '#1c2230' }), N);
-  const cols = ['#f2c230', '#f2c230', '#f2c230', '#e9e9ef', '#1f2126', '#b8352b', '#2f5fa8', '#7a7f88'], c = new THREE.Color();
-  cars.forEach((car, k) => body.setColorAt(k, c.set(pick(cols))));
-  body.frustumCulled = cab.frustumCulled = false; scene.add(body, cab);
-  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), p = new V3(), s = new V3(1, 1, 1);
+  // avenues (along z): two lanes each way; cross streets (along x): one lane each way; traffic keeps to the right
+  for (let i = 1; i < BX; i++) { if (i > PARK.i0 && i <= PARK.i1) continue; for (const dir of [1, -1]) for (const off of [2.0, 5.6]) lanes.push({ ax: 'z', c: i * PX - dir * off, dir, len: CITY_D, v: (off < 3 ? 13 : 10) + r() * 2, n: 11 }); }
+  for (let j = 1; j < BZ; j++) { if (j > PARK.j0 && j <= PARK.j1) continue; for (const dir of [1, -1]) lanes.push({ ax: 'x', c: j * PZ + dir * 3.0, dir, len: CITY_W, v: 8 + r() * 2.5, n: 9 }); }
+  // vehicle kinds: body and top boxes as [length, width, height, y, z offset], plus colours
+  const KINDS = {
+    sedan: { body: [4.4, 2.0, 0.9, 0.4, 0], top: [2.2, 1.8, 0.7, 1.3, -0.2], cols: ['#e9e9ef', '#1f2126', '#b8352b', '#2f5fa8', '#7a7f88', '#3e7d5a', '#c7c9cf'], topCol: '#1c2230' },
+    taxi: { body: [4.5, 2.0, 0.9, 0.4, 0], top: [2.3, 1.8, 0.7, 1.3, -0.2], cols: ['#f2c230'], topCol: '#1c2230' },
+    suv: { body: [4.9, 2.15, 1.25, 0.45, 0], top: [3.0, 2.0, 0.8, 1.7, -0.3], cols: ['#1f2126', '#e9e9ef', '#5a6470', '#7b2d2a', '#2c3e5c'], topCol: '#1c2230' },
+    bus: { body: [11, 2.6, 2.6, 0.45, 0], top: [10.2, 2.64, 0.95, 1.65, 0.1], cols: ['#2d6fb7', '#e9e9ef', '#2d6fb7'], topCol: '#151b26' },
+    truck: { body: [2.3, 2.3, 2.1, 0.45, 2.6], top: [5.4, 2.5, 2.8, 0.5, -1.4], cols: ['#e9e9ef', '#b8352b', '#2f5fa8', '#e2862c'], topCols: ['#f1f1f3', '#f1f1f3', '#d9d2c3', '#3d6fb0'] },
+  };
+  const BAG = ['sedan', 'sedan', 'sedan', 'taxi', 'taxi', 'taxi', 'taxi', 'suv', 'suv', 'bus', 'truck'];
+  const cars = [];
+  for (const ln of lanes) { ln.cars = []; ln.d = 0; ln.cur = ln.v; }
+  for (const ln of lanes) for (let k = 0; k < ln.n; k++) {
+    const kind = KINDS[ln.ax === 'x' && r() < 0.5 ? 'taxi' : BAG[(r() * BAG.length) | 0]];
+    const kk = (r() * kind.cols.length) | 0;
+    const front = Math.max(kind.body[4] + kind.body[0] / 2, kind.top[4] + kind.top[0] / 2), back = Math.min(kind.body[4] - kind.body[0] / 2, kind.top[4] - kind.top[0] / 2);
+    cars.push({ ln, s0: (k + 0.5 + (r() - 0.5) * 0.5) * PERIOD / ln.n, kind, col: new THREE.Color(kind.cols[kk]), topCol: new THREE.Color(kind.topCols ? kind.topCols[kk % kind.topCols.length] : kind.topCol),
+      len: front - back, mid: (front + back) / 2, w: Math.max(kind.body[1], kind.top[1]) });
+    ln.cars.push(cars[cars.length - 1]);
+  }
+  const N = cars.length, unit = new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0);
+  const body = new THREE.InstancedMesh(unit, new THREE.MeshLambertMaterial({ color: '#ffffff' }), N);
+  const top = new THREE.InstancedMesh(unit, new THREE.MeshLambertMaterial({ color: '#ffffff' }), N);
+  // trim: dark undercarriage, headlights and tail lights in one unit-sized mesh (vertex coloured, unlit so the lights glow at dusk)
+  const trimGeo = (() => {
+    const parts = [[[0.9, 0.42, 0.9], [0, 0.03, 0], '#141418'], [[0.8, 0.2, 0.02], [0, 0.62, 0.5], '#fff3c4'], [[0.8, 0.2, 0.02], [0, 0.62, -0.5], '#ff2b2b']];
+    const geos = parts.map(([s, p, col]) => {
+      const g = new THREE.BoxGeometry(...s).translate(p[0], p[1] + s[1] / 2, p[2]).toNonIndexed(); const c = new THREE.Color(col), n = g.attributes.position.count;
+      g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(n * 3).map((_, i) => [c.r, c.g, c.b][i % 3]), 3)); g.deleteAttribute('uv'); g.deleteAttribute('normal'); return g;
+    });
+    const pos = [], col = [];
+    for (const g of geos) { pos.push(...g.attributes.position.array); col.push(...g.attributes.color.array); }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); return g;
+  })();
+  const trim = new THREE.InstancedMesh(trimGeo, new THREE.MeshBasicMaterial({ vertexColors: true, fog: true }), N);
+  cars.forEach((car, k) => { body.setColorAt(k, car.col); top.setColorAt(k, car.topCol); });
+  for (const im of [body, top, trim]) { im.frustumCulled = false; im.count = 0; scene.add(im); }
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), p = new V3(), s = new V3(), o = new V3();
+  const place = (im, n, part) => {
+    const [l, w, h, y, z] = part; o.set(0, y, z).applyQuaternion(q).add(p);
+    im.setMatrixAt(n, m.compose(o, q, s.set(w, h, l)));
+  };
+  // anyone standing in the road (Mozi, the camera, villains on foot) makes that lane brake, like a jam
+  const BLOCK = [], here = [];
   return {
     update(dt) {
-      cars.forEach((car, k) => {
-        const len = car.ln.ax === 'z' ? CITY_D : CITY_W;
-        car.t = (car.t + car.v * car.ln.dir * dt + len) % len;
-        if (car.ln.ax === 'z') { p.set(car.ln.c, 0, car.t); q.setFromAxisAngle(UP, car.ln.dir > 0 ? 0 : Math.PI); }
-        else { p.set(car.t, 0, car.ln.c); q.setFromAxisAngle(UP, car.ln.dir > 0 ? Math.PI / 2 : -Math.PI / 2); }
-        m.compose(p, q, s); body.setMatrixAt(k, m); cab.setMatrixAt(k, m);
-      });
-      body.instanceMatrix.needsUpdate = cab.instanceMatrix.needsUpdate = true;
+      let n = 0;
+      const cx = camera.position.x, cz = camera.position.z;
+      BLOCK.length = 0;
+      if (P.pos.y < 3) BLOCK.push(P.pos.x, P.pos.z, 0.7);
+      if (camera.position.y < 4) BLOCK.push(cx, cz, 0.9);
+      for (const e of ENEMIES) {
+        if (e.gone || e.pos.y > 3 || !(e.D.boss || e.awake || e.defeated)) continue;
+        if (Math.abs(e.pos.x - cx) < WIN && Math.abs(e.pos.z - cz) < WIN) BLOCK.push(e.pos.x, e.pos.z, e.D.r + 0.3);
+      }
+      for (const ln of lanes) {
+        const along = ln.ax === 'z' ? cz : cx, across = ln.ax === 'z' ? cx : cz;
+        let stop = false;
+        if (Math.abs(ln.c - across) <= WIN) {
+          here.length = 0;
+          for (let k = 0; k < BLOCK.length; k += 3) {
+            const ba = ln.ax === 'z' ? BLOCK[k] : BLOCK[k + 1];
+            if (Math.abs(ba - ln.c) < 1.6 + BLOCK[k + 2]) here.push(ln.ax === 'z' ? BLOCK[k + 1] : BLOCK[k], BLOCK[k + 2]);
+          }
+          const lo = along - WIN;
+          for (const car of ln.cars) {
+            const raw = car.s0 + ln.dir * ln.d - lo, at = lo + (((raw % PERIOD) + PERIOD) % PERIOD);
+            if (at < 4 || at > ln.len - 4) continue;
+            if (here.length) {
+              const front = at + ln.dir * (car.mid + car.len / 2);
+              for (let k = 0; k < here.length; k += 2) { const gap = (here[k] - front) * ln.dir - here[k + 1]; if (gap > -0.6 && gap < 5 + ln.cur * 0.5) stop = true; }
+            }
+            if (ln.ax === 'z') { p.set(ln.c, 0, at); q.setFromAxisAngle(UP, ln.dir > 0 ? 0 : Math.PI); }
+            else { p.set(at, 0, ln.c); q.setFromAxisAngle(UP, ln.dir > 0 ? Math.PI / 2 : -Math.PI / 2); }
+            place(body, n, car.kind.body); place(top, n, car.kind.top);
+            o.set(0, 0, car.mid).applyQuaternion(q).add(p); trim.setMatrixAt(n, m.compose(o, q, s.set(car.w, 1, car.len)));
+            body.setColorAt(n, car.col); top.setColorAt(n, car.topCol);
+            n++;
+          }
+        }
+        ln.cur = damp(ln.cur, stop ? 0 : ln.v, stop ? 6 : 1.2, dt); ln.d += ln.cur * dt;
+      }
+      for (const im of [body, top, trim]) { im.count = n; im.instanceMatrix.needsUpdate = true; }
+      body.instanceColor.needsUpdate = top.instanceColor.needsUpdate = true;
     },
   };
 })();
@@ -985,10 +1200,12 @@ function collideBody(c, r, h, dt) {
 const IN = { move: new V3(), mx: 0, mz: 0, jumpP: false, swingH: false, sprint: false, atkP: false, spP: false, zipP: false, dodgeP: false };
 function readInput() {
   IN.mx = (held('KeyD') ? 1 : 0) - (held('KeyA') ? 1 : 0); IN.mz = (held('KeyW') ? 1 : 0) - (held('KeyS') ? 1 : 0);
+  const stick = !IN.mx && !IN.mz && TOUCH.stick;
+  if (stick) { IN.mx = TOUCH.mx; IN.mz = TOUCH.mz; }
   const fx = Math.sin(CAM.yaw), fz = Math.cos(CAM.yaw);
   IN.move.set(fx * IN.mz - fz * IN.mx, 0, fz * IN.mz + fx * IN.mx);
   if (IN.move.lengthSq() > 1) IN.move.normalize();
-  IN.jumpP = tapped('Space'); IN.swingH = held('Space', 'KeyL'); IN.sprint = held('ShiftLeft', 'ShiftRight');
+  IN.jumpP = tapped('Space'); IN.swingH = held('Space', 'KeyL'); IN.sprint = held('ShiftLeft', 'ShiftRight') || (stick && TOUCH.mag > 0.97);
   IN.atkP = tapped('KeyJ') || MOUSE.leftTap; IN.spP = tapped('KeyK') || MOUSE.rightTap; IN.zipP = tapped('KeyE'); IN.dodgeP = tapped('KeyQ');
 }
 const camFlat = (out) => out.set(Math.sin(CAM.yaw), 0, Math.cos(CAM.yaw));
@@ -1142,9 +1359,25 @@ function endSwing(jump, quiet) {
 }
 
 // ----- wall running
+// a box standing flush on top of this one with the same face (a tower rising straight out of its podium)
+const _above = [];
+function boxAbove(box, n, p) {
+  boxesIn(p.x - 1, p.z - 1, p.x + 1, p.z + 1, _above);
+  const mine = n.x ? (n.x > 0 ? box.x1 : box.x0) : (n.z > 0 ? box.z1 : box.z0);
+  for (const b of _above) {
+    if (b === box || b.deco || Math.abs(b.y0 - box.y1) > 0.1) continue;
+    const face = n.x ? (n.x > 0 ? b.x1 : b.x0) : (n.z > 0 ? b.z1 : b.z0);
+    const along = n.x ? p.z : p.x, lo = n.x ? b.z0 : b.x0, hi = n.x ? b.z1 : b.x1;
+    if (Math.abs(face - mine) < 0.05 && along > lo + 0.3 && along < hi - 0.3) return b;
+  }
+  return null;
+}
 function enterWall(w) {
-  const b = w.box;
-  if (b.y1 - P.pos.y < 1.2) { P.pos.y = b.y1 + 0.02; P.pos.addScaledVector(w.n, -(P.r + 0.4)); P.vel.set(0, 3, 0); setPState('air'); return; }
+  if (w.box.y1 - P.pos.y < 1.2) {
+    const up = boxAbove(w.box, w.n, P.pos);
+    if (up) w = { n: w.n, box: up, vin: w.vin };
+    else { const b = w.box; P.pos.y = b.y1 + 0.02; P.pos.addScaledVector(w.n, -(P.r + 0.4)); P.vel.set(0, 3, 0); setPState('air'); return; }
+  }
   P.wall = w; P.anchor = null; P.vel.set(0, Math.max(0, P.vel.y * 0.4), 0); setPState('wall'); P.wallPush = 0;
 }
 function wallStep(dt) {
@@ -1162,6 +1395,8 @@ function wallStep(dt) {
   const along = n.x ? P.pos.z : P.pos.x, lo = n.x ? box.z0 : box.x0, hi = n.x ? box.z1 : box.x1;
   if (along < lo - 0.2 || along > hi + 0.2) { P.vel.addScaledVector(n, 2); P.wall = null; P.wallCool = 0.3; setPState('air'); return; }
   if (P.pos.y >= box.y1 - 0.05) {
+    const up = boxAbove(box, n, P.pos);
+    if (up) { P.wall = { n, box: up, vin: P.wall.vin }; return; }
     P.pos.y = box.y1 + 0.05; P.pos.addScaledVector(n, -(P.r + 0.7)); P.vel.copy(n).multiplyScalar(-3); P.vel.y = 4.5;
     P.wall = null; P.jumpT = 0.4; setPState('air'); SFX.jump(); return;
   }
@@ -1305,32 +1540,46 @@ function updatePlayerVisual(dt, t) {
 
 // ===================================================================== villains & bots
 const EDEF = {
-  minion: { name: 'CLANK BOT', hp: 30, r: 0.45, h: 1.55, speed: 4.6, build: buildMinion, aggro: 38 },
-  fizz: { name: 'FIZZ', title: 'the Foam Fiend', boss: true, hp: 200, r: 0.55, h: 1.7, speed: 6.2, build: buildFizz, aggro: 70, color: '#a2d932' },
-  glyph: { name: 'GLYPH', title: 'the Neon Hexer', boss: true, hp: 180, r: 0.45, h: 1.8, fly: true, build: buildGlyph, aggro: 75, color: '#ff3df2' },
-  gearjaw: { name: 'GEARJAW', title: 'the Steam Brute', boss: true, hp: 280, r: 0.8, h: 2.6, speed: 5, heavy: true, build: buildGearjaw, aggro: 70, color: '#ff9a2e' },
-  glasswing: { name: 'GLASSWING', title: 'the Prism Flyer', boss: true, hp: 200, r: 0.5, h: 1.8, fly: true, build: buildGlasswing, aggro: 95, color: '#57e8ff' },
-  bob: { name: 'BOB', title: 'the Brick Monster', boss: true, hp: 800, r: 2.4, h: 10.5, speed: 3.6, heavy: true, giant: true, build: buildBob, aggro: 100, color: '#ff7a1a' },
+  minion: { name: 'CLANK BOT', hp: 30, r: 0.45, h: 1.55, size: 1.15, speed: 4.6, build: buildMinion, aggro: 38 },
+  fizz: { name: 'FIZZ', title: 'the Foam Fiend', boss: true, hp: 200, r: 0.55, h: 1.7, size: 1.5, speed: 6.2, build: buildFizz, aggro: 70, color: '#a2d932' },
+  glyph: { name: 'GLYPH', title: 'the Neon Hexer', boss: true, hp: 180, r: 0.45, h: 1.8, size: 1.5, fly: true, build: buildGlyph, aggro: 75, color: '#ff3df2' },
+  gearjaw: { name: 'GEARJAW', title: 'the Steam Brute', boss: true, hp: 280, r: 0.8, h: 2.6, size: 1.35, speed: 5, heavy: true, build: buildGearjaw, aggro: 70, color: '#ff9a2e' },
+  glasswing: { name: 'GLASSWING', title: 'the Prism Flyer', boss: true, hp: 200, r: 0.5, h: 1.8, size: 1.5, fly: true, build: buildGlasswing, aggro: 95, color: '#57e8ff' },
+  bob: { name: 'BOB', title: 'the Brick Monster', boss: true, hp: 800, r: 2.4, h: 10.5, size: 1.25, speed: 3.6, heavy: true, giant: true, build: buildBob, aggro: 100, color: '#ff7a1a' },
 };
+for (const D of Object.values(EDEF)) { D.r *= D.size; D.h *= D.size; }   // r and h are world sizes after scaling the rig
 const BOSS_ORDER = ['fizz', 'glyph', 'gearjaw', 'glasswing', 'bob'];
+// a soft column of light above each villain still free, so they can be spotted from across the city
+const BEACON_GEO = new THREE.CylinderGeometry(1, 1, 1, 18, 1, true).translate(0, 0.5, 0);
+function makeBeacon(color, radius) {
+  const mat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false,
+    uniforms: { color: { value: new THREE.Color(color) }, alpha: { value: 0 }, time: { value: 0 } },
+    vertexShader: 'varying float vH; varying vec3 vN; varying vec3 vV; void main(){ vH = position.y; vec4 mv = modelViewMatrix * vec4(position, 1.0); vN = normalize(normalMatrix * normal); vV = -mv.xyz; gl_Position = projectionMatrix * mv; }',
+    fragmentShader: 'uniform vec3 color; uniform float alpha; uniform float time; varying float vH; varying vec3 vN; varying vec3 vV;\n' +
+      'void main(){ float f = abs(dot(normalize(vN), normalize(vV))); float a = alpha * pow(f, 1.6) * pow(1.0 - vH, 1.2) * (0.8 + 0.2 * sin(vH * 60.0 - time * 3.0)); gl_FragColor = vec4(color, a); }',
+  });
+  const m = new THREE.Mesh(BEACON_GEO, mat); m.scale.set(radius, 320, radius); m.frustumCulled = false; m.renderOrder = 4; scene.add(m); return m;
+}
 const ENEMIES = [];
 const ringMat = new THREE.MeshBasicMaterial({ color: '#eefcff' });
 function makeEnemy(type, pos) {
-  const D = EDEF[type], rig = D.build(); scene.add(rig.root);
+  const D = EDEF[type], rig = D.build(); scene.add(rig.root); rig.root.scale.setScalar(D.size);
   const e = { type, D, rig, pos: pos.clone(), vel: new V3(), yaw: Math.random() * TAU, hp: D.hp, maxHp: D.hp, home: pos.clone(), t: Math.random() * 10,
     awake: false, defeated: false, gone: false, stunT: 0, hurtT: 0, knockT: 0, flash: 0, poise: 0, poiseT: 0, armorT: 0, dizzy: false, act: null, cool: { a: 1, b: 2, c: 3, d: 2 }, onGround: true, stomps: 0, orb: Math.random() * TAU, deadT: 0 };
   e.rings = [];
   const S = rig.dims.S;
   // snare / tied-up rings wrap the torso, so they follow the body whether standing or lying down
   for (let i = 0; i < 3; i++) {
-    const m = new THREE.Mesh(new THREE.TorusGeometry(D.r * 0.8 + 0.06 * S, 0.025 * S + 0.012, 4, 20), ringMat);
+    const m = new THREE.Mesh(new THREE.TorusGeometry(D.r / D.size * 0.8 + 0.06 * S, 0.025 * S + 0.012, 4, 20), ringMat);
     m.rotation.x = Math.PI / 2; m.position.y = rig.dims.torsoLen * (0.18 + i * 0.3); m.visible = false; rig.torso.add(m); e.rings.push(m);
   }
+  if (D.boss) e.beacon = makeBeacon(D.color, D.giant ? 4 : 2.6);
   ENEMIES.push(e); return e;
 }
 function hurtSpheres(e, out) {
   out.length = 0; const p = e.pos;
-  if (e.D.giant) { out.push([p.x, p.y + 1.9, p.z, 2.0], [p.x, p.y + 5.2, p.z, 2.6], [p.x, p.y + 9.0, p.z, 1.6]); }
+  if (e.D.giant) { const k = e.D.size; out.push([p.x, p.y + 1.9 * k, p.z, 2.0 * k], [p.x, p.y + 5.2 * k, p.z, 2.6 * k], [p.x, p.y + 9.0 * k, p.z, 1.6 * k]); }
   else if (e.defeated || (e.hurtT > 0 && !e.onGround && e.knockT > 0)) out.push([p.x, p.y + 0.4, p.z, Math.max(e.D.r, 0.6)]);
   else out.push([p.x, p.y + e.D.h * 0.55, p.z, Math.max(e.D.r, e.D.h * 0.32)]);
   return out;
@@ -1427,7 +1676,7 @@ function damageEnemy(e, dmg, dir, knock, lift, big) {
       spawnWave(e.pos, 7, 0.35, 6, e.D.color); PARTS.burst(eChest(e, new V3()), e.D.color, 26, 10, 0.5, 0.35);
       if (P.pos.distanceTo(e.pos) < 4) hurtPlayer(6, e.pos, 15);
       if (e.type === 'glyph') e.cool.b = 0; if (e.type === 'glasswing') e.vel.y = 12;
-      HUD.toast(`${e.D.name} broke free! Dodge with Q`); SFX.zap();
+      HUD.toast(`${e.D.name} broke free! ${TOUCH.on ? 'Tap DODGE' : 'Dodge with Q'}`); SFX.zap();
     }
   }
   if (!e.D.heavy && e.armorT <= 0) {
@@ -1549,7 +1798,7 @@ const AI = {
       return 'windup';
     }
     if (Math.abs(f.dy) > 3) { stopH(e, dt); faceP(e, dt); return 'cheer'; }
-    if (f.d > 1.6) { steer(e, P.pos.x, P.pos.z, e.D.speed, dt); e.yaw = angLerp(e.yaw, Math.atan2(e.vel.x, e.vel.z), 0.2); return 'run'; }
+    if (f.d > 1.75) { steer(e, P.pos.x, P.pos.z, e.D.speed, dt); e.yaw = angLerp(e.yaw, Math.atan2(e.vel.x, e.vel.z), 0.2); return 'run'; }
     stopH(e, dt); faceP(e, dt);
     if (e.cool.a <= 0) startAct(e, 'punch', 0.8);
     return 'idle';
@@ -1567,7 +1816,7 @@ const AI = {
       if (a.t > a.dur) { e.act = null; }
       return a.name === 'lob' ? (a.t < 0.5 ? 'windup' : 'throw') : (a.t < 0.35 ? 'windup' : 'punchR');
     }
-    if (f.d < 2.3 && e.cool.b <= 0) { startAct(e, 'swipe', 0.7); e.cool.b = 1.4; return 'windup'; }
+    if (f.d < 2.9 && e.cool.b <= 0) { startAct(e, 'swipe', 0.7); e.cool.b = 1.4; return 'windup'; }
     if (e.cool.a <= 0 && f.d < 32) { startAct(e, 'lob', 0.9); e.cool.a = rnd(1.8, 2.6); return 'windup'; }
     if (f.d < 6) { steer(e, e.pos.x - f.dx, e.pos.z - f.dz, e.D.speed, dt); if (e.onGround && Math.random() < 0.01) e.vel.y = 6; }
     else if (f.d > 13) steer(e, P.pos.x, P.pos.z, e.D.speed, dt);
@@ -1615,7 +1864,7 @@ const AI = {
         return a.t < 0.5 ? 'windup' : 'punchR';
       }
       if (a.name === 'charge') {
-        if (a.t < 0.9) { stopH(e, dt); faceP(e, dt, 10); if (Math.random() < 0.5) PARTS.puff(e.pos.clone().add(new V3(0, 2.6, 0)), '#eeeeee', 1, 0.9, 2, 0.8); return 'crouch'; }
+        if (a.t < 0.9) { stopH(e, dt); faceP(e, dt, 10); if (Math.random() < 0.5) PARTS.puff(e.pos.clone().add(new V3(0, 3.4, 0)), '#eeeeee', 1, 0.9, 2, 0.8); return 'crouch'; }
         if (!a.dir) { a.dir = new V3(Math.sin(e.yaw), 0, Math.cos(e.yaw)); SFX.boom(); }
         e.vel.x = a.dir.x * 22; e.vel.z = a.dir.z * 22;
         if (Math.random() < 0.6) PARTS.puff(e.pos.clone().add(new V3(0, 1, 0)), '#dddddd', 1, 0.8, 1, 0.5);
@@ -1633,7 +1882,7 @@ const AI = {
     }
     if (f.dy > 3 && f.d < 16 && e.cool.c <= 0) { startAct(e, 'pound', 3); return 'crouch'; }
     if (f.d > 7 && f.d < 32 && e.cool.b <= 0 && Math.abs(f.dy) < 3) { startAct(e, 'charge', 2.2); return 'crouch'; }
-    if (f.d > 2.6) { steer(e, P.pos.x, P.pos.z, e.D.speed, dt); faceP(e, dt); return 'run'; }
+    if (f.d > 3.1) { steer(e, P.pos.x, P.pos.z, e.D.speed, dt); faceP(e, dt); return 'run'; }
     stopH(e, dt); faceP(e, dt);
     if (e.cool.d <= 0) startAct(e, 'punch', 0.9);
     return 'idle';
@@ -1679,7 +1928,7 @@ const AI = {
       if (a.name === 'swipe') {
         if (!a.done && a.t > 0.8) {
           a.done = true; SFX.whoosh(); const fw = _v1.set(Math.sin(e.yaw), 0, Math.cos(e.yaw));
-          if (f.d < 9 && f.dy < 7 && (f.dx * fw.x + f.dz * fw.z) / (f.d || 1) > 0.1) hurtPlayer(16, e.pos, 16);
+          if (f.d < 11 && f.dy < 8.5 && (f.dx * fw.x + f.dz * fw.z) / (f.d || 1) > 0.1) hurtPlayer(16, e.pos, 16);
         }
         if (a.t > 1.3) { e.act = null; e.cool.a = phase2 ? 1.2 : 1.8; }
         return a.t < 0.8 ? 'windup' : 'throw';
@@ -1696,7 +1945,7 @@ const AI = {
         return a.t < 1.0 ? 'stomp' : 'crouch';
       }
       if (a.name === 'throw') {
-        if (!e.boulder) { e.boulder = new THREE.Mesh(projGeo.boulder, projMat.boulder); e.rig.hand[1].add(e.boulder); e.boulder.position.set(0, -0.15, 0); e.boulder.scale.setScalar(1 / e.rig.dims.S); }
+        if (!e.boulder) { e.boulder = new THREE.Mesh(projGeo.boulder, projMat.boulder); e.rig.hand[1].add(e.boulder); e.boulder.position.set(0, -0.15, 0); e.boulder.scale.setScalar(1 / (e.rig.dims.S * e.D.size)); }
         e.boulder.visible = a.t < 0.9 || (a.second && a.t > 1.1 && a.t < 1.7);
         const release = (at) => {
           const from = e.rig.hand[1].getWorldPosition(new V3()); const to = P.pos.clone().addScaledVector(P.vel, 0.6);
@@ -1708,10 +1957,10 @@ const AI = {
         return (a.t % 0.8) < 0.6 ? 'windup' : 'throw';
       }
     }
-    if (f.d < 8.5 && f.dy < 6 && e.cool.a <= 0) { startAct(e, 'swipe', 1.3); return 'windup'; }
+    if (f.d < 10.5 && f.dy < 7.5 && e.cool.a <= 0) { startAct(e, 'swipe', 1.3); return 'windup'; }
     if (f.d < 26 && e.cool.b <= 0 && f.dy < 4) { startAct(e, 'stomp', 1.6); SFX.roar(); return 'stomp'; }
     if (f.d > 10 && e.cool.c <= 0 && f.d < 90) { startAct(e, 'throw', phase2 ? 2.2 : 1.4, { second: phase2 }); return 'windup'; }
-    if (f.d > 7) {
+    if (f.d > 8.5) {
       const tx = clamp(P.pos.x, PARK_RECT.x0 + 8, PARK_RECT.x1 - 8), tz = clamp(P.pos.z, PARK_RECT.z0 + 8, PARK_RECT.z1 - 8);
       steer(e, tx, tz, phase2 ? 4.6 : e.D.speed, dt, 2); faceP(e, dt, 2);
       if (Math.hypot(e.vel.x, e.vel.z) > 1) { const ph = Math.floor(e.t * 1.6); if (ph !== e.step) { e.step = ph; if (f.d < 45) CAM.shake = Math.max(CAM.shake, 0.08); SFX.land(); } return 'run'; }
@@ -1726,6 +1975,11 @@ function updateEnemy(e, dt, t) {
   let look = 'idle';
   if (e.gone) return;
   const distP = e.pos.distanceTo(P.pos);
+  if (e.beacon) {
+    e.beacon.visible = !e.defeated;
+    const u = e.beacon.material.uniforms; u.alpha.value = 0.8 * clamp((distP - 35) / 70, 0, 1); u.time.value = t;
+    e.beacon.position.set(e.pos.x, e.pos.y + D.h, e.pos.z);
+  }
   if (e.defeated) {
     e.deadT += dt; look = 'tied';
     e.vel.x *= 0.9; e.vel.z *= 0.9; if (D.fly && e.pos.y > 0) e.vel.y -= 20 * dt;
@@ -1780,7 +2034,7 @@ function updateEnemy(e, dt, t) {
 // ----- who lives where
 const GROUPS = [];
 function spawnVillains() {
-  for (const e of ENEMIES) { scene.remove(e.rig.root); if (e.beam) scene.remove(e.beam); }
+  for (const e of ENEMIES) { scene.remove(e.rig.root); if (e.beam) scene.remove(e.beam); if (e.beacon) scene.remove(e.beacon); }
   ENEMIES.length = 0; PROJ.forEach(p => scene.remove(p.m)); PROJ.length = 0; WAVES.length = 0;
   for (const t of BOSS_ORDER) { const e = makeEnemy(t, LAIRS[t]); if (t === 'glasswing') e.beam = FX.makeLine('#8ff0ff', 0.4, true); }
   const fizzCrew = [[1, 0], [-1, 1]], gearCrew = [[2, 1], [-2, 0], [0, -2]];
@@ -1788,7 +2042,7 @@ function spawnVillains() {
   for (const [dx, dz] of gearCrew) makeEnemy('minion', LAIRS.gearjaw.clone().add(new V3(dx * 3, 0, dz * 3)));
   // street gangs around the city
   for (const [i, j] of [[3, 8], [12, 4], [12, 11], [3, 16], [13, 19], [7, 20], [5, 5], [10, 14]]) {
-    for (let k = 0; k < 3; k++) makeEnemy('minion', new V3(i * PX + rnd(-4, 4), 0, j * PZ + rnd(-4, 4)));
+    for (let k = 0; k < 3; k++) makeEnemy('minion', new V3(i * PX + 9.5 + rnd(-0.8, 0.8), 0, j * PZ + 8.5 + rnd(-0.8, 0.8)));
   }
 }
 
@@ -1800,8 +2054,7 @@ const STARS = (() => {
   for (const b of pool) {
     if (list.length >= 30) break;
     if (list.some(s => Math.hypot(s.p.x - (b.x0 + b.x1) / 2, s.p.z - (b.z0 + b.z1) / 2) < 90)) continue;
-    const tiered = b.h > b.roofY + 0.1, x = tiered ? b.x0 + 1.6 : (b.x0 + b.x1) / 2, z = tiered ? b.z0 + 1.6 : (b.z0 + b.z1) / 2;
-    list.push({ p: new V3(x, b.roofY + 1.3, z), got: false });
+    list.push({ p: new V3(b.star.x, b.roofY + 1.3, b.star.z), got: false });
   }
   list.push({ p: TOWER_TOP.clone().add(new V3(0, 1.3, 3)), got: false });
   const mesh = new THREE.InstancedMesh(new THREE.OctahedronGeometry(0.75), new THREE.MeshBasicMaterial({ color: '#ffd23d' }), list.length);
@@ -1828,6 +2081,47 @@ const HUD = (() => {
   const el = id => $(id), mini = el('mini'), mg = mini.getContext('2d');
   let bannerT = 0, toastT = 0, flashT = 0;
   const list = el('list');
+  // compass ring: N/E/S/W turn with the camera (the top of the ring is where you are looking); a dot for every villain still free
+  const ring = el('ring'), rg = ring.getContext('2d'), RS = 148, RDPR = Math.min(2, window.devicePixelRatio || 1);
+  ring.width = ring.height = RS * RDPR;
+  const CARD = [['N', 0, -1], ['E', 1, 0], ['S', 0, 1], ['W', -1, 0]];
+  function drawRing() {
+    const c = RS / 2, R = 54, bear = (dx, dz) => CAM.yaw - Math.atan2(dx, dz);   // clockwise screen angle from the top
+    rg.setTransform(RDPR, 0, 0, RDPR, 0, 0); rg.clearRect(0, 0, RS, RS);
+    rg.beginPath(); rg.arc(c, c, R, 0, TAU); rg.lineWidth = 22; rg.strokeStyle = 'rgba(13, 11, 22, 0.74)'; rg.stroke();
+    rg.lineWidth = 1.2; rg.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+    for (const rr of [R - 11, R + 11]) { rg.beginPath(); rg.arc(c, c, rr, 0, TAU); rg.stroke(); }
+    // ticks every 30 degrees
+    rg.strokeStyle = 'rgba(255, 255, 255, 0.45)'; rg.lineWidth = 1.5;
+    for (let k = 0; k < 12; k++) {
+      if (k % 3 === 0) continue;
+      const a = bear(Math.sin(k * TAU / 12), -Math.cos(k * TAU / 12)), sx = Math.sin(a), sy = -Math.cos(a);
+      rg.beginPath(); rg.moveTo(c + sx * (R + 5), c + sy * (R + 5)); rg.lineTo(c + sx * (R + 10), c + sy * (R + 10)); rg.stroke();
+    }
+    rg.textAlign = 'center'; rg.textBaseline = 'middle';
+    for (const [t, dx, dz] of CARD) {
+      const a = bear(dx, dz);
+      rg.font = `900 ${t === 'N' ? 15 : 13}px "Avenir Next Condensed", "Arial Narrow", Arial, sans-serif`;
+      rg.fillStyle = t === 'N' ? '#ff5a4d' : 'rgba(255, 255, 255, 0.9)';
+      rg.fillText(t, c + Math.sin(a) * R, c - Math.cos(a) * R + 0.5);
+    }
+    // "you are facing here" marker at the top, inside the ring
+    rg.fillStyle = '#5ff0de'; rg.beginPath(); rg.moveTo(c, c - R + 13); rg.lineTo(c + 6, c - R + 22); rg.lineTo(c - 6, c - R + 22); rg.closePath(); rg.fill();
+    // villain dots (closer ones are bigger); the nearest one pulses and is named in the middle
+    let near = null, nd = 1e9;
+    for (const e of ENEMIES) { if (!e.D.boss || e.defeated) continue; const d = Math.hypot(e.pos.x - P.pos.x, e.pos.z - P.pos.z); if (d < nd) { nd = d; near = e; } }
+    for (const e of ENEMIES) {
+      if (!e.D.boss || e.defeated) continue;
+      const dx = e.pos.x - P.pos.x, dz = e.pos.z - P.pos.z, d = Math.hypot(dx, dz), a = bear(dx, dz);
+      const x = c + Math.sin(a) * R, y = c - Math.cos(a) * R, rr = clamp(10 - d / 110, 6, 10);
+      if (e === near) { rg.beginPath(); rg.arc(x, y, rr + 3 + 2 * Math.sin(G.time * 6), 0, TAU); rg.strokeStyle = e.D.color; rg.lineWidth = 2; rg.stroke(); }
+      rg.beginPath(); rg.arc(x, y, rr, 0, TAU); rg.fillStyle = e.D.color; rg.fill(); rg.lineWidth = 2; rg.strokeStyle = '#0d0b14'; rg.stroke();
+    }
+    if (near) {
+      rg.font = '900 italic 15px "Avenir Next Condensed", "Arial Narrow", Arial, sans-serif'; rg.fillStyle = near.D.color; rg.fillText(near.D.name, c, c - 5);
+      rg.font = '700 13px "Avenir Next Condensed", "Arial Narrow", Arial, sans-serif'; rg.fillStyle = '#ffffff'; rg.fillText(`${Math.round(Math.hypot(nd, near.pos.y - P.pos.y))} m`, c, c + 11);
+    } else { rg.font = '900 italic 14px "Avenir Next Condensed", "Arial Narrow", Arial, sans-serif'; rg.fillStyle = '#ffd23d'; rg.fillText('ALL CLEAR', c, c); }
+  }
   list.innerHTML = BOSS_ORDER.map(t => `<li id="li-${t}"><i style="background:${EDEF[t].color}"></i>${EDEF[t].name}</li>`).join('');
   return {
     banner(big, small) { el('banner-big').textContent = big; el('banner-small').textContent = small; el('banner').classList.toggle('on', !!big); bannerT = big ? 3.2 : 0; },
@@ -1841,22 +2135,16 @@ const HUD = (() => {
       el('focus').classList.toggle('ready', P.focus >= 30);
       el('stars').textContent = `★ ${GAME.stars} / ${STARS.list.length}`;
       for (const t of BOSS_ORDER) el('li-' + t).classList.toggle('done', GAME.beaten.has(t));
-      // boss bar for the nearest awake villain, otherwise a compass toward the nearest one still free
-      let boss = null, bd = 1e9, next = null, nd = 1e9;
+      // boss bar for the nearest awake villain
+      let boss = null, bd = 1e9;
       for (const e of ENEMIES) {
         if (!e.D.boss) continue;
         const d = e.pos.distanceTo(P.pos);
         if (!e.defeated && e.awake && d < 160 && d < bd) { bd = d; boss = e; }
-        if (!e.defeated && d < nd) { nd = d; next = e; }
       }
       el('boss').classList.toggle('on', !!boss);
       if (boss) { el('boss-name').textContent = `${boss.D.name} · ${boss.D.title}`; el('boss-fill').style.width = (100 * boss.hp / boss.maxHp) + '%'; el('boss-fill').style.background = boss.D.color; }
-      el('compass').classList.toggle('on', !boss && !!next);
-      if (!boss && next) {
-        const dx = next.pos.x - P.pos.x, dz = next.pos.z - P.pos.z, rel = Math.atan2(dx, dz) - CAM.yaw;
-        el('compass-arrow').style.transform = `rotate(${(-rel * 180 / Math.PI).toFixed(1)}deg)`;
-        el('compass-text').textContent = `${next.D.name} · ${Math.round(Math.hypot(dx, dz, next.pos.y - P.pos.y))} m`;
-      }
+      drawRing();
       el('reticle').className = ZIPAIM.ok ? 'zip' : '';
       // minimap: turns with the camera so "up" is where you are looking
       const S = 0.5, W = mini.width;
@@ -1889,7 +2177,7 @@ function pickSpawn() {
   for (const b of BUILDINGS) {
     if (b.h > b.roofY + 0.1 || b.h < 25 || b.h > 70) continue;
     const cx = (b.x0 + b.x1) / 2, cz = (b.z0 + b.z1) / 2, d = Math.hypot(cx - 8 * PX, cz - 6 * PZ);
-    if (d < bd) { bd = d; best = new V3(cx, b.h + 0.5, cz); }
+    if (d < bd) { bd = d; best = new V3(b.star.x, b.h + 0.5, b.star.z); }
   }
   return best || new V3(8 * PX, 1, 6 * PZ);
 }
@@ -1898,9 +2186,10 @@ function requestLock() { try { const r = canvas.requestPointerLock(); if (r && r
 function startGame() {
   if (G.mode === 'title') { spawnPlayer(SPAWN, 0); G.playT = 0; HUD.banner('MOZI SKYLINE', 'Find the five villains. Bob is waiting in the park.'); }
   G.mode = 'play'; $('title').classList.remove('on'); $('pause').classList.remove('on'); $('hud').classList.add('on');
-  SFX.unlock(); SFX.music(true); requestLock();
+  SFX.unlock(); SFX.music(true); if (!TOUCH.on) requestLock();
+  $('touch').classList.toggle('on', TOUCH.on);
 }
-function pauseGame() { if (G.mode !== 'play') return; G.mode = 'paused'; $('pause').classList.add('on'); if (document.pointerLockElement) document.exitPointerLock(); }
+function pauseGame() { if (G.mode !== 'play') return; G.mode = 'paused'; $('pause').classList.add('on'); TOUCH.release(); if (document.pointerLockElement) document.exitPointerLock(); }
 function setQuality(high) {
   QUALITY.high = high; try { localStorage.setItem('mozi-sky-q', high ? 'high' : 'low'); } catch (e) { /* ignore */ }
   pixelRatio = Math.min(window.devicePixelRatio || 1, high ? 1.5 : 1); renderer.setPixelRatio(pixelRatio); renderer.setSize(innerWidth, innerHeight, false);
@@ -1912,7 +2201,7 @@ function rematch() { GAME.beaten.clear(); GAME.won = false; FX.clear(); spawnVil
 // mouse: click locks the pointer (or attacks once locked); right button fires the snare
 canvas.addEventListener('mousedown', e => {
   SFX.unlock();
-  if (G.mode !== 'play') return;
+  if (G.mode !== 'play' || performance.now() - TOUCH.last < 1000) return;   // ignore the mouse events Safari makes up after a touch
   if (!MOUSE.locked) { requestLock(); MOUSE.drag = true; MOUSE.downAt = performance.now(); MOUSE.moved = 0; MOUSE.btn = e.button; return; }
   if (e.button === 0) MOUSE.leftTap = true; if (e.button === 2) MOUSE.rightTap = true;
 });
@@ -1950,7 +2239,7 @@ function step(dt) {
     if (tapped('KeyR') && GAME.won) rematch();
     if (G.hitstop > 0) { G.hitstop -= dt; clearTaps(); return; }
     G.playT += dt;
-    if (GAME.winT > 0 && (GAME.winT -= dt) <= 0) { GAME.won = true; HUD.banner('CITY SAVED!', 'Every villain is tied up. Press R for a rematch.'); SFX.ok(); }
+    if (GAME.winT > 0 && (GAME.winT -= dt) <= 0) { GAME.won = true; HUD.banner('CITY SAVED!', TOUCH.on ? 'Every villain is tied up. Tap REMATCH to play again.' : 'Every villain is tied up. Press R for a rematch.'); SFX.ok(); }
     FX.beginFrame();
     updatePlayer(dt);
     updateSnare(dt);
@@ -1995,6 +2284,96 @@ requestAnimationFrame(frame);
 // hooks for automated testing
 window.__sky = { G, P, GAME, ENEMIES, STARS, LAIRS, BOXES, BUILDINGS, KEYS, TAPS, MOUSE, CAM, IN, step, startGame, spawnPlayer, raycastCity, floorAt, rematch, damageEnemy,
   camera, render: () => { scene.userData.sky.position.copy(camera.position); renderer.render(scene, camera); }, info: () => renderer.info.render, TOWER_TOP, SPAWN, ZIPAIM };
+
+
+// ===================================================================== touch controls (iPad and other touch screens)
+// Left part of the screen: a thumbstick that appears where the thumb lands. Right part: drag to look.
+// Buttons press the same virtual keys as the keyboard, so the game code does not care where input comes from.
+(function touchControls() {
+  const layer = $('touch'), stick = $('stick'), knob = $('knob');
+  const R = 58;                                  // how far the knob travels, in CSS px
+  let stickId = null, lookId = null, ox = 0, oy = 0, lx = 0, ly = 0;
+  const homeStick = () => { stick.style.left = ''; stick.style.top = ''; knob.style.transform = ''; stick.classList.remove('live'); };
+
+  function enable() {
+    if (TOUCH.on) return;
+    TOUCH.on = true; document.body.classList.add('touch'); fillControls(true);
+    if (G.mode === 'play') layer.classList.add('on');
+  }
+  // a touch device without a mouse starts in touch mode; any touch switches it on, a real mouse click switches it off
+  if (window.matchMedia && matchMedia('(pointer: coarse)').matches) enable();
+  addEventListener('pointerdown', e => { if (e.pointerType === 'touch') { TOUCH.last = performance.now(); enable(); } }, true);
+  addEventListener('mousedown', () => {
+    if (!TOUCH.on || performance.now() - TOUCH.last < 1500) return;
+    TOUCH.on = false; document.body.classList.remove('touch'); layer.classList.remove('on'); fillControls(false);
+  }, true);
+
+  function setStick(x, y) {
+    let dx = x - ox, dy = y - oy; const d = Math.hypot(dx, dy);
+    if (d > R) { dx *= R / d; dy *= R / d; }
+    knob.style.transform = `translate(${dx}px, ${dy}px)`;
+    let mx = dx / R * 1.12, mz = -dy / R * 1.12; const m = Math.hypot(mx, mz);
+    if (m > 1) { mx /= m; mz /= m; }
+    const mag = Math.min(1, m);
+    if (mag < 0.14) { mx = mz = 0; }
+    TOUCH.mx = mx; TOUCH.mz = mz; TOUCH.mag = mag;
+  }
+  layer.addEventListener('pointerdown', e => {
+    if (e.target !== layer) return;
+    e.preventDefault(); SFX.unlock(); TOUCH.last = performance.now();
+    if (e.clientX < innerWidth * 0.42 && stickId === null) {
+      stickId = e.pointerId; TOUCH.stick = true;
+      // keep the whole stick on screen
+      ox = clamp(e.clientX, 76, innerWidth - 76); oy = clamp(e.clientY, 76, innerHeight - 76);
+      stick.style.left = ox + 'px'; stick.style.top = oy + 'px'; stick.classList.add('live');
+      setStick(e.clientX, e.clientY);
+    } else if (lookId === null) { lookId = e.pointerId; lx = e.clientX; ly = e.clientY; }
+    try { layer.setPointerCapture(e.pointerId); } catch (err) { /* older browsers */ }
+  });
+  layer.addEventListener('pointermove', e => {
+    if (e.pointerId === stickId) setStick(e.clientX, e.clientY);
+    else if (e.pointerId === lookId) { MOUSE.dx += (e.clientX - lx) * 2.3; MOUSE.dy += (e.clientY - ly) * 2.0; lx = e.clientX; ly = e.clientY; }
+  });
+  const end = e => {
+    if (e.pointerId === stickId) { stickId = null; TOUCH.stick = false; TOUCH.mx = TOUCH.mz = TOUCH.mag = 0; homeStick(); }
+    if (e.pointerId === lookId) lookId = null;
+  };
+  layer.addEventListener('pointerup', end); layer.addEventListener('pointercancel', end);
+
+  // action buttons hold their virtual key down while pressed
+  for (const b of layer.querySelectorAll('[data-key]')) {
+    const code = b.dataset.key; let id = null;
+    b.addEventListener('pointerdown', e => {
+      e.preventDefault(); e.stopPropagation(); SFX.unlock(); TOUCH.last = performance.now();
+      if (id !== null) return;
+      id = e.pointerId; try { b.setPointerCapture(id); } catch (err) { /* older browsers */ }
+      if (!KEYS[code]) TAPS[code] = true; KEYS[code] = true; b.classList.add('down');
+    });
+    const up = e => { if (e.pointerId !== id) return; id = null; KEYS[code] = false; b.classList.remove('down'); };
+    b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up);
+    b.addEventListener('contextmenu', e => e.preventDefault());
+  }
+  $('tb-pause').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); pauseGame(); });
+  $('tb-rematch').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); if (GAME.won) rematch(); });
+
+  // let go of everything (pause, app switch)
+  TOUCH.release = () => {
+    stickId = lookId = null; TOUCH.stick = false; TOUCH.mx = TOUCH.mz = TOUCH.mag = 0; homeStick();
+    for (const b of layer.querySelectorAll('[data-key]')) { KEYS[b.dataset.key] = false; b.classList.remove('down'); }
+  };
+  addEventListener('blur', TOUCH.release);
+  document.addEventListener('visibilitychange', () => { if (document.hidden && G.mode === 'play') pauseGame(); });
+  // Safari: no pinch zoom or double-tap zoom while playing
+  for (const ev of ['gesturestart', 'gesturechange', 'dblclick']) document.addEventListener(ev, e => e.preventDefault(), { passive: false });
+
+  // button states follow the game: ZIP lights up when there is something to zip to, SNARE dims without focus
+  setInterval(() => {
+    if (!TOUCH.on || G.mode !== 'play') return;
+    $('tb-zip').classList.toggle('ready', ZIPAIM.ok);
+    $('tb-snare').classList.toggle('dim', P.focus < 30);
+    $('tb-rematch').classList.toggle('on', GAME.won);
+  }, 120);
+})();
 
 </script>
 </body>
