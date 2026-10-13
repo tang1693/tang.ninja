@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Chernobyl">
 <title>Chernobyl: Leave No One Behind</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -30,7 +34,7 @@
   color-scheme:dark;
 }
 [hidden]{display:none!important}
-html,body{height:100%;margin:0;background:var(--night);color:var(--ink);overflow:hidden;font-family:var(--f-body);-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;touch-action:none}
+html,body{height:100%;margin:0;background:var(--night);color:var(--ink);overflow:hidden;font-family:var(--f-body);-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;-webkit-text-size-adjust:100%;touch-action:none}
 canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;background:var(--night)}
 canvas#fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;mix-blend-mode:screen}
 #dmg{position:fixed;inset:0;pointer-events:none;opacity:0;background:radial-gradient(ellipse at center,rgba(120,10,0,0) 40%,rgba(150,20,10,.6) 100%);transition:opacity .25s}
@@ -193,7 +197,7 @@ canvas#fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;mix-
 #choice button:hover,#choice button:focus-visible{border-color:var(--amber);background:rgba(227,166,78,.08);outline:none}
 
 #doc{position:fixed;inset:0;z-index:30;display:grid;place-items:center;padding:16px;background:rgba(0,0,0,.6)}
-.paper{position:relative;width:min(580px,100%);max-height:calc(100% - 32px);overflow:auto;padding:30px 30px 26px;background:var(--paper);color:var(--paper-ink);border-radius:2px;box-shadow:0 30px 80px rgba(0,0,0,.6),inset 0 0 90px rgba(120,100,60,.28);font-family:var(--f-doc);font-size:16px;line-height:1.65}
+.paper{position:relative;width:min(580px,100%);max-height:calc(100% - 32px);overflow:auto;padding:30px 30px 26px;background:var(--paper);color:var(--paper-ink);border-radius:2px;box-shadow:0 30px 80px rgba(0,0,0,.6),inset 0 0 90px rgba(120,100,60,.28);font-family:var(--f-doc);font-size:16px;line-height:1.65;touch-action:pan-y;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 .paper::before{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.018) 0 1px,transparent 1px 3px);mix-blend-mode:multiply}
 .paper .meta{font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;color:#5b554a;text-transform:uppercase;display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid rgba(35,33,28,.3);padding-bottom:8px;margin-bottom:14px}
 .paper h2{font-family:var(--f-display);font-weight:400;font-size:clamp(32px,5.6vw,46px);line-height:1.08;margin:6px 0 4px;text-wrap:balance;letter-spacing:.01em}
@@ -256,6 +260,24 @@ canvas#fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;mix-
 #t-alt{right:calc(112px + env(safe-area-inset-right,0px));bottom:calc(100px + env(safe-area-inset-bottom,0px));width:56px;height:56px;font-size:11px}
 #t-alt2{right:calc(40px + env(safe-area-inset-right,0px));bottom:calc(160px + env(safe-area-inset-bottom,0px));width:56px;height:56px;font-size:11px}
 
+/* touch screens wider than a phone (iPad): keep the HUD clear of the joystick and buttons */
+html.touch #hint-keys{display:none}
+html.touch #roster{bottom:calc(172px + env(safe-area-inset-bottom,0px))}
+@media (min-width:721px) and (max-width:1099px){
+  html.touch #gauges{bottom:calc(232px + env(safe-area-inset-bottom,0px))}
+  html.touch #prompt{bottom:calc(322px + env(safe-area-inset-bottom,0px))}
+  html.touch #subs{bottom:calc(376px + env(safe-area-inset-bottom,0px))}
+  html.touch #roster{width:auto;max-width:62vw;flex-direction:row;flex-wrap:wrap;gap:3px}
+  html.touch .vict{grid-template-columns:auto auto;gap:0 6px;padding:3px 6px;font-size:11px;flex:0 0 auto}
+  html.touch .vict .nm em,html.touch .vict .vb{display:none}
+  html.touch .vict.saved,html.touch .vict.dead{display:none}
+}
+@media (min-width:721px) and (max-width:1099px){
+  #toast{top:calc(304px + env(safe-area-inset-top,0px))}
+}
+@media (min-width:1100px){
+  html.touch #prompt{bottom:calc(132px + env(safe-area-inset-bottom,0px))}
+}
 @media (max-width:720px){
   #hud-tl{max-width:calc(100vw - 216px);gap:4px}
   #hud-clock{font-size:20px}
@@ -414,7 +436,9 @@ function fmtClock(sec) { sec = ((Math.floor(sec) % 86400) + 86400) % 86400; retu
 function angleDamp(a, b, l, dt) { let d = ((b - a + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI; return a + d * (1 - Math.exp(-l * dt)); }
 const V3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const dist2D = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
-const IS_TOUCH = window.matchMedia && matchMedia('(pointer: coarse)').matches;
+const IS_IPAD = /iPad/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPadOS reports itself as a Mac
+const IS_TOUCH = !!((window.matchMedia && matchMedia('(pointer: coarse)').matches) || IS_IPAD || /iPhone|iPod|Android/.test(navigator.userAgent));
+if (IS_TOUCH) document.documentElement.classList.add('touch');
 const LOWQ = IS_TOUCH || Math.min(window.innerWidth, window.innerHeight) < 600;
 const REDUCED_MOTION = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -855,7 +879,7 @@ function releaseLock() { try { if (document.pointerLockElement) document.exitPoi
   a1.addEventListener('touchstart', e => { Input.touchAlt = 1; e.preventDefault(); }, { passive: false });
   a2.addEventListener('touchstart', e => { Input.touchAlt = -1; e.preventDefault(); }, { passive: false });
   for (const b of [a1, a2]) { b.addEventListener('touchend', e => { Input.touchAlt = 0; e.preventDefault(); }); }
-  addEventListener('touchstart', () => { Input.usedTouch = true; }, { passive: true });
+  addEventListener('touchstart', () => { if (!Input.usedTouch) { Input.usedTouch = true; document.documentElement.classList.add('touch'); } }, { passive: true });
 })();
 
 /* =========================================================
@@ -952,6 +976,7 @@ const Snd = {
   init() {
     if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume(); return; }
     const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) { } // iOS: play even with the silent switch on
     const c = this.ctx = new AC();
     this.master = c.createGain(); this.master.gain.value = 0.85;
     const comp = c.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4;
@@ -1213,11 +1238,13 @@ const Post = {
   enabled: true, ok: false,
   init() {
     try {
-      const gl2 = renderer.capabilities.isWebGL2;
-      const type = gl2 ? THREE.HalfFloatType : THREE.UnsignedByteType;
-      this.rt = new THREE.WebGLRenderTarget(4, 4, { type, samples: gl2 && !LOWQ ? 4 : 0 });
-      this.rtA = new THREE.WebGLRenderTarget(4, 4, { type });
-      this.rtB = new THREE.WebGLRenderTarget(4, 4, { type });
+      const gl2 = renderer.capabilities.isWebGL2, ex = renderer.extensions;
+      const hf = gl2 && (ex.has('EXT_color_buffer_half_float') || ex.has('EXT_color_buffer_float'));
+      const mk = (type, samples) => { this.rt = new THREE.WebGLRenderTarget(4, 4, { type, samples }); this.rtA = new THREE.WebGLRenderTarget(4, 4, { type }); this.rtB = new THREE.WebGLRenderTarget(4, 4, { type }); };
+      mk(hf ? THREE.HalfFloatType : THREE.UnsignedByteType, gl2 && !LOWQ ? 4 : 0);
+      // some mobile GPUs cannot render to half-float targets: check and fall back to 8-bit
+      const gl = renderer.getContext(), okFB = () => { let ok = true; for (const t of [this.rt, this.rtA]) { renderer.setRenderTarget(t); if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) ok = false; } renderer.setRenderTarget(null); return ok; };
+      if (!okFB()) { for (const t of [this.rt, this.rtA, this.rtB]) t.dispose(); mk(THREE.UnsignedByteType, 0); if (!okFB()) throw new Error('no usable render target'); }
       this.qcam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
       this.qscene = new THREE.Scene();
       this.quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2)); this.quad.frustumCulled = false; this.qscene.add(this.quad);
@@ -5076,7 +5103,10 @@ function frame(now) {
   requestAnimationFrame(frame);
   setFade(0);
   const startAudio = () => { Snd.init(); if (Game.state === 'menu') { Snd.ambient('menu'); Music.play('menu'); } removeEventListener('pointerdown', startAudio); removeEventListener('keydown', startAudio); };
-  addEventListener('pointerdown', startAudio); addEventListener('keydown', startAudio);
+  addEventListener('pointerdown', startAudio); addEventListener('keydown', startAudio); addEventListener('touchend', startAudio);
+  // iOS / iPadOS only lets audio start inside a tap; also wake it after Safari interrupts it (calls, app switching)
+  const wakeAudio = () => { if (Snd.ctx && Snd.ctx.state !== 'running' && Game.state !== 'paused') Snd.ctx.resume(); };
+  addEventListener('touchend', wakeAudio, { passive: true }); addEventListener('click', wakeAudio);
   window.__game = Game; window.__dbg = { Game, CHAPTERS, CH1, CH2, CH3, Cam, Input, Snd, HUD, Story, VO, Cine, Post, Music, renderer, V3, THREE, camera,
     setCam(x, y, z, lx, ly, lz) { camera.position.set(x, y, z); camera.lookAt(lx, ly, lz); },
     step(n, dt = 0.05) { for (let i = 0; i < n; i++) { if (Game.state !== 'play') break; stepPlay(dt); Input.hits = {}; Input.mdx = Input.mdy = 0; } Markers.set(Game.state === 'play' && Game.chapter && Game.chapter.markers ? Game.chapter.markers() : []); },
