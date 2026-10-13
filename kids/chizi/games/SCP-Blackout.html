@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <title>SCP: Blackout</title>
 <meta name="description" content="A 3D SCP Foundation survival game: escape Site-19 as a guard, or play as SCP-173, 096, 106 or 999.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -152,6 +153,34 @@ h1{font-family:var(--display);font-weight:400;font-size:clamp(46px,7.5vw,92px);l
 .report dd{margin:0}
 .btnrow{display:flex;gap:12px;flex-wrap:wrap;margin-top:6px}
 .btnrow .deploy{font-size:22px;padding:10px 26px}
+/* ---------- touch controls ---------- */
+#touch{position:absolute;inset:0;touch-action:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+#stick{position:absolute;width:128px;height:128px;margin:-64px 0 0 -64px;border-radius:50%;border:2px solid rgba(231,226,212,.32);background:rgba(9,13,16,.3);left:calc(104px + env(safe-area-inset-left,0px));top:calc(100% - 118px - env(safe-area-inset-bottom,0px));opacity:.55;pointer-events:none}
+#stick.active{opacity:.95}
+#knob{position:absolute;left:50%;top:50%;width:54px;height:54px;margin:-27px 0 0 -27px;border-radius:50%;background:rgba(226,165,49,.28);border:2px solid var(--hazard)}
+#stick.run #knob{background:rgba(226,165,49,.75)}
+.tbtn{all:unset;box-sizing:border-box;position:absolute;width:66px;height:66px;border-radius:50%;border:2px solid rgba(231,226,212,.38);background:rgba(9,13,16,.62);color:var(--bone);font:600 11px/1 var(--mono);letter-spacing:.08em;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;touch-action:none;-webkit-tap-highlight-color:transparent;cursor:pointer}
+.tbtn small{font-size:13px;color:var(--hazard);letter-spacing:0;font-weight:600}
+.tbtn.on{background:rgba(226,165,49,.38);border-color:var(--hazard)}
+#tFire{width:98px;height:98px;right:calc(26px + env(safe-area-inset-right,0px));bottom:calc(30px + env(safe-area-inset-bottom,0px));font-size:14px;border-color:var(--hazard)}
+#tBlink,#tSink{right:calc(140px + env(safe-area-inset-right,0px));bottom:calc(26px + env(safe-area-inset-bottom,0px))}
+#tUse{right:calc(118px + env(safe-area-inset-right,0px));bottom:calc(112px + env(safe-area-inset-bottom,0px))}
+#tLight{right:calc(34px + env(safe-area-inset-right,0px));bottom:calc(144px + env(safe-area-inset-bottom,0px))}
+#tReload{right:calc(214px + env(safe-area-inset-right,0px));bottom:calc(72px + env(safe-area-inset-bottom,0px))}
+#tPause{width:46px;height:46px;top:calc(12px + env(safe-area-inset-top,0px));left:50%;margin-left:-23px;font-size:13px}
+body.touch #vitals{left:50%;transform:translateX(-50%);top:calc(66px + env(safe-area-inset-top,0px));bottom:auto;width:236px;gap:5px}
+body.touch .meter{grid-template-columns:54px 1fr 30px}
+body.touch .meter b.key{visibility:hidden}
+body.touch #weapon,body.touch #cross{display:none}
+body.touch #scpStatus{right:auto;left:50%;transform:translateX(-50%);bottom:auto;top:calc(104px + env(safe-area-inset-top,0px));text-align:center;justify-items:center;width:min(360px,calc(100vw - 32px))}
+body.touch #scpStatus .big{font-size:22px}
+body.touch #objPanel{width:240px}
+body.touch #notes{top:calc(176px + env(safe-area-inset-top,0px));left:50%;right:auto;transform:translateX(-50%);width:min(420px,calc(100vw - 32px))}
+body.touch #subs{bottom:calc(150px + env(safe-area-inset-bottom,0px));width:min(540px,calc(100vw - 32px))}
+body.touch #prompt{top:calc(50% + 24px)}
+body.touch .btn,body.touch .role{touch-action:manipulation}
+@media (max-width:1000px){body.touch #objHint{display:none}}
+@media (max-width:700px){body.touch #mapPanel{transform:scale(.8);transform-origin:top right}body.touch #objPanel{width:200px}}
 #loading{position:absolute;inset:0;display:grid;place-items:center;background:var(--void);color:var(--dim);font-size:12px;letter-spacing:.2em}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -194,6 +223,17 @@ h1{font-family:var(--display);font-weight:400;font-size:clamp(46px,7.5vw,92px);l
     <div id="hold"><i id="holdFill"></i></div>
     <div id="subs"></div>
     <div id="bigMsg"><h2 id="bigT"></h2><p id="bigS"></p></div>
+  </div>
+
+  <div id="touch" hidden>
+    <div id="stick"><div id="knob"></div></div>
+    <button class="tbtn" id="tFire" data-act="fire"><span id="tFireLbl">FIRE</span><small id="tAmmo">12/24</small></button>
+    <button class="tbtn" id="tBlink" data-act="blink">BLINK</button>
+    <button class="tbtn" id="tUse" data-act="use">USE</button>
+    <button class="tbtn" id="tReload" data-act="reload">RELOAD</button>
+    <button class="tbtn" id="tLight" data-act="light">LIGHT</button>
+    <button class="tbtn" id="tSink" data-act="ability">SINK</button>
+    <button class="tbtn" id="tPause" data-act="pause" aria-label="Pause">II</button>
   </div>
 
   <section id="menu" class="screen">
@@ -253,12 +293,12 @@ h1{font-family:var(--display);font-weight:400;font-size:clamp(46px,7.5vw,92px);l
         <div class="opts">
           <label for="optVoice"><input type="checkbox" id="optVoice" checked> Voice announcements and radio chatter</label>
           <label for="optLore"><input type="checkbox" id="optLore"> Lore-accurate lethality <small>· SCP-173 and SCP-096 kill in one hit</small></label>
-          <label for="optSens">Mouse sensitivity <input type="range" id="optSens" min="0.3" max="2.5" step="0.1" value="1"></label>
+          <label for="optSens"><span id="sensLbl">Mouse sensitivity</span> <input type="range" id="optSens" min="0.3" max="2.5" step="0.1" value="1"></label>
         </div>
         <button id="deploy" class="btn deploy">DEPLOY</button>
       </div>
       <div class="controls" id="controlsText"></div>
-      <p class="note">Keyboard and mouse required · Headphones recommended · Click the game to capture the mouse, Esc to pause.</p>
+      <p class="note" id="menuNote">Keyboard and mouse · Headphones recommended · Click the game to capture the mouse, Esc to pause. Works on iPad with touch controls.</p>
     </div>
   </section>
 
@@ -267,7 +307,7 @@ h1{font-family:var(--display);font-weight:400;font-size:clamp(46px,7.5vw,92px);l
       <div class="report"><div class="stripe"></div><div class="rin">
         <p class="eyebrow">TRANSMISSION HELD</p>
         <h2>PAUSED</h2>
-        <p>Click resume to recapture the mouse.</p>
+        <p id="pauseText">Click resume to recapture the mouse.</p>
         <div class="btnrow"><button class="btn deploy" id="btnResume">RESUME</button><button class="btn ghost" id="btnQuit">MAIN MENU</button></div>
       </div></div>
     </div>
@@ -296,6 +336,10 @@ h1{font-family:var(--display);font-weight:400;font-size:clamp(46px,7.5vw,92px);l
    SCP: BLACKOUT  —  core utilities, map, navigation, audio, voice
    ========================================================= */
 const V3 = THREE.Vector3;
+/* touch devices (iPad, phones) get on-screen controls instead of keyboard + mouse */
+const IS_TOUCH = (window.matchMedia && matchMedia('(pointer: coarse)').matches) || (('ontouchstart' in window) && navigator.maxTouchPoints > 0);
+const T = (desk, touch) => IS_TOUCH ? touch : desk;
+const TOUCH = { mx: 0, my: 0, run: false };
 const $ = id => document.getElementById(id);
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -513,7 +557,8 @@ function navStep(ent, gx, gz, speed, dt, pass, r) {
 const AU = {
   ctx: null, ok: false, loops: [],
   init() {
-    if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume(); return; }
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {} // iOS: play even with the silent switch on
+    if (this.ctx) { this.resume(); return; }
     const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
     const c = this.ctx = new AC();
     this.master = c.createGain(); this.master.gain.value = 0.9;
@@ -531,7 +576,7 @@ const AU = {
     this.ok = true;
     this.startAmbient();
   },
-  resume() { if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); },
+  resume() { if (this.ctx && this.ctx.state !== 'running' && this.ctx.state !== 'closed') this.ctx.resume(); },
   suspend() { if (this.ctx && this.ctx.state === 'running') this.ctx.suspend(); },
   impulse(sec, decay) {
     const c = this.ctx, len = Math.floor(c.sampleRate * sec), b = c.createBuffer(2, len, c.sampleRate);
@@ -801,6 +846,8 @@ const VO = {
     } catch (e) {}
   },
   stop() { try { speechSynthesis.cancel(); } catch (e) {} },
+  // iOS only lets a page speak after it has spoken once inside a tap
+  unlock() { try { if (this.unlocked || !('speechSynthesis' in window)) return; const u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); this.unlocked = true; } catch (e) {} },
 };
 
 /* subtitles + notifications (DOM) */
@@ -1479,10 +1526,12 @@ class SCPBase {
 function inputDir() {
   let mx = 0, mz = 0;
   if (keys.KeyW) mz += 1; if (keys.KeyS) mz -= 1; if (keys.KeyD) mx += 1; if (keys.KeyA) mx -= 1;
+  if (!mx && !mz && Math.hypot(TOUCH.mx, TOUCH.my) > 0.18) { mx = TOUCH.mx; mz = -TOUCH.my; }
   if (!mx && !mz) return null;
   const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw), rx = Math.cos(P.yaw), rz = -Math.sin(P.yaw);
   let x = fx * mz + rx * mx, z = fz * mz + rz * mx; const l = Math.hypot(x, z); return { x: x / l, z: z / l };
 }
+function wantRun() { return !!(keys.ShiftLeft || keys.ShiftRight || TOUCH.run); }
 function nearestGuard(pos, r, filter) { let b = null, bd = r; for (const g of G.guards) { if (!g.active || (filter && !filter(g))) continue; const d = dist2D(pos, g.pos); if (d < bd) { bd = d; b = g; } } return b; }
 
 /* ---------------- SCP-173 ---------------- */
@@ -1624,7 +1673,7 @@ class S096 extends SCPBase {
     const d = inputDir();
     if (this.state === 'docile' || this.state === 'calm') {
       this.yaw = P.yaw + Math.PI;
-      if (d) { const sp = keys.ShiftLeft || keys.ShiftRight ? 3.4 : 2.0; this.pos.x += d.x * sp * dt; this.pos.z += d.z * sp * dt; collideCircle(this.pos, this.radius, passMon, false); }
+      if (d) { const sp = wantRun() ? 3.4 : 2.0; this.pos.x += d.x * sp * dt; this.pos.z += d.z * sp * dt; collideCircle(this.pos, this.radius, passMon, false); }
       if (this.state === 'calm') { this.calmT -= dt; if (this.calmT <= 0) this.state = 'docile'; }
     } else if (this.state === 'trigger') {
       this.trigT -= dt; if (this.trigT <= 0) { this.state = 'rage'; notify('RAGE. Hunt down everyone who saw you.', 'bad'); }
@@ -2104,6 +2153,7 @@ function startGame(role) {
   showScreen(null);
   if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
   G.state = 'play';
+  updateTouchUI(null);
   lockPointer();
   AU.init(); AU.resume();
   if (AU.ok && AU.amb) AU.amb.gain.value = 0.06;
@@ -2268,7 +2318,7 @@ function updatePlayer(dt) {
   let speed = 0;
   if (P.alive) {
     const d = inputDir();
-    const sprint = (keys.ShiftLeft || keys.ShiftRight) && P.sta > 1 && d;
+    const sprint = wantRun() && P.sta > 1 && d;
     const corr = !P.inPD && onCorrosion(P.pos);
     speed = d ? (sprint ? 5.8 : 3.3) * (corr ? 0.45 : 1) * (P.joyT > 0 ? 0.5 : 1) : 0;
     if (sprint) P.sta = Math.max(0, P.sta - dt * 20); else P.sta = Math.min(100, P.sta + dt * (d ? 9 : 16));
@@ -2318,7 +2368,7 @@ function updateInteract(dt) {
   }
   if (best) {
     const deny = best.deny && best.deny();
-    pr.innerHTML = ''; const k = document.createElement('kbd'); k.textContent = best.hold && !deny ? 'HOLD E' : 'E'; pr.appendChild(k); pr.appendChild(document.createTextNode(best.label()));
+    pr.innerHTML = ''; const k = document.createElement('kbd'); k.textContent = best.hold && !deny ? T('HOLD E', 'HOLD USE') : T('E', 'USE'); pr.appendChild(k); pr.appendChild(document.createTextNode(best.label()));
     pr.className = 'on' + (deny ? ' deny' : '');
     if (best.hold && keys.KeyE && !deny) {
       if (P.holdTarget !== best) { P.holdTarget = best; P.holdT = 0; if (best.type === 'gen') AU.clank(W.genPos); }
@@ -2421,6 +2471,9 @@ function configureHud() {
   const guard = G.mode === 'guard';
   $('weapon').hidden = !guard; $('mBlink').hidden = !guard; $('mSta').hidden = !guard; $('scpStatus').hidden = guard; $('cross').hidden = !guard;
   $('timerBox').hidden = guard;
+  ['tBlink', 'tUse', 'tReload', 'tLight'].forEach(id => $(id).hidden = !guard);
+  $('tSink').hidden = G.role !== '106'; $('tAmmo').hidden = !guard;
+  $('tFireLbl').textContent = { guard: 'FIRE', '173': 'SNAP', '096': 'ATTACK', '106': 'GRAB', '999': 'TICKLE' }[G.role];
   const showHp = guard || G.role === '106' || G.role === '999';
   $('mHp').hidden = !showHp; $('hpLbl').textContent = guard ? 'HEALTH' : 'INTEGRITY';
   $('objTitle').textContent = guard ? 'OBJECTIVES' : G.pc.name;
@@ -2444,8 +2497,8 @@ function updateObjectives() {
     hint = {
       '173': 'You cannot move while any guard is looking at you. Each guard blinks every few seconds. Strike when every eye is closed or turned away.',
       '096': 'Guards who see your face become targets, shown in red. After the scream you are unstoppable, but you will only go after the ones who looked.',
-      '106': 'You pass through walls. Q sinks you into the floor to move fast and unseen. Grab a guard to drag them into your pocket dimension.',
-      '999': 'Get close and click to tickle a guard into helpless laughter. They will shoot at you anyway. You regenerate when left alone.',
+      '106': `You pass through walls. ${T('Q', 'SINK')} sinks you into the floor to move fast and unseen. Grab a guard to drag them into your pocket dimension.`,
+      '999': `Get close and ${T('click', 'tap TICKLE')} to tickle a guard into helpless laughter. They will shoot at you anyway. You regenerate when left alone.`,
     }[G.role];
   }
   items.forEach(([t, c]) => { const li = document.createElement('li'); li.textContent = t; if (c) li.className = c; ul.appendChild(li); });
@@ -2512,7 +2565,8 @@ function hudFrame(dt) {
     $('hpFill').style.transform = `scaleX(${P.hp / 100})`; $('hpNum').textContent = Math.ceil(P.hp);
     $('staFill').style.transform = `scaleX(${P.sta / 100})`;
     $('blinkFill').style.transform = `scaleX(${P.blink / 100})`; $('mBlink').classList.toggle('low', P.blink < 25);
-    $('ammoMag').textContent = P.reloadT > 0 ? '--' : P.mag; $('ammoRes').textContent = '/ ' + P.res; $('ammo').classList.toggle('empty', P.mag === 0);
+    $('ammoMag').textContent = P.reloadT > 0 ? '--' : P.mag;
+    if (IS_TOUCH) $('tAmmo').textContent = P.reloadT > 0 ? '--' : P.mag + '/' + P.res; $('ammoRes').textContent = '/ ' + P.res; $('ammo').classList.toggle('empty', P.mag === 0);
     $('lightLbl').textContent = P.flashOn ? 'LIGHT ON' : 'LIGHT OFF';
     $('mapLabel').textContent = P.inPD ? '???' : G.power ? 'POWER ONLINE' : 'POWER OFFLINE';
   } else {
@@ -2522,10 +2576,10 @@ function hudFrame(dt) {
     $('timerLbl').textContent = G.working ? `POWER RESTORE ×${(1 + 0.3 * G.working).toFixed(1)}` : 'POWER RESTORE';
     $('mapLabel').textContent = G.guards.filter(g => g.active).length + ' GUARDS LEFT';
     let big = '', sub = '', cls = '';
-    if (s.type === '173') { if (s.observedBy > 0) { big = `OBSERVED ×${s.observedBy}`; sub = 'You are frozen. Wait for every observer to blink or look away.'; cls = 'st-bad'; } else { big = 'UNSEEN'; sub = 'Move. Click to snap the neck of a guard within reach.'; cls = 'st-ok'; } }
-    if (s.type === '096') { const n = s.targets.size; if (s.state === 'rage') { big = `RAGE · ${n} TARGET${n === 1 ? '' : 'S'}`; sub = 'Nothing can stop you. Click or touch a target to kill.'; cls = 'st-bad'; } else if (s.state === 'trigger') { big = 'SCREAMING'; sub = 'Someone saw your face.'; cls = 'st-warn'; } else { big = 'DOCILE'; sub = 'Turn your face toward the guards. Anyone who sees it is marked.'; cls = ''; } }
-    if (s.type === '106') { big = s.sunk ? 'SUNK' : 'SURFACED'; sub = s.sinkCD > 0 ? `Sink [Q] in ${Math.ceil(s.sinkCD)}s · Click to grab a guard` : 'Sink [Q] ready · Click to grab a guard'; cls = s.sunk ? 'st-warn' : ''; }
-    if (s.type === '999') { big = 'TICKLE'; sub = 'Click near a guard to make them laugh until they drop their weapon.'; cls = 'st-ok'; }
+    if (s.type === '173') { if (s.observedBy > 0) { big = `OBSERVED ×${s.observedBy}`; sub = 'You are frozen. Wait for every observer to blink or look away.'; cls = 'st-bad'; } else { big = 'UNSEEN'; sub = T('Move. Click to snap the neck of a guard within reach.', 'Move. Tap SNAP to break the neck of a guard within reach.'); cls = 'st-ok'; } }
+    if (s.type === '096') { const n = s.targets.size; if (s.state === 'rage') { big = `RAGE · ${n} TARGET${n === 1 ? '' : 'S'}`; sub = T('Nothing can stop you. Click or touch a target to kill.', 'Nothing can stop you. Touch a target or tap ATTACK.'); cls = 'st-bad'; } else if (s.state === 'trigger') { big = 'SCREAMING'; sub = 'Someone saw your face.'; cls = 'st-warn'; } else { big = 'DOCILE'; sub = 'Turn your face toward the guards. Anyone who sees it is marked.'; cls = ''; } }
+    if (s.type === '106') { big = s.sunk ? 'SUNK' : 'SURFACED'; sub = s.sinkCD > 0 ? `Sink ${T('[Q]', '')} in ${Math.ceil(s.sinkCD)}s · ${T('Click', 'Tap GRAB')} to grab a guard` : `Sink ${T('[Q] ', '')}ready · ${T('Click', 'Tap GRAB')} to grab a guard`; cls = s.sunk ? 'st-warn' : ''; }
+    if (s.type === '999') { big = 'TICKLE'; sub = T('Click near a guard to make them laugh until they drop their weapon.', 'Tap TICKLE next to a guard to make them laugh until they drop their weapon.'); cls = 'st-ok'; }
     const st = $('scpStatus'); st.innerHTML = ''; const b = document.createElement('div'); b.className = 'big ' + cls; b.textContent = big; const p = document.createElement('div'); p.className = 'sub'; p.textContent = sub; st.appendChild(b); st.appendChild(p);
     if (s.type === '173' || s.type === '096') { $('mHp').hidden = true; }
     updateObjectives();
@@ -2536,6 +2590,12 @@ function hudFrame(dt) {
 /* ---------------- screens ---------------- */
 function showScreen(id) {
   ['menu', 'pause', 'over'].forEach(s => $(s).hidden = s !== id);
+  updateTouchUI(id);
+}
+function updateTouchUI(id) {
+  const show = IS_TOUCH && id === null && G.state === 'play';
+  $('touch').hidden = !show;
+  if (!show) releaseTouch();
 }
 function endGame(win, title, text) {
   if (G.state !== 'play') return;
@@ -2558,6 +2618,7 @@ function endGame(win, title, text) {
 function pauseGame() {
   if (G.state !== 'play' || G.paused) return;
   G.paused = true; showScreen('pause'); AU.suspend(); VO.stop();
+  for (const k in keys) keys[k] = false;
 }
 function resumeGame() {
   if (G.state !== 'play') return;
@@ -2625,6 +2686,77 @@ window.addEventListener('keyup', e => { keys[e.code] = false; });
 window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
 document.addEventListener('visibilitychange', () => { if (document.hidden && G.state === 'play') pauseGame(); });
 
+/* ---------------- touch controls (iPad / phones) ---------------- */
+const touchLayer = $('touch'), stick = $('stick'), knob = $('knob');
+let stickId = null, stickX = 0, stickY = 0;
+const looks = new Map(), btnPtr = new Map();
+function touchAct(act, down) {
+  if (G.state !== 'play') return;
+  if (act === 'pause') { if (down) pauseGame(); return; }
+  if (G.paused) return;
+  if (G.mode === 'guard') {
+    if (!P.alive) return;
+    if (act === 'fire' && down) playerShoot();
+    if (act === 'blink') { keys.Space = down; if (down) { P.closedT = 0.28; P.blink = 100; } }
+    if (act === 'use') { keys.KeyE = down; if (down) interactPress(); }
+    if (act === 'reload' && down) startReload();
+    if (act === 'light' && down) { P.flashOn = !P.flashOn; AU.click(); }
+  } else if (G.pc && down) {
+    if (act === 'fire' && G.pc.attackPC) G.pc.attackPC();
+    if (act === 'ability' && G.pc.ability) G.pc.ability();
+  }
+}
+function releaseTouch() {
+  stickId = null; TOUCH.mx = TOUCH.my = 0; TOUCH.run = false;
+  knob.style.transform = ''; stick.style.left = ''; stick.style.top = ''; stick.classList.remove('active', 'run');
+  looks.clear();
+  btnPtr.forEach((btn) => { btn.classList.remove('on'); touchAct(btn.dataset.act, false); }); btnPtr.clear();
+  keys.Space = keys.KeyE = false;
+}
+touchLayer.addEventListener('pointerdown', e => {
+  e.preventDefault(); AU.resume();
+  const btn = e.target.closest('.tbtn');
+  if (btn) {
+    try { btn.setPointerCapture(e.pointerId); } catch (er) {}
+    btn.classList.add('on'); btnPtr.set(e.pointerId, btn); touchAct(btn.dataset.act, true);
+    if (btn.dataset.act === 'fire' && e.pointerType !== 'mouse') looks.set(e.pointerId, { x: e.clientX, y: e.clientY }); // aim while holding fire
+    return;
+  }
+  if (e.pointerType === 'mouse') { if (e.button === 0) touchAct('fire', true); return; } // iPad trackpad / mouse click
+  if (e.clientX < innerWidth * 0.42 && stickId === null) {
+    stickId = e.pointerId; stickX = e.clientX; stickY = e.clientY;
+    stick.style.left = stickX + 'px'; stick.style.top = stickY + 'px'; stick.classList.add('active');
+  } else looks.set(e.pointerId, { x: e.clientX, y: e.clientY });
+});
+touchLayer.addEventListener('pointermove', e => {
+  if (e.pointerId === stickId) {
+    let dx = e.clientX - stickX, dy = e.clientY - stickY;
+    const l = Math.hypot(dx, dy), R = 56;
+    TOUCH.run = l > R * 1.05; // push past the rim to sprint
+    if (l > R) { dx *= R / l; dy *= R / l; }
+    TOUCH.mx = dx / R; TOUCH.my = dy / R;
+    knob.style.transform = `translate(${dx}px,${dy}px)`; stick.classList.toggle('run', TOUCH.run);
+  }
+  const lk = looks.get(e.pointerId);
+  if (lk && G.state === 'play' && !G.paused) {
+    const s = 0.0056 * G.sens;
+    P.yaw -= (e.clientX - lk.x) * s; P.pitch -= (e.clientY - lk.y) * s;
+    P.pitch = clamp(P.pitch, G.mode === 'guard' ? -1.45 : -1.2, G.mode === 'guard' ? 1.45 : 0.6);
+    lk.x = e.clientX; lk.y = e.clientY;
+  }
+});
+function touchEnd(e) {
+  if (e.pointerId === stickId) { stickId = null; TOUCH.mx = TOUCH.my = 0; TOUCH.run = false; knob.style.transform = ''; stick.style.left = ''; stick.style.top = ''; stick.classList.remove('active', 'run'); }
+  looks.delete(e.pointerId);
+  const btn = btnPtr.get(e.pointerId);
+  if (btn) { btn.classList.remove('on'); btnPtr.delete(e.pointerId); touchAct(btn.dataset.act, false); }
+}
+touchLayer.addEventListener('pointerup', touchEnd);
+touchLayer.addEventListener('pointercancel', touchEnd);
+touchLayer.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('gesturestart', e => e.preventDefault()); // Safari pinch-zoom
+document.addEventListener('dblclick', e => { if (G.state === 'play') e.preventDefault(); });
+
 /* ---------------- menu ---------------- */
 const CONTROLS = {
   guard: [['WASD', 'move'], ['Mouse', 'look'], ['Shift', 'sprint'], ['Space', 'blink · hold to keep eyes shut'], ['F', 'flashlight'], ['Click', 'shoot'], ['R', 'reload'], ['E', 'interact · hold for machines']],
@@ -2633,19 +2765,26 @@ const CONTROLS = {
   '106': [['WASD', 'move through walls'], ['Mouse', 'camera'], ['Q', 'sink into the floor'], ['Click', 'grab a guard']],
   '999': [['WASD', 'bounce around'], ['Mouse', 'camera'], ['Click', 'tickle']],
 };
+const CONTROLS_TOUCH = {
+  guard: [['Left thumb', 'move · push past the rim to run'], ['Right thumb', 'look'], ['FIRE', 'shoot · drag to aim'], ['BLINK', 'blink · hold to keep eyes shut'], ['USE', 'interact · hold for machines'], ['LIGHT', 'flashlight'], ['RELOAD', 'reload'], ['II', 'pause']],
+  '173': [['Left thumb', 'move (only when unseen)'], ['Right thumb', 'camera'], ['SNAP', 'snap neck']],
+  '096': [['Left thumb', 'move · rim to hurry'], ['Right thumb', 'turn your face'], ['ATTACK', 'attack a target']],
+  '106': [['Left thumb', 'move through walls'], ['Right thumb', 'camera'], ['SINK', 'sink into the floor'], ['GRAB', 'grab a guard']],
+  '999': [['Left thumb', 'bounce around'], ['Right thumb', 'camera'], ['TICKLE', 'tickle']],
+};
 let menuRole = 'guard';
 function renderControls() {
   const box = $('controlsText'); box.innerHTML = '';
-  CONTROLS[menuRole].forEach(([k, v]) => { const s = document.createElement('span'); const kb = document.createElement('kbd'); kb.textContent = k; s.appendChild(kb); s.appendChild(document.createTextNode(v)); box.appendChild(s); });
+  (IS_TOUCH ? CONTROLS_TOUCH : CONTROLS)[menuRole].forEach(([k, v]) => { const s = document.createElement('span'); const kb = document.createElement('kbd'); kb.textContent = k; s.appendChild(kb); s.appendChild(document.createTextNode(v)); box.appendChild(s); });
 }
 document.querySelectorAll('.role').forEach(b => b.addEventListener('click', () => {
   menuRole = b.dataset.role; document.querySelectorAll('.role').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false')); renderControls();
   try { localStorage.setItem('scpb-role', menuRole); } catch (e) {}
 }));
-$('deploy').addEventListener('click', () => { AU.init(); VO.init(); startGame(menuRole); });
+$('deploy').addEventListener('click', () => { AU.init(); VO.init(); VO.unlock(); startGame(menuRole); });
 $('btnResume').addEventListener('click', resumeGame);
 $('btnQuit').addEventListener('click', toMenu);
-$('btnRetry').addEventListener('click', () => startGame(G.role));
+$('btnRetry').addEventListener('click', () => { AU.init(); VO.unlock(); startGame(G.role); });
 $('btnMenu').addEventListener('click', toMenu);
 ['optLore', 'optVoice', 'optSens'].forEach(id => $(id).addEventListener('change', () => { try { localStorage.setItem('scpb-' + id, id === 'optSens' ? $(id).value : $(id).checked ? '1' : '0'); } catch (e) {} }));
 function restorePrefs() {
@@ -2679,7 +2818,7 @@ function render() {
   if (G.state === 'play' && G.mode === 'guard' && VM && P.alive) { renderer.clearDepth(); renderer.render(vmScene, vmCam); }
 }
 /* adaptive resolution: drop the render scale on slow GPUs, raise it again when there is headroom */
-const PR_MAX = Math.min(window.devicePixelRatio || 1, 1.5);
+const PR_MAX = Math.min(window.devicePixelRatio || 1, IS_TOUCH ? 1.25 : 1.5);
 let prNow = PR_MAX, perfAcc = 0, perfN = 0;
 function adaptResolution(dt) {
   if (G.state !== 'play' || G.paused) return;
@@ -2700,6 +2839,12 @@ function tick(now) {
   render();
 }
 async function boot() {
+  if (IS_TOUCH) {
+    document.body.classList.add('touch'); G.noLock = true;
+    $('menuNote').textContent = 'Touch controls: left thumb moves, right thumb looks. Play in landscape with headphones. A keyboard also works.';
+    $('pauseText').textContent = 'Tap resume to carry on.';
+    $('sensLbl').textContent = 'Look sensitivity';
+  }
   try { if (document.fonts && document.fonts.load) await Promise.race([Promise.all([document.fonts.load('104px "Saira Stencil One"'), document.fonts.load('600 26px "IBM Plex Mono"')]), new Promise(r => setTimeout(r, 2500))]); } catch (e) {}
   buildTextures(); buildMaterials(); buildWorld(); fixColors(scene);
   VM = makeViewmodel(); VM.vm.visible = false;
