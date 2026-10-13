@@ -1,7 +1,8 @@
 <!doctype html>
 <html lang="en">
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <title>Chizi</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -22,7 +23,7 @@
   color-scheme:dark;
 }
 [hidden]{display:none!important}
-html,body{height:100%;margin:0;background:var(--void);color:var(--bone);overflow:hidden;font-family:var(--font-type);-webkit-user-select:none;user-select:none}
+html,body{height:100%;margin:0;background:var(--void);color:var(--bone);overflow:hidden;font-family:var(--font-type);-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
 #stage{position:fixed;inset:0;background:var(--void)}
 #stage canvas{display:block;width:100%;height:100%}
 
@@ -100,6 +101,38 @@ html,body{height:100%;margin:0;background:var(--void);color:var(--bone);overflow
 #end.lose .logo{color:var(--crayon)}
 #end.win .logo{color:var(--mustard);text-shadow:3px 4px 0 rgba(0,0,0,.6)}
 #pause .logo,#end .logo{font-size:clamp(44px,8vw,84px)}
+
+/* ---------- touch (iPad) ---------- */
+#touch{position:fixed;inset:0;display:none;touch-action:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+body.touch.playing #touch{display:block}
+#tZone{position:absolute;inset:0;touch-action:none}
+.joy{position:absolute;left:0;top:0;width:132px;height:132px;margin:-66px 0 0 -66px;border-radius:50%;border:2px solid rgba(235,227,210,.4);background:rgba(235,227,210,.06);pointer-events:none;opacity:0;transition:opacity .12s}
+.joy.on{opacity:1}
+.knob{position:absolute;left:50%;top:50%;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;background:rgba(235,227,210,.5);box-shadow:0 2px 10px rgba(0,0,0,.5)}
+.joy.run{border-color:var(--crayon)}
+.joy.run .knob{background:var(--crayon)}
+.joy.run::after{content:"RUN";position:absolute;left:50%;bottom:-26px;transform:translateX(-50%);font-size:12px;letter-spacing:.2em;color:var(--crayon)}
+#tRest{position:absolute;left:calc(env(safe-area-inset-left,0px) + 44px);bottom:calc(env(safe-area-inset-bottom,0px) + 44px);width:110px;height:110px;border-radius:50%;border:2px dashed rgba(235,227,210,.22);pointer-events:none;display:grid;place-items:center;font-size:11px;letter-spacing:.18em;color:rgba(235,227,210,.4);transition:opacity .2s}
+#tRest.away,#tRest.gone{opacity:0}
+.tbtn{position:absolute;width:74px;height:74px;border-radius:50%;border:2px solid rgba(235,227,210,.5);background:rgba(12,9,8,.5);color:var(--bone);font-family:var(--font-type);font-size:12px;letter-spacing:.12em;display:grid;place-items:center;padding:0;touch-action:none;-webkit-tap-highlight-color:transparent;transition:transform .08s,opacity .2s,border-color .2s}
+.tbtn.down{transform:scale(.92);background:rgba(235,227,210,.22)}
+.tbtn.off{opacity:.35}
+#tUse{right:calc(env(safe-area-inset-right,0px) + 26px);bottom:calc(env(safe-area-inset-bottom,0px) + 118px);width:96px;height:96px;font-size:15px}
+#tUse.ready{border-color:var(--mustard);color:var(--mustard);box-shadow:0 0 22px rgba(227,185,78,.35)}
+#tThrow{right:calc(env(safe-area-inset-right,0px) + 136px);bottom:calc(env(safe-area-inset-bottom,0px) + 54px)}
+#tBurger{right:calc(env(safe-area-inset-right,0px) + 34px);bottom:calc(env(safe-area-inset-bottom,0px) + 22px);width:80px;height:80px}
+#tBurger svg{width:30px;height:30px;margin-bottom:-6px}
+#tBurger b{position:absolute;right:-4px;top:-4px;min-width:24px;height:24px;border-radius:12px;background:var(--mustard);color:var(--void);font-weight:normal;font-size:13px;display:grid;place-items:center;font-variant-numeric:tabular-nums}
+#tLight,#tPause{top:calc(env(safe-area-inset-top,0px) + 18px);width:54px;height:54px;font-size:11px}
+#tPause{right:calc(env(safe-area-inset-right,0px) + 18px);font-size:16px;letter-spacing:0}
+#tLight{right:calc(env(safe-area-inset-right,0px) + 84px)}
+body.touch #toast{top:calc(env(safe-area-inset-top,0px) + 86px)}
+body.touch #inv{bottom:auto;top:calc(env(safe-area-inset-top,0px) + 92px)}
+body.touch #subs{bottom:calc(env(safe-area-inset-bottom,0px) + 160px);width:min(620px,62vw)}
+body.touch #prompt kbd{font-size:11px;letter-spacing:.1em}
+.keys.tap{display:none}
+body.touch .keys.desk{display:none}
+body.touch .keys.tap{display:flex}
 @media (prefers-reduced-motion:reduce){#title .logo{animation:none}#fade{transition:none}}
 @media (max-width:520px){.stats{grid-template-columns:1fr}}
 </style>
@@ -130,6 +163,17 @@ html,body{height:100%;margin:0;background:var(--void);color:var(--bone);overflow
   </div>
 </div>
 
+<div id="touch" aria-hidden="true">
+  <div id="tZone"></div>
+  <div id="tRest">MOVE</div>
+  <div class="joy" id="tJoy"><div class="knob" id="tKnob"></div></div>
+  <button class="tbtn" id="tUse" type="button"><span>USE</span></button>
+  <button class="tbtn off" id="tThrow" type="button">THROW</button>
+  <button class="tbtn off" id="tBurger" type="button"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M6 19c0-8 6-13 14-13s14 5 14 13z" fill="#c9852f"/><path d="M5 20h30l-3 3H8z" fill="#5fa33a"/><rect x="5" y="22" width="30" height="5" rx="2.5" fill="#5a2f1c"/><path d="M6 27h28l-2 2H8z" fill="#f2c230"/><path d="M6 29h28c0 3-3 5-6 5H12c-3 0-6-2-6-5z" fill="#c9852f"/></svg><b id="tBurgerN">0</b></button>
+  <button class="tbtn" id="tLight" type="button">LIGHT</button>
+  <button class="tbtn" id="tPause" type="button" aria-label="Pause">II</button>
+</div>
+
 <div id="fade" class="fx"></div>
 
 <section id="title" class="screen">
@@ -139,7 +183,7 @@ html,body{height:100%;margin:0;background:var(--void);color:var(--bone);overflow
     <h1 class="logo">Chizi</h1>
     <p class="tag">Er Baobao is two meters tall, he never stops eating, and tonight he can smell you. Get out of the house before he finds you.</p>
     <button class="btn" id="startBtn" disabled>Loading…</button>
-    <p class="small" id="startNote">Wear headphones. Made for keyboard and mouse.</p>
+    <p class="small" id="startNote">Wear headphones. Play with keyboard and mouse, or with touch on an iPad.</p>
    </div>
    <div class="rules">
     <div class="note">
@@ -152,7 +196,10 @@ html,body{height:100%;margin:0;background:var(--void);color:var(--bone);overflow
         <li>Pick things up and throw them at him. A hit knocks him silly for a few seconds.</li>
       </ol>
     </div>
-    <div class="keys">
+    <div class="keys tap">
+      <span><kbd>Left thumb</kbd>Move</span><span><kbd>Push to edge</kbd>Run</span><span><kbd>Right thumb</kbd>Look</span><span><kbd>USE</kbd>Pick up · hide · open</span><span><kbd>THROW</kbd>Throw item</span><span><kbd>BURGER</kbd>Throw burger</span>
+    </div>
+    <div class="keys desk">
       <span><kbd>W A S D</kbd>Move</span><span><kbd>Shift</kbd>Run</span><span><kbd>Mouse</kbd>Look</span><span><kbd>E</kbd>Use · pick up · hide</span><span><kbd>Click</kbd>Throw item</span><span><kbd>Q</kbd>Throw burger</span><span><kbd>F</kbd>Flashlight</span><span><kbd>Esc</kbd>Pause</span>
     </div>
    </div>
@@ -197,6 +244,7 @@ const SFX = (() => {
 
   function init() {
     if (ctx) return ctx;
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
     ctx = new AC();
     comp = ctx.createDynamicsCompressor();
     comp.threshold.value = -12; comp.knee.value = 10; comp.ratio.value = 5; comp.attack.value = 0.003; comp.release.value = 0.25;
@@ -1977,15 +2025,17 @@ const PLAYER = (() => {
     const tilt = (k.ArrowUp ? 1 : 0) - (k.ArrowDown ? 1 : 0); if (tilt && P.hidden) look(0, -tilt * 400 * dt);
     let moving = false;
     if (P.enabled && !P.hidden && !P.dead) {
-      const f = (k.KeyW ? 1 : 0) - (k.KeyS ? 1 : 0), s = (k.KeyD ? 1 : 0) - (k.KeyA ? 1 : 0);
+      let f = (k.KeyW ? 1 : 0) - (k.KeyS ? 1 : 0), s = (k.KeyD ? 1 : 0) - (k.KeyA ? 1 : 0), mag = 1;
+      const J = P.joy;
+      if (J && Math.hypot(J.x, J.y) > 0.12) { f = -J.y; s = J.x; mag = Math.min(1, Math.hypot(f, s)); }
       let mx = 0, mz = 0;
       if (f || s) {
         const sy = Math.sin(P.yaw), cy = Math.cos(P.yaw);
         mx = -sy * f + cy * s; mz = -cy * f - sy * s; const l = Math.hypot(mx, mz); mx /= l; mz /= l; moving = true;
       }
-      const wantRun = (k.ShiftLeft || k.ShiftRight) && moving && f > 0 && !P.exhausted;
+      const wantRun = (k.ShiftLeft || k.ShiftRight || (J && J.run)) && moving && f > 0.3 && !P.exhausted;
       P.running = wantRun && P.stamina > 0;
-      const sp = P.running ? 5.3 : (P.exhausted ? 2.3 : 3.0);
+      const sp = P.running ? 5.3 : (P.exhausted ? 2.3 : 3.0) * Math.max(0.4, mag);
       const a = Math.min(1, dt * (moving ? 10 : 12));
       P.vel.x += (mx * sp - P.vel.x) * a; P.vel.z += (mz * sp - P.vel.z) * a;
       const ox = P.pos.x, oz = P.pos.z;
@@ -2093,7 +2143,7 @@ const PLAYER = (() => {
     if (t.kind === 'burger') {
       const b = t.o; b.state = 'taken'; G.scene.remove(b.mesh); G.burgers.splice(G.burgers.indexOf(b), 1);
       P.burgers++; SFX.burgerGet(); GAME.updateHUD();
-      if (P.firstBurger) { P.firstBurger = false; GAME.say('p_burger'); GAME.toast('Press Q to throw a burger. Chizi stops to eat it.'); }
+      if (P.firstBurger) { P.firstBurger = false; GAME.say('p_burger'); GAME.toast(GAME.ctl('burger') + ' to throw a burger. Chizi stops to eat it.'); }
     } else if (t.kind === 'key') {
       G.key.taken = true; G.hasKey = true; G.scene.remove(G.key.mesh); SFX.keyGet(); GAME.say('p_key', false, true); GAME.setObjective('Unlock the front door downstairs'); GAME.updateHUD();
     } else if (t.kind === 'prop') {
@@ -2104,7 +2154,7 @@ const PLAYER = (() => {
       o.mesh.rotation.set(0.15, -0.4, 0);
       o.mesh.traverse(m => { if (m.isMesh) m.castShadow = false; });
       SFX.pickup(); GAME.updateHUD();
-      if (P.firstProp) { P.firstProp = false; GAME.say('p_pickup'); GAME.toast('Click to throw it. Hit Chizi to stun him.'); }
+      if (P.firstProp) { P.firstProp = false; GAME.say('p_pickup'); GAME.toast(GAME.ctl('throw') + ' to throw it. Hit Chizi to stun him.'); }
     } else if (t.kind === 'bed') hide(t.b);
     else if (t.kind === 'door') GAME.tryDoor();
   }
@@ -2208,6 +2258,104 @@ const PLAYER = (() => {
   return Object.assign(P, { keys, look, update, interact, throwHeld, throwBurger, physics, reset, promptText, forward });
 })();
 
+// ================= TOUCH: iPad / tablet controls =================
+// Left thumb: floating joystick (push it to the rim to run). Right thumb: drag to look.
+// Buttons: USE, THROW, BURGER, LIGHT, PAUSE.
+const TOUCH = (() => {
+  const T = { on: false, joy: null, lookId: null, lx: 0, ly: 0, lastT: 0 };
+  const R = 62, LOOK = 2.1;
+  let zone, joy, knob, rest, bUse, bThrow, bBurger, bLight, bPause, nBurger;
+
+  function coarse() {
+    try { return matchMedia('(pointer: coarse)').matches || (navigator.maxTouchPoints > 1 && !matchMedia('(hover: hover)').matches); } catch (e) { return false; }
+  }
+  function enable() {
+    if (T.on) return; T.on = true;
+    document.body.classList.add('touch');
+    GAME.onTouchMode();
+  }
+  function init() {
+    const $ = id => document.getElementById(id);
+    zone = $('tZone'); joy = $('tJoy'); knob = $('tKnob'); rest = $('tRest');
+    bUse = $('tUse'); bThrow = $('tThrow'); bBurger = $('tBurger'); bLight = $('tLight'); bPause = $('tPause'); nBurger = $('tBurgerN');
+    if (coarse()) enable();
+    // any real touch anywhere switches the touch layout on
+    window.addEventListener('pointerdown', e => { if (e.pointerType === 'touch' || e.pointerType === 'pen') { T.lastT = performance.now(); enable(); } }, true);
+    window.addEventListener('touchstart', () => { T.lastT = performance.now(); enable(); }, { capture: true, passive: true });
+    document.addEventListener('gesturestart', e => e.preventDefault());
+    document.addEventListener('dblclick', e => e.preventDefault());
+
+    zone.addEventListener('pointerdown', e => {
+      if (e.pointerType === 'mouse') return;
+      e.preventDefault(); T.lastT = performance.now();
+      if (GAME.state !== 'play') return;
+      const left = e.clientX < window.innerWidth * 0.45;
+      if (left && !T.joy && !PLAYER.hidden) {
+        T.joy = { id: e.pointerId, x0: e.clientX, y0: e.clientY, x: 0, y: 0, run: false };
+        joy.style.left = e.clientX + 'px'; joy.style.top = e.clientY + 'px';
+        joy.classList.add('on'); rest.classList.add('away'); setKnob(0, 0);
+        PLAYER.joy = T.joy;
+      } else if (!left && T.lookId == null) {
+        T.lookId = e.pointerId; T.lx = e.clientX; T.ly = e.clientY;
+      } else if (left && T.lookId == null && PLAYER.hidden) {
+        T.lookId = e.pointerId; T.lx = e.clientX; T.ly = e.clientY;
+      }
+    });
+    zone.addEventListener('pointermove', e => {
+      if (T.joy && e.pointerId === T.joy.id) {
+        e.preventDefault();
+        let dx = e.clientX - T.joy.x0, dy = e.clientY - T.joy.y0; const len = Math.hypot(dx, dy);
+        if (len > R) { dx = dx / len * R; dy = dy / len * R; }
+        T.joy.x = dx / R; T.joy.y = dy / R;
+        T.joy.run = len > R * 0.92 && dy < -R * 0.45;
+        joy.classList.toggle('run', T.joy.run);
+        setKnob(dx, dy);
+      } else if (e.pointerId === T.lookId) {
+        e.preventDefault();
+        PLAYER.look((e.clientX - T.lx) * LOOK, (e.clientY - T.ly) * LOOK);
+        T.lx = e.clientX; T.ly = e.clientY;
+      }
+    });
+    const end = e => {
+      if (T.joy && e.pointerId === T.joy.id) { T.joy = null; PLAYER.joy = null; joy.classList.remove('on', 'run'); rest.classList.remove('away'); }
+      if (e.pointerId === T.lookId) T.lookId = null;
+    };
+    zone.addEventListener('pointerup', end); zone.addEventListener('pointercancel', end); zone.addEventListener('lostpointercapture', end);
+
+    const btn = (el, fn) => {
+      el.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); T.lastT = performance.now(); el.classList.add('down'); if (GAME.state === 'play') fn(); });
+      ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => el.addEventListener(t, () => el.classList.remove('down')));
+      el.addEventListener('click', e => e.preventDefault());
+    };
+    btn(bUse, () => PLAYER.interact(GAME.camera));
+    btn(bThrow, () => PLAYER.throwHeld(GAME.camera));
+    btn(bBurger, () => PLAYER.throwBurger(GAME.camera));
+    btn(bLight, () => GAME.toggleFlash());
+    btn(bPause, () => GAME.pause());
+  }
+  function setKnob(dx, dy) { knob.style.transform = 'translate(' + dx + 'px,' + dy + 'px)'; }
+  function reset() {
+    T.joy = null; T.lookId = null; PLAYER.joy = null;
+    if (joy) { joy.classList.remove('on', 'run'); rest.classList.remove('away'); }
+  }
+  let cache = '';
+  function update() {
+    if (!T.on) return;
+    if (PLAYER.hidden && T.joy) reset();
+    const s = (PLAYER.target || PLAYER.hidden ? 1 : 0) + '|' + (PLAYER.held ? 1 : 0) + '|' + PLAYER.burgers + '|' + (PLAYER.flashOn ? 1 : 0) + '|' + (PLAYER.hidden ? 1 : 0);
+    if (s === cache) return; cache = s;
+    bUse.classList.toggle('ready', !!PLAYER.target || PLAYER.hidden);
+    bUse.querySelector('span').textContent = PLAYER.hidden ? 'OUT' : 'USE';
+    bThrow.classList.toggle('off', !PLAYER.held);
+    bBurger.classList.toggle('off', PLAYER.burgers <= 0); nBurger.textContent = PLAYER.burgers;
+    bLight.classList.toggle('off', !PLAYER.flashOn);
+    rest.classList.toggle('gone', PLAYER.hidden);
+  }
+  // recent touch? (used to ignore the mouse events browsers synthesize after a tap)
+  function recent() { return performance.now() - T.lastT < 900; }
+  return { T, init, enable, update, reset, recent, coarse, get on() { return T.on; } };
+})();
+
 // ================= GAME: boot, loop, HUD, voices, events, win/lose =================
 const GAME = (() => {
   const $ = id => document.getElementById(id);
@@ -2215,7 +2363,7 @@ const GAME = (() => {
   let renderer, scene, camera, flash, glowLight, state = 'title', last = 0, pvUntil = 0, queue = [], chiziVoice = null, subUntil = 0;
   let shake = 0, hbT = 0, grainT = 0, tvT = 0, tickT = 0, creakT = 10, caughtT = 0, wonT = 0, introT = 0, heardOnce = false, spottedT = -99, lostCheck = null, eatSayT = -99;
   const quality = { pr: 1, acc: 0, n: 0, checks: 0 };
-  let lockAt = 0, lockMode = 'lock', rmb = false, toastT = 0, frame = 0, darkS = 0;
+  let lastState = '', lockAt = 0, lockMode = 'lock', rmb = false, toastT = 0, frame = 0, darkS = 0;
   const camQ = new THREE.Quaternion(), mtx = new THREE.Matrix4(), UP = new THREE.Vector3(0, 1, 0);
 
   // ---------- boot ----------
@@ -2223,10 +2371,11 @@ const GAME = (() => {
     const startBtn = $('startBtn');
     try { await Promise.race([document.fonts.load('26px "Rock Salt"'), new Promise(r => setTimeout(r, 2500))]); } catch (e) {}
     renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-    quality.pr = location.hash === '#lowq' ? 0.4 : Math.min(window.devicePixelRatio || 1, 1.5);
+    const tablet = TOUCH.coarse();
+    quality.pr = location.hash === '#lowq' ? 0.4 : Math.min(window.devicePixelRatio || 1, tablet ? 1.0 : 1.5);
     renderer.setPixelRatio(quality.pr);
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.enabled = true; renderer.shadowMap.type = tablet ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
     $('stage').appendChild(renderer.domElement);
     scene = new THREE.Scene(); G.scene = scene;
     scene.background = new THREE.Color(0x020204); scene.fog = new THREE.FogExp2(0x040407, 0.068);
@@ -2252,6 +2401,7 @@ const GAME = (() => {
     $('againBtn').addEventListener('click', () => { SFX.resume(); SFX.uiClick(); begin(true); });
     $('resumeBtn').addEventListener('click', () => { resume(); });
     bindInput();
+    TOUCH.init();
     window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
     $('fade').style.opacity = 0;
     requestAnimationFrame(loop);
@@ -2264,7 +2414,7 @@ const GAME = (() => {
   // ---------- input ----------
   function canvasEl() { return renderer.domElement; }
   function requestLock() {
-    if (lockMode !== 'lock') return;
+    if (lockMode !== 'lock' || TOUCH.on || !canvasEl().requestPointerLock) return;
     try { const r = canvasEl().requestPointerLock(); if (r && r.catch) r.catch(() => fallbackLook()); } catch (e) { fallbackLook(); }
   }
   function fallbackLook() {
@@ -2282,15 +2432,15 @@ const GAME = (() => {
       if (e.code === 'KeyE') PLAYER.interact(camera);
       else if (e.code === 'KeyQ') PLAYER.throwBurger(camera);
       else if (e.code === 'KeyR') PLAYER.throwHeld(camera);
-      else if (e.code === 'KeyF') { PLAYER.flashOn = !PLAYER.flashOn; SFX.uiClick(); }
+      else if (e.code === 'KeyF') toggleFlash();
       else if (e.code === 'KeyP' || (e.code === 'Escape' && lockMode === 'drag')) pause();
     });
     document.addEventListener('keyup', e => { PLAYER.keys[e.code] = false; });
     window.addEventListener('blur', () => { for (const k in PLAYER.keys) PLAYER.keys[k] = false; });
     canvasEl().addEventListener('contextmenu', e => e.preventDefault());
     document.addEventListener('mousedown', e => {
-      if (state !== 'play') return;
-      if (e.target.closest && e.target.closest('button')) return;
+      if (state !== 'play' || TOUCH.recent()) return;
+      if (e.target.closest && e.target.closest('button, .tbtn')) return;
       if (e.button === 2) { rmb = true; return; }
       if (e.button === 0) { if (lockMode === 'lock' && !locked()) { requestLock(); return; } PLAYER.throwHeld(camera); }
     });
@@ -2303,6 +2453,7 @@ const GAME = (() => {
     });
     document.addEventListener('pointerlockchange', () => { if (locked()) lockAt = performance.now(); if (!locked() && state === 'play' && lockMode === 'lock') pause(); });
     document.addEventListener('pointerlockerror', () => fallbackLook());
+    document.addEventListener('visibilitychange', () => { if (document.hidden && state === 'play') pause(); });
   }
 
   // ---------- flow ----------
@@ -2317,7 +2468,9 @@ const GAME = (() => {
     $('fade').style.opacity = 1; setTimeout(() => { $('fade').style.opacity = 0; }, 120);
     SFX.stopAll(); setTimeout(() => { SFX.startAmbience(); SFX.startChaseLayer(); }, 60);
     requestLock();
-    if (!again) { say('n_intro', false, true); setTimeout(() => { if (state === 'play') toast('WASD to move · Shift to run · E to use · F flashlight', 7); }, 1500); }
+    TOUCH.reset();
+    if (TOUCH.on) goFullscreen();
+    if (!again) { say('n_intro', false, true); setTimeout(() => { if (state === 'play') toast(TOUCH.on ? 'Left thumb moves (push to the edge to run). Right thumb looks around.' : 'WASD to move · Shift to run · E to use · F flashlight', 7); }, 1500); }
     PLAYER.enabled = true;
   }
   function resetWorld() {
@@ -2378,7 +2531,7 @@ const GAME = (() => {
     const P = PLAYER;
     $('burgerN').textContent = P.burgers;
     $('keySlot').classList.toggle('got', G.hasKey);
-    $('held').innerHTML = P.held ? 'Holding <b>' + P.held.name.toLowerCase() + '</b> · click to throw' : '';
+    $('held').innerHTML = P.held ? 'Holding <b>' + P.held.name.toLowerCase() + '</b> · ' + (TOUCH.on ? 'tap THROW' : 'click to throw') : '';
   }
 
   // ---------- events from Chizi / player ----------
@@ -2417,6 +2570,7 @@ const GAME = (() => {
     if (G.freeze) { last = now; return; }
     const dt = Math.min(0.05, (now - (last || now)) / 1000); last = now; frame++;
     const tA = performance.now();
+    if (state !== lastState) { document.body.classList.toggle('playing', state === 'play'); lastState = state; }
     if (state === 'play') stepPlay(dt);
     else if (state === 'caught') stepCaught(dt);
     else if (state === 'won') stepWon(dt);
@@ -2476,9 +2630,10 @@ const GAME = (() => {
     SFX.setListener(camera.position, f, UP);
     // HUD
     const pr = P.promptText();
-    const html = pr ? '<kbd>' + pr[0] + '</kbd>' + pr[1] : '';
+    const html = pr ? '<kbd>' + (TOUCH.on ? 'USE' : pr[0]) + '</kbd>' + pr[1] : '';
     if (html !== hudCache) { $('prompt').innerHTML = html; hudCache = html; }
     $('cross').classList.toggle('target', !!P.target);
+    TOUCH.update();
     const sw = $('staminaWrap'); sw.classList.toggle('show', P.stamina < 99.5); sw.classList.toggle('tired', P.exhausted);
     $('stamina').style.transform = 'scaleX(' + (P.stamina / 100).toFixed(3) + ')';
     // win
@@ -2520,6 +2675,22 @@ const GAME = (() => {
     if (wonT > 8.2) { showEnd(true); $('fade').style.opacity = 0; SFX.stopAll(); }
   }
 
+  // ---------- touch / tablet helpers ----------
+  function ctl(kind) {
+    const t = TOUCH.on;
+    return { burger: t ? 'Tap BURGER' : 'Press Q', throw: t ? 'Tap THROW' : 'Click', use: t ? 'Tap USE' : 'Press E' }[kind] || '';
+  }
+  function toggleFlash() { PLAYER.flashOn = !PLAYER.flashOn; SFX.uiClick(); }
+  function onTouchMode() {
+    lockMode = 'touch';
+    if (renderer && quality.pr > 1.0 && location.hash !== '#lowq') { quality.pr = 1.0; renderer.setPixelRatio(1.0); renderer.setSize(window.innerWidth, window.innerHeight); }
+    $('lookNote').textContent = '';
+  }
+  function goFullscreen() {
+    const el = document.documentElement;
+    try { const f = el.requestFullscreen || el.webkitRequestFullscreen; if (f && !document.fullscreenElement && !document.webkitFullscreenElement) { const r = f.call(el); if (r && r.catch) r.catch(() => {}); } } catch (e) {}
+  }
+
   // ---------- adaptive resolution: drop pixel ratio if frames are slow ----------
   function adaptQuality(dt) {
     if (state !== 'play' || quality.checks > 6) return;
@@ -2538,7 +2709,7 @@ const GAME = (() => {
     gctx.putImageData(gimg, 0, 0);
   }
 
-  return { boot, say, toast, setObjective, updateHUD, muffleFor, onSpotted, onLost, onSurge, onStomp, onEat, onHide, onHitChizi, tryDoor, caught, get state() { return state; }, get camera() { return camera; }, _debug: { begin, win, get renderer() { return renderer; }, sim(sec, render) { const n = Math.round(sec * 30); for (let i = 0; i < n; i++) { if (state === 'play') stepPlay(1 / 30); else if (state === 'caught') stepCaught(1 / 30); else if (state === 'won') stepWon(1 / 30); } if (render) renderer.render(scene, camera); return state; } } };
+  return { boot, ctl, toggleFlash, onTouchMode, pause, say, toast, setObjective, updateHUD, muffleFor, onSpotted, onLost, onSurge, onStomp, onEat, onHide, onHitChizi, tryDoor, caught, get state() { return state; }, get camera() { return camera; }, _debug: { begin, win, get renderer() { return renderer; }, sim(sec, render) { const n = Math.round(sec * 30); for (let i = 0; i < n; i++) { if (state === 'play') stepPlay(1 / 30); else if (state === 'caught') stepCaught(1 / 30); else if (state === 'won') stepWon(1 / 30); } if (render) renderer.render(scene, camera); return state; } } };
 })();
 window.addEventListener('load', () => { GAME.boot().catch(e => { console.error(e); const b = document.getElementById('startBtn'); b.textContent = 'Could not start: ' + e.message; }); });
 
