@@ -1,6 +1,6 @@
 # tang.ninja
 
-Yang Tang's research homepage plus his kids' browser games. Static site on Cloudflare Pages, built by `node build.mjs` (no dependencies) into `dist/` on every push. `dist/` is not committed. The user's own guide is README.md (Chinese); keep it accurate when the workflow changes.
+Yang Tang's research homepage plus his kids' browser games. Static site on Cloudflare Workers (static assets + a tiny router), built by `node build.mjs` (no dependencies) into `dist/` on every push and deployed with `npx wrangler deploy` (`wrangler.jsonc`). `dist/` is not committed. The user's own guide is README.md (Chinese); keep it accurate when the workflow changes.
 
 ## Layout
 - `home/index.html`: tang.ninja, research and CV (Bauhaus + Apple look). An illustrated hero (title top left, numbered section index top right), then a white sheet with sections 01 to 06 matching that index. The build fills `<!-- SCENE -->` with the hero illustration. Everything else in `home/` (home.js, hero/, images) is copied to the site root.
@@ -15,7 +15,7 @@ Yang Tang's research homepage plus his kids' browser games. Static site on Cloud
 - `kids/<id>/games/<same name>.jpg|png`: optional cover image, 960x600.
 - `site.json`: domain and the kids: `id` (subdomain), `name`, `theme` (`hazard`, `comic` or `dossier`, in `shared/themes/`; fonts per theme are in build.mjs `THEMES`).
 - `templates/kid.html` + `shared/kid.css`: the games-page structure shared by every theme.
-- `dist/_worker.js` (generated) routes `<id>.tang.ninja` to `dist/<id>/`.
+- `dist/_worker.js` (generated) routes `<id>.tang.ninja` to `dist/<id>/`; `wrangler.jsonc` deploys it as the Worker (`run_worker_first`) with `dist/` as its assets (`dist/.assetsignore` keeps the worker file out of the assets).
 
 ## Adding or updating a game
 1. Copy the `.html` into `kids/<id>/games/`, keeping the original file name so later versions overwrite it.

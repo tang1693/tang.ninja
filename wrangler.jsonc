@@ -1,0 +1,13 @@
+// Cloudflare Workers config: the site is static files in dist/ plus the small worker that sends
+// <kid>.tang.ninja to its folder. Cloudflare builds it with `node build.mjs` and deploys with
+// `npx wrangler deploy` on every push (set up once in the dashboard, see README.md).
+{
+  "name": "tang-ninja",
+  "main": "dist/_worker.js",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  }
+}
