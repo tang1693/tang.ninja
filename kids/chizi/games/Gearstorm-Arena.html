@@ -56,6 +56,13 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--hud);font
 .weap b{color:var(--amber);font-weight:700}
 .weap.warn b{color:var(--danger)}
 .weap.dim{opacity:.45}
+.weap.gold b{color:#ffd56a}
+#omegaBar{position:absolute;top:calc(16px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);width:min(440px,46vw);display:flex;flex-direction:column;gap:5px;text-align:center}
+#omegaBar .lbl{color:#ffd56a;text-shadow:0 0 10px rgba(255,190,60,.6)}
+.bar.omega{height:12px}
+.bar.omega i{background:linear-gradient(90deg,#ffb23e,#fff0b0,#ffb23e)}
+#tCombine{right:28px;bottom:calc(214px + env(safe-area-inset-bottom,0px));width:70px;height:70px;border-color:#ffd56a;color:#ffd56a}
+#tCombine.on{background:rgba(255,200,80,.35);box-shadow:0 0 18px rgba(255,200,80,.6)}
 #boss{position:absolute;top:calc(16px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);width:min(440px,46vw);display:flex;flex-direction:column;gap:5px;text-align:center}
 #boss .lbl{color:var(--danger)}
 #callout{position:absolute;top:calc(20% + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);font-family:var(--display);font-size:clamp(20px,3.4vw,38px);letter-spacing:.06em;color:var(--text);text-shadow:0 2px 14px rgba(0,0,0,.7);white-space:nowrap;opacity:0;transition:opacity .25s;text-align:center}
@@ -177,6 +184,7 @@ body.touch .deskonly{display:none}
       <div class="stat"><span class="lbl">Hostiles</span><span id="hostiles">0</span></div>
     </div>
     <div class="glass tr"><canvas id="radar" width="300" height="300"></canvas></div>
+    <div id="omegaBar" hidden><div class="lbl">Gearstorm Omega · invincible</div><div class="bar omega"><i id="omegaFill"></i></div></div>
     <div id="boss" hidden><div class="lbl">Goliath-class heavy</div><div class="bar boss"><i id="bossFill"></i></div></div>
     <div id="callout"></div>
     <div class="glass bl">
@@ -190,6 +198,7 @@ body.touch .deskonly{display:none}
       <div class="weap" id="wMissile"><span class="k">RMB</span><span id="wMslName">Missile swarm</span><b id="missileTxt">8</b></div>
       <div class="weap" id="wBlade"><span class="k">E</span><span id="wBladeName">Energy blade</span><b id="bladeTxt">READY</b></div>
       <div class="weap"><span class="k">F</span><span>Transform</span><b id="xformTxt">TO JET</b></div>
+      <div class="weap gold" id="wCombine" hidden><span class="k">G</span><span>Combine</span><b id="combineTxt">0%</b></div>
     </div>
     <div id="vignette"></div>
     <div id="steerHint" hidden>Move the mouse toward the screen edge to turn</div>
@@ -204,6 +213,7 @@ body.touch .deskonly{display:none}
     <button class="tbtn" id="tBoost" data-act="boost">BOOST</button>
     <button class="tbtn" id="tX" data-act="xform">JET</button>
     <button class="tbtn" id="tPause" data-act="pause">II</button>
+    <button class="tbtn" id="tCombine" data-act="combine" hidden>UNITE<small id="tCombineN">0%</small></button>
   </div>
 
   <section class="screen" id="menu">
@@ -222,12 +232,14 @@ body.touch .deskonly{display:none}
         <div><kbd>SHIFT</kbd>Boost</div>
         <div><kbd>C</kbd>Descend</div>
         <div><kbd>ESC</kbd>Pause</div>
+        <div><kbd>G</kbd>Combine all six (Atlas)</div>
       </div>
       <div class="keys touchonly">
         <div><kbd>LEFT</kbd>Drag to move</div>
         <div><kbd>RIGHT</kbd>Drag to aim (FIRE aims too)</div>
         <div><kbd>FLY</kbd>Jump · hold to fly</div>
         <div><kbd>JET</kbd>Transform (button shows the form)</div>
+        <div><kbd>UNITE</kbd>Combine all six (Atlas)</div>
       </div>
       <div class="roster" id="roster">
         <div class="roster-head"><span class="lbl">Choose your mech</span><span class="lbl deskonly">← → or 1–6</span></div>
@@ -686,6 +698,10 @@ const SFX = {
     s.connect(f); f.connect(g); g.connect(this.out); s.start(t, Math.random()); s.stop(t + dur + 0.05);
   },
   fall(dist, range = 420) { return clamp(1 - dist / range, 0.04, 1); },
+  omega() {
+    [220, 277, 330, 440, 554, 660].forEach((f, i) => this.tone('triangle', f, f * 1.01, 1.8, 0.07, i * 0.06));
+    this.tone('sine', 55, 40, 1.6, 0.4); this.hiss(1.4, 0.3, 'bandpass', 400, 5000, 2);
+  },
   shoot(kind) {
     if (kind === 'cannon') { this.tone('sine', 160, 45, 0.25, 0.3); this.hiss(0.25, 0.22, 'lowpass', 1600, 120); return; }
     if (kind === 'bark') { this.hiss(0.12, 0.3, 'bandpass', 900, 350, 3); this.tone('square', 330, 170, 0.12, 0.1); return; }
@@ -784,7 +800,7 @@ if (window.speechSynthesis) {
 
 /* ---------------- input ---------------- */
 const keys = Object.create(null);
-const input = { fire: false, fly: false, boost: false, down: false, mx: 0, my: 0, lookDX: 0, lookDY: 0, missile: false, melee: false, xform: false };
+const input = { fire: false, fly: false, boost: false, down: false, mx: 0, my: 0, lookDX: 0, lookDY: 0, missile: false, melee: false, xform: false, combine: false };
 let pointerLocked = false, lockFailed = false, wasLocked = false;
 let mouseX = innerWidth / 2, mouseY = innerHeight / 2, mouseIn = false;
 
@@ -797,6 +813,7 @@ addEventListener('keydown', e => {
     case 'KeyF': case 'KeyT': input.xform = true; break;
     case 'KeyE': case 'KeyV': input.melee = true; break;
     case 'KeyQ': input.missile = true; break;
+    case 'KeyG': input.combine = true; break;
     case 'Escape': case 'KeyP': pause(); break;
     case 'KeyM': setVoice(!Voice.on); break;
   }
@@ -845,6 +862,7 @@ function touchAct(act, down) {
     case 'boost': input.boost = down; break;
     case 'missile': if (down) input.missile = true; break;
     case 'melee': if (down) input.melee = true; break;
+    case 'combine': if (down) input.combine = true; break;
     case 'xform': if (down) input.xform = true; break;
     case 'pause': if (down) pause(); break;
   }
@@ -979,7 +997,7 @@ const CHARS = [
     blade: { name: 'Stinger', dmg: 80, reach: 6, cd: 0.8, dash: 24 },
     stats: [2, 3, 2, 5, 2] },
   { id: 'atlas', name: 'Atlas', code: 'AX-1', role: 'Giant', form: 'giant', say: 'Atlas. The giant.',
-    perk: 'A towering giant: slow and very tough, it charges a Nova Beam in its chest. Mega mode makes it even bigger.',
+    perk: 'A towering giant with a chest Nova Beam. Fill the Combine meter and press G: all six mechs merge into the golden, invincible Gearstorm Omega.',
     pal: { armor: 0x2e3f72, frame: 0x1a1e29, trim: 0xe7b54a, glow: 0x72f2ff, blade: 0x9ff6ff }, scale: 2.3, look: { head: 'crown', bulk: 1.2, core: true, form: 'giant' },
     hp: 420, walk: 8.5, boost: 15, jump: 10, giant: [6.5, 11], eRegen: 0.8, armorMul: 0.6,
     gun: { name: 'Wrist cannon', rate: 0.22, heat: 5, dmg: 16, speed: 200, color: 0x8ff4ff, size: 1.8, splash: 3.5, sfx: 'cannon' },
@@ -1269,6 +1287,13 @@ function poseMech(m, dt, s) {
       bladeOut = k < 0.88 ? 1 : 0;
     }
   }
+  // summoning stance: both arms raised
+  m.sumB = damp(m.sumB || 0, s.summon ? 1 : 0, 6, dt);
+  if (m.sumB > 0.01) {
+    const b = m.sumB;
+    shLx = lerp(shLx, 2.9, b); shRx = lerp(shRx, 2.9, b); shLz = lerp(shLz, -0.55, b); shRz = lerp(shRz, 0.55, b);
+    elL = lerp(elL, -0.2, b); elR = lerp(elR, -0.2, b); torsoX = lerp(torsoX, -0.12, b);
+  }
   // beam stance: arms thrown back, chest out
   m.beamB = damp(m.beamB || 0, s.beam ? 1 : 0, 8, dt);
   if (m.beamB > 0.01) {
@@ -1543,6 +1568,7 @@ const camF = new V3(0, 0, -1), aimPoint = new V3();
 const dmgDirs = [];
 const enemies = [], bullets = [], missiles = [];
 const swarmDrones = [], swarmC = new V3(), sdGeo = new THREE.OctahedronGeometry(0.5, 0);
+const omega = { state: 'off', t: 0, k: 1, glow: 0, charge: 40, readySaid: false, fadeSaid: false, allies: [], kit: null };
 let swarmT = 0;
 let boss = null;
 
@@ -1568,7 +1594,7 @@ function setCharacter(id) {
   return ch;
 }
 // current size: the giant grows in Mega mode
-function curScale() { const m = player.mech; return player.ch.scale * (player.ch.form === 'giant' && m ? 1 + 0.4 * smooth(clamp(m.morph, 0, 1)) : 1); }
+function curScale() { const m = player.mech; return player.ch.scale * (player.ch.form === 'giant' && m ? 1 + 0.4 * smooth(clamp(m.morph, 0, 1)) : 1) * omega.k; }
 function playerCenter() { return player.c.set(player.pos.x, player.pos.y + lerp(3.3, FORM_INFO[player.ch.form].center, smooth(player.mech.morph)) * curScale(), player.pos.z); }
 
 /* ---------------- bullets ---------------- */
@@ -1790,6 +1816,7 @@ function killEnemy(e) {
   }
   scene.remove(e.root);
   score += e.pts; kills++;
+  if (player.ch.id === 'atlas' && omega.state === 'off') omega.charge = Math.min(100, omega.charge + 8);
   if (gameTime - lastKill < 3.5) streak++; else streak = 1;
   lastKill = gameTime;
   if (e.boss) Voice.say('Goliath destroyed. Outstanding work.', { prio: 3, cls: 'good' });
@@ -1969,7 +1996,7 @@ function updateEnemy(e, dt) {
 
 /* ---------------- player hurt / death ---------------- */
 function hurtPlayer(dmg, from) {
-  if (!player.alive || state !== 'play') return;
+  if (!player.alive || state !== 'play' || omega.state !== 'off') return;
   if (player.ch.armorMul && player.mode === 1 && player.mech.morph > 0.5) dmg *= player.ch.armorMul;
   player.hp -= dmg; player.lastHurt = gameTime; hurtFlash = Math.min(1, hurtFlash + 0.35 + dmg / 40);
   SFX.hurt(); addShake(0.18 + dmg / 60);
@@ -2230,7 +2257,9 @@ function updateBeam(dt) {
   if (beam.state === 'idle' || !p.alive) { beam.state = 'idle'; beamFX.g.visible = false; return; }
   const S = curScale(), P = p.mech.P;
   beam.t += dt;
-  (P.coreTip || P.head).getWorldPosition(beamO);
+  const gold = omega.state === 'on';
+  (gold && omega.kit && omega.kit.mouth ? omega.kit.mouth : (P.coreTip || P.head)).getWorldPosition(beamO);
+  beamFX.outer.material.color.setHex(gold ? 0xffc640 : 0x72f2ff); beamFX.inner.material.color.setHex(gold ? 0xfff6d8 : 0xf2ffff);
   if (beam.state === 'charge') {
     for (let k = 0; k < 6; k++) {
       const a = rand(0, TAU), b = rand(-1, 1), R = rand(3, 6) * S, q = Math.sqrt(1 - b * b);
@@ -2247,7 +2276,7 @@ function updateBeam(dt) {
   const L = Math.max(4, rayWorld(beamO, beamDir, 420));
   beamEnd.copy(beamO).addScaledVector(beamDir, L);
   const fade = Math.min(1, beam.t / 0.12) * Math.min(1, (2.4 - beam.t) / 0.25);
-  const w = (0.75 + Math.sin(beam.t * 45) * 0.1) * S * 0.55 * fade;
+  const w = (0.75 + Math.sin(beam.t * 45) * 0.1) * S * 0.55 * fade * (gold ? 1.5 : 1);
   beamFX.g.visible = true;
   beamFX.g.position.copy(beamO).addScaledVector(beamDir, L / 2);
   beamFX.g.lookAt(beamEnd);
@@ -2255,7 +2284,7 @@ function updateBeam(dt) {
   const mega = p.mode === 1 && p.ch.form === 'giant';
   for (const e of enemies) {
     if (!e.alive || e.warp > 0 || !segSphere(beamO, beamEnd, e.c, e.r + 1.1 * S)) continue;
-    damageEnemy(e, 150 * dt * (mega ? 1.3 : 1), true);
+    damageEnemy(e, 150 * dt * (mega ? 1.3 : 1) * (gold ? 2 : 1), true);
     e.flash = 0.05; hitMarker = 0.08; e.stun = Math.max(e.stun || 0, 0.25);
     if (Math.random() < 0.5) sparks(e.c, 5, [0.6, 1, 1], 16);
   }
@@ -2268,7 +2297,7 @@ function updateBeam(dt) {
   if (P.core) P.core.scale.set(1.2, 0.8, 0.06);
   if (beam.t >= 2.4) {
     beam.state = 'idle'; beamFX.g.visible = false;
-    beam.cd = p.ch.msl.cd * (mega ? 0.6 : 1);
+    beam.cd = gold ? 2.5 : p.ch.msl.cd * (mega ? 0.6 : 1);
     if (P.core) P.core.scale.set(0.76, 0.44, 0.06);
   }
 }
@@ -2298,7 +2327,10 @@ function howl() {
 function updatePlayer(dt) {
   const p = player, m = p.mech, F = p.ch.form, FI = FORM_INFO[F];
   if (!p.alive) return;
-  if (input.xform) { input.xform = false; transform(); }
+  updateOmega(dt);
+  const locked = omegaLocked(), omegaUp = omega.state === 'on';
+  if (locked) input.xform = input.melee = input.missile = false;
+  if (input.xform) { input.xform = false; if (!omegaOn()) transform(); }
   if (input.melee) { input.melee = false; startMelee(); }
   if (input.missile) { input.missile = false; fireMissiles(); }
   if (p.queuedX && p.melee < 0 && p.dashT <= 0) { p.queuedX = false; transform(); }
@@ -2314,9 +2346,10 @@ function updatePlayer(dt) {
 
   let ix = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0) + input.mx;
   let iz = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0) - input.my;
+  if (locked) ix = iz = 0;
   const il = Math.hypot(ix, iz); if (il > 1) { ix /= il; iz /= il; }
-  const boostHeld = keys.ShiftLeft || keys.ShiftRight || input.boost;
-  const flyHeld = keys.Space || input.fly;
+  const boostHeld = (keys.ShiftLeft || keys.ShiftRight || input.boost) && !locked;
+  const flyHeld = (keys.Space || input.fly) && !locked;
   const jumpPressed = flyHeld && !p.flyPrev;
   const downHeld = keys.KeyC || keys.ControlLeft;
   let thrust = 0, boosting = false, turret = 0, treadSpeed = 0;
@@ -2344,10 +2377,11 @@ function updatePlayer(dt) {
 
   if (p.mode === 0 || m.morph < 0.5 || F === 'giant') {
     // ---- mech mode (and the giant's Mega mode) ----
-    const mega = F === 'giant' && p.mode === 1;
+    const mega = (F === 'giant' && p.mode === 1) || omegaOn();
     boosting = boostHeld && canThrust && il > 0.1 && !beamOn;
     let spd = boosting ? p.ch.boost : p.ch.walk;
     if (mega) spd = boosting ? p.ch.giant[1] : p.ch.giant[0];
+    if (omegaOn()) spd = boosting ? 20 : 12;
     if (beamOn) spd *= 0.25;
     let wx = (sx * iz + rx * ix) * spd, wz = (sz * iz + rz * ix) * spd;
     const acc = p.grounded ? (boosting ? 6 : 10) : 2.6;
@@ -2551,9 +2585,9 @@ function updatePlayer(dt) {
   p.fireCd -= dt; p.salvoCd -= dt; p.meleeCd -= dt; p.coolDelay -= dt;
   if (p.missiles < p.ch.msl.cap) { p.regen += dt; if (p.regen > p.ch.msl.regen) { p.regen = 0; p.missiles++; } } else p.regen = 0;
   const inF = p.mode === 1 && m.morph > 0.5;
-  const firing = input.fire && !p.overheat && p.melee < 0 && !p.climb && !beamOn;
+  const firing = input.fire && !p.overheat && p.melee < 0 && !p.climb && !beamOn && !locked;
   if (firing && p.fireCd <= 0) {
-    const G = inF && p.ch.altGun ? p.ch.altGun : p.ch.gun, jetF = inF && F === 'jet';
+    const G = omegaUp ? OMEGA_GUN : inF && p.ch.altGun ? p.ch.altGun : p.ch.gun, jetF = inF && F === 'jet';
     p.fireCd = G.rate * (jetF ? 0.8 : 1);
     p.heat += G.heat * (jetF ? 0.85 : 1); p.coolDelay = 0.25;
     if (m.P.cannons) m.recoil = 1;
@@ -2586,7 +2620,7 @@ function updatePlayer(dt) {
   // melee timeline
   if (p.melee >= 0) {
     if (p.diving && p.melee > 0.4) p.melee = 0.4; else p.melee += dt / 0.52;
-    if (p.melee >= 0.42 && !p.meleeHit) { p.meleeHit = true; meleeStrike(); }
+    if (p.melee >= 0.42 && !p.meleeHit) { p.meleeHit = true; meleeStrike(omegaUp ? 2 : 1); }
     if (!p.ch.blade.slam && p.melee > 0.28 && p.melee < 0.62) {
       for (const node of [m.P.bladeTip, m.P.bladeMid]) {
         node.getWorldPosition(_c);
@@ -2614,7 +2648,7 @@ function updatePlayer(dt) {
   poseMech(m, dt, {
     speed: sp, fwd: p.vel.x * -Math.sin(p.yaw) + p.vel.z * -Math.cos(p.yaw), side: p.vel.x * Math.cos(p.yaw) - p.vel.z * Math.sin(p.yaw),
     grounded: p.grounded || !!p.climb, thrust, aim: !p.climb && !beamOn, aimL: !!p.ch.gun.twin && p.melee < 0 && input.fire, aimPitch: camPitch, melee: p.melee,
-    slam: !!p.ch.blade.slam && !(F === 'dog' && p.mode === 1), climb: !!p.climb, beam: beamOn, climbSpeed: p.climb ? Math.abs(p.vel.y) > 1 : false, turret, treadSpeed
+    slam: !!p.ch.blade.slam && !(F === 'dog' && p.mode === 1), climb: !!p.climb, beam: beamOn || omega.state === 'power', summon: omega.state === 'gather', climbSpeed: p.climb ? Math.abs(p.vel.y) > 1 : false, turret, treadSpeed
   });
   SFX.thrust(Math.max(thrust, F === 'jet' ? tM * 0.6 : F === 'tank' ? tM * Math.min(1, Math.abs(p.tankSpeed || 0) / 30) * 0.5 : 0), tM > 0.5 && F === 'jet');
   p.flyPrev = flyHeld;
@@ -2677,9 +2711,266 @@ function updateWaves(dt) {
   for (let i = enemies.length - 1; i >= 0; i--) if (!enemies[i].alive) enemies.splice(i, 1);
 }
 
+/* ---------------- Atlas: all six mechs combine into Gearstorm Omega ---------------- */
+const OMEGA_TIME = 25;
+const OMEGA_ORDER = ['valkyr', 'titan', 'silverback', 'hornet', 'barkley'];
+const OMEGA_GUN = { name: 'Omega cannon', rate: 0.14, heat: 2.6, dmg: 40, speed: 230, color: 0xffd060, size: 2.6, splash: 8, twin: true, sfx: 'cannon' };
+const omegaLight = new THREE.PointLight(0xffc040, 0, 110, 2);
+scene.add(omegaLight);
+const omegaHalo = new THREE.Sprite(new THREE.SpriteMaterial({ map: flashTex, color: 0xffc35a, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+omegaHalo.renderOrder = 3; omegaHalo.visible = false;
+scene.add(omegaHalo);
+const omegaOn = () => omega.state !== 'off';
+const omegaLocked = () => omega.state === 'gather' || omega.state === 'power';
+
+// armor pieces the other five become, built onto Atlas's own parts (Atlas local units)
+function buildOmegaKit(m) {
+  const P = m.P, B = player.ch.look.bulk || 1, Bz = 1 + (B - 1) * 0.6;
+  const kit = { pieces: {}, all: [], mats: [] };
+  const mat = (c, metal = 0.4) => { const x = new THREE.MeshStandardMaterial({ color: c, metalness: metal, roughness: 0.4 }); kit.mats.push(x); return x; };
+  const pal = id => CHARS.find(c => c.id === id).pal;
+  const gold = mat(0xf0c050, 0.7);
+  const add = (id, g) => { (kit.pieces[id] = kit.pieces[id] || []).push(g); kit.all.push(g); g.visible = false; g.scale.setScalar(0.001); g.userData.popT = -1; };
+  // Valkyr: swept wings and boosters on the back
+  {
+    const v = pal('valkyr'), w = mat(v.armor), tr = mat(v.trim), g = grp(P.pack, 0, 0.35, 0.45);
+    for (const sx of [-1, 1]) {
+      const wing = grp(g, sx * 0.55, 0.2, 0.1); wing.rotation.set(0, sx * 0.35, -sx * 0.55);
+      part(wing, GEO.box, w, 3.4, 0.14, 1.3, sx * 1.7, 0, 0);
+      part(wing, GEO.box, tr, 3.0, 0.16, 0.25, sx * 1.6, 0, -0.55);
+      part(wing, GEO.box, gold, 0.3, 0.18, 1.4, sx * 3.35, 0, 0);
+    }
+    for (const sx of [-0.45, 0.45]) part(g, GEO.cyl, w, 0.3, 1.2, 0.3, sx, -0.5, 0.4);
+    add('valkyr', g);
+  }
+  // Titan: twin shoulder cannons and tread greaves on the shins
+  {
+    const t = pal('titan'), arm = mat(t.armor), tr = mat(t.trim), dark = mat(0x1c1d1f, 0.2);
+    const g = grp(P.torso, 0, 2.2, 0.25);
+    for (const sx of [-1, 1]) {
+      part(g, GEO.box, arm, 0.62, 0.55, 1.3, sx * 1.3 * B, 0, 0);
+      part(g, GEO.box, tr, 0.66, 0.14, 0.7, sx * 1.3 * B, 0.32, 0);
+      part(g, GEO.cyl, dark, 0.16, 2.6, 0.16, sx * 1.3 * B, 0.05, -1.8).rotation.x = PI / 2;
+    }
+    add('titan', g);
+    for (const k of ['L', 'R']) {
+      const lg = grp(P['kn' + k], 0, -0.7, 0);
+      part(lg, GEO.box, arm, 1.05 * B, 1.15, 1.15 * Bz, 0, 0, 0);
+      part(lg, GEO.box, dark, 1.12 * B, 0.3, 1.22 * Bz, 0, -0.55, 0);
+      part(lg, GEO.box, tr, 0.3, 0.8, 0.08, 0, 0.1, -0.6 * Bz);
+      add('titan', lg);
+    }
+  }
+  // Silverback: giant gauntlets
+  {
+    const s = pal('silverback'), arm = mat(s.armor), tr = mat(s.trim);
+    for (const k of ['L', 'R']) {
+      const gl = grp(P['el' + k], 0, -1.05, 0);
+      part(gl, GEO.box, arm, 1.25 * B, 1.3, 1.3, 0, -0.1, 0);
+      part(gl, GEO.box, tr, 1.3 * B, 0.25, 1.35, 0, 0.5, 0);
+      for (let i = 0; i < 4; i++) part(gl, GEO.box, gold, 0.22, 0.22, 0.25, -0.45 + i * 0.3, -0.75, -0.6);
+      add('silverback', gl);
+    }
+  }
+  // Hornet: a spinning ring of drones behind the head
+  {
+    const h = pal('hornet'), body = mat(h.armor), eye = new THREE.MeshBasicMaterial({ color: h.glow });
+    const ring = grp(P.torso, 0, 2.75, 1.05), halo = grp(ring, 0, 0, 0);
+    part(ring, GEO.torus, gold, 1.9, 1.9, 1.9, 0, 0, 0, false);
+    for (let i = 0; i < 8; i++) {
+      const a = i / 8 * TAU, d = grp(halo, Math.cos(a) * 1.9, Math.sin(a) * 1.9, 0);
+      const b = new THREE.Mesh(sdGeo, body); b.scale.set(0.55, 0.55, 0.7); d.add(b);
+      const e = new THREE.Mesh(GEO.sphere, eye); e.scale.setScalar(0.13); e.position.z = -0.4; d.add(e);
+    }
+    kit.halo = halo;
+    add('hornet', ring);
+  }
+  // Barkley: a dog's head on the chest; the beam comes out of its mouth
+  {
+    const fur = mat(0x1d1d22, 0.1), white = mat(0xf0ebe0, 0.1), rust = mat(0xa8562a, 0.1), nose = mat(0x0b0b0d, 0.3);
+    const eye = new THREE.MeshBasicMaterial({ color: 0xffb35c });
+    const g = grp(P.torso, 0, 1.2, -0.66 * Bz - 0.35);
+    part(g, GEO.box, fur, 1.1, 0.95, 0.7, 0, 0, 0);
+    part(g, GEO.box, white, 0.2, 0.6, 0.06, 0, 0.12, -0.37);
+    part(g, GEO.box, white, 0.62, 0.42, 0.55, 0, -0.25, -0.5);
+    part(g, GEO.box, nose, 0.26, 0.17, 0.12, 0, -0.1, -0.8);
+    part(g, GEO.box, gold, 1.3, 0.14, 0.8, 0, 0.55, 0);
+    for (const sx of [-1, 1]) {
+      part(g, GEO.box, eye, 0.16, 0.09, 0.05, sx * 0.27, 0.12, -0.37, false);
+      part(g, GEO.box, rust, 0.22, 0.22, 0.35, sx * 0.36, -0.25, -0.4);
+      const ear = part(g, GEO.box, fur, 0.16, 0.8, 0.5, sx * 0.62, 0.0, -0.05); ear.rotation.z = sx * 0.25;
+    }
+    kit.mouth = grp(g, 0, -0.3, -1.0);
+    add('barkley', g);
+  }
+  return kit;
+}
+
+function spawnAllies() {
+  const p = player;
+  omega.allies = OMEGA_ORDER.map((id, i) => {
+    const ch = CHARS.find(c => c.id === id);
+    const m = buildMech(ch.pal, ch.scale, ch.look);
+    m.root.rotation.order = 'YXZ';
+    m.morph = id === 'hornet' ? 0 : 1;
+    const air = id === 'valkyr' || id === 'hornet';
+    const a = camYaw + PI * 0.35 + i / OMEGA_ORDER.length * TAU, R = 85;
+    const start = new V3(p.pos.x + Math.sin(a) * R, id === 'valkyr' ? 48 : id === 'hornet' ? 30 : groundAt(p.pos.x + Math.sin(a) * R, p.pos.z + Math.cos(a) * R, 0), p.pos.z + Math.cos(a) * R);
+    m.root.position.copy(start);
+    scene.add(m.root);
+    return { id, ch, m, start, t0: 0.3 + i * 0.32, dur: 1.9, docked: false, air, prev: start.clone() };
+  });
+}
+
+function startOmega() {
+  const p = player;
+  p.mode = 0; p.melee = -1; p.dashT = 0;
+  omega.state = 'gather'; omega.t = 0; omega.charge = 0; omega.fadeSaid = false; omega.readySaid = false;
+  omega.kit = buildOmegaKit(p.mech);
+  spawnAllies();
+  beam.state = 'idle'; beamFX.g.visible = false;
+  p.vel.x = p.vel.z = 0;
+  Voice.say('All units, combine!', { prio: 3, cls: 'good' });
+  SFX.warp(); SFX.transform();
+}
+
+function dockAlly(a) {
+  a.docked = true;
+  scene.remove(a.m.root);
+  for (const g of omega.kit.pieces[a.id]) {
+    g.visible = true; g.userData.popT = 0;
+    g.getWorldPosition(_c);
+    sparks(_c, 30, [1, 0.85, 0.4], 18);
+    spawnFlash(_c.clone(), 6, 0.3, 0xffd070);
+  }
+  SFX.clang(); SFX.boom(0.4, 0);
+  addShake(0.35);
+  showCallout(a.ch.name + ' linked', 'good');
+}
+
+function burstKit() {
+  if (!omega.kit) return;
+  for (const g of omega.kit.all) {
+    if (!g.visible) continue;
+    g.getWorldPosition(_c);
+    sparks(_c, 24, [1, 0.85, 0.4], 20);
+    explode(_c.clone(), 0.5, { debris: false, quiet: true });
+  }
+}
+
+function setGold(level) {
+  const p = player, M = p.mech.M;
+  const mats = [M.armor, M.frame, M.trim].concat(omega.kit ? omega.kit.mats : []);
+  const on = level > 0.001;
+  for (const mt of mats) {
+    if (on) { mt.emissive.setHex(0xffa424); mt.emissiveIntensity = level * (0.42 + 0.16 * Math.sin(performance.now() / 160)); }
+    else if (mt.emissiveIntensity !== 1 || mt.emissive.getHex() !== 0) { mt.emissive.setHex(0); mt.emissiveIntensity = 1; }
+  }
+}
+
+function resetOmega() {
+  for (const a of omega.allies) scene.remove(a.m.root);
+  omega.allies = [];
+  if (omega.kit) { setGold(0); for (const g of omega.kit.all) if (g.parent) g.parent.remove(g); }
+  omega.kit = null;
+  Object.assign(omega, { state: 'off', t: 0, k: 1, glow: 0, fadeSaid: false });
+  omegaLight.intensity = 0; omegaHalo.visible = false;
+}
+
+function updateOmega(dt) {
+  const p = player;
+  if (p.ch.id !== 'atlas') { if (omega.state !== 'off' || omega.allies.length) resetOmega(); input.combine = false; return; }
+  if (omega.state === 'off') {
+    omega.charge = Math.min(100, omega.charge + dt * 2.5);
+    if (omega.charge >= 100 && !omega.readySaid) { omega.readySaid = true; Voice.say('Combine ready', { key: 'cready', cool: 5, prio: 2, cls: 'good' }); SFX.lock(); }
+    if (input.combine) {
+      input.combine = false;
+      if (omega.charge >= 100) startOmega();
+      else Voice.say('Combine not ready', { key: 'cnr', cool: 3, prio: 1, cls: 'alert' });
+    }
+    return;
+  }
+  input.combine = false;
+  omega.t += dt;
+  if (omega.state === 'gather') {
+    for (const a of omega.allies) {
+      if (a.docked) continue;
+      const u = clamp((omega.t - a.t0) / a.dur, 0, 1), e = smooth(u);
+      omega.kit.pieces[a.id][0].getWorldPosition(_b);
+      const x = lerp(a.start.x, _b.x, e), z = lerp(a.start.z, _b.z, e);
+      let y;
+      if (a.air) y = lerp(a.start.y, _b.y, e);
+      else { const v = clamp((u - 0.5) / 0.5, 0, 1); y = lerp(a.start.y, _b.y, v * v) + Math.sin(PI * v) * 14; }
+      a.prev.copy(a.m.root.position);
+      a.m.root.position.set(x, y, z);
+      const dx = x - a.prev.x, dz = z - a.prev.z, sp = Math.hypot(dx, dz) / Math.max(dt, 1e-3);
+      if (sp > 0.5) a.m.root.rotation.y = Math.atan2(-dx, -dz);
+      a.m.root.rotation.x = a.id === 'valkyr' ? clamp(Math.atan2(y - a.prev.y, Math.hypot(dx, dz)), -0.8, 0.8) : 0;
+      poseMech(a.m, dt, { speed: a.air ? 0 : sp, fwd: sp, side: 0, grounded: !a.air && u < 0.5, thrust: a.air ? 1 : 0, aim: false, aimPitch: 0, melee: -1, treadSpeed: a.id === 'titan' ? sp : 0 });
+      fire.spawn(x, y + 1.5, z, 0, 0, 0, 0.35, 2.4, 0.5, 1, 0.85, 0.4, 1, 0.5, 0.1, 0.9, 0, 0);
+      if (u >= 1) dockAlly(a);
+    }
+    if (omega.allies.every(a => a.docked) && omega.t > 2.6) {
+      omega.state = 'power'; omega.t = 0;
+      SFX.omega();
+      Voice.say('Gearstorm Omega, online!', { prio: 3, cls: 'good' });
+      addShake(1.4);
+      spawnRing(p.pos.clone(), 70, true, 0xffc040, 1.2);
+      spawnRing(playerCenter().clone(), 30, false, 0xffe090, 0.8);
+      spawnFlash(playerCenter().clone(), 30, 0.6, 0xffd070);
+    }
+  } else if (omega.state === 'power') {
+    const u = clamp(omega.t / 1.0, 0, 1);
+    omega.k = lerp(1, 1.85, smooth(u)); omega.glow = u;
+    if (omega.t >= 1.0) { omega.state = 'on'; omega.t = 0; }
+  } else if (omega.state === 'on') {
+    omega.glow = 1;
+    const left = OMEGA_TIME - omega.t;
+    if (left < 5 && !omega.fadeSaid) { omega.fadeSaid = true; Voice.say('Omega power fading', { prio: 2, cls: 'alert' }); }
+    // the golden aura burns anything close
+    const pc = playerCenter(), R = 14 * curScale() / 2.3;
+    for (const e of enemies) {
+      if (!e.alive || e.warp > 0 || e.c.distanceTo(pc) > R) continue;
+      damageEnemy(e, 30 * dt, true);
+      if (Math.random() < 0.2) sparks(e.c, 3, [1, 0.8, 0.3], 10);
+    }
+    if (left <= 0) { omega.state = 'release'; omega.t = 0; burstKit(); for (const g of omega.kit.all) g.visible = false; Voice.say('Combination released', { prio: 2 }); SFX.transform(); }
+  } else if (omega.state === 'release') {
+    const u = clamp(omega.t / 0.9, 0, 1);
+    omega.k = lerp(1.85, 1, smooth(u)); omega.glow = 1 - u;
+    if (u >= 1) resetOmega();
+  }
+  if (!omega.kit) return;
+  // pieces pop into place
+  for (const g of omega.kit.all) {
+    if (g.userData.popT < 0) continue;
+    g.userData.popT += dt;
+    const k = clamp(g.userData.popT / 0.3, 0, 1);
+    g.scale.setScalar(Math.max(0.001, k < 1 ? k * (1 + 0.4 * Math.sin(k * PI)) : 1));
+    if (k >= 1) g.userData.popT = -1;
+  }
+  if (omega.kit.halo) omega.kit.halo.rotation.z += dt * 2.2;
+  // golden glow over the whole body
+  setGold(omega.glow);
+  const S = curScale(), P = p.mech.P;
+  P.torso.getWorldPosition(_c); _c.y += 1.2 * S;
+  omegaHalo.visible = omega.glow > 0.01;
+  omegaHalo.position.copy(_c);
+  omegaHalo.scale.setScalar(16 * S * (0.9 + 0.08 * Math.sin(performance.now() / 200)));
+  omegaHalo.material.opacity = 0.32 * omega.glow;
+  omegaLight.position.copy(_c); omegaLight.intensity = 4 * omega.glow; omegaLight.distance = 40 * S;
+  if (omega.glow > 0.05) {
+    const nodes = [P.head, P.shL, P.shR, P.elL, P.elR, P.knL, P.knR, P.hipL, P.hipR, P.pack, P.torso];
+    for (let k = 0; k < 6; k++) {
+      nodes[Math.random() * nodes.length | 0].getWorldPosition(_d);
+      fire.spawn(_d.x + rand(-1, 1) * S * 0.6, _d.y + rand(-1, 1) * S * 0.6, _d.z + rand(-1, 1) * S * 0.6, rand(-1, 1), rand(2, 6), rand(-1, 1), rand(0.5, 1), 1.2 * S, 0.3 * S, 1, 0.82, 0.35, 1, 0.5, 0.1, omega.glow, 0.5, -2);
+    }
+  }
+}
+
 /* ---------------- camera ---------------- */
 const LOOK_SENS = 0.0023;
-let fov = 63, menuAng = 0.6, menuMorphT = 0, camBeam = 0;
+let fov = 63, menuAng = 0.6, menuMorphT = 0, camBeam = 0, camCine = 0;
 function updateCamera(dt) {
   const p = player, tM = smooth(p.mech.morph);
   // look input
@@ -2700,8 +2991,10 @@ function updateCamera(dt) {
   const portrait = camera.aspect < 1;
   const camK = curScale() * (1 + ((p.ch.look.bulk || 1) - 1) * 0.6);
   camBeam = damp(camBeam, beam.state !== 'idle' ? 1 : 0, 3, dt); // pull back over the shoulder so the beam is in view
-  const dist = (lerp(10.5, FI.camD, tM) * camK + clamp(speed - 30, 0, 90) * 0.04) * (portrait ? 1.3 : 1) * (1 + 0.45 * camBeam);
-  const tgt = _a.set(p.pos.x, p.pos.y + (lerp(4.7, FI.camY, tM) + 2.2 * camBeam) * curScale(), p.pos.z);
+  camCine = damp(camCine, omegaLocked() ? 1 : 0, 2, dt); // wide, slowly circling shot while the six combine
+  camYaw += dt * 0.35 * camCine;
+  const dist = (lerp(10.5, FI.camD, tM) * camK + clamp(speed - 30, 0, 90) * 0.04) * (portrait ? 1.3 : 1) * (1 + 0.45 * camBeam) * (1 + 1.1 * camCine);
+  const tgt = _a.set(p.pos.x, p.pos.y + (lerp(4.7, FI.camY, tM) + 2.2 * camBeam + 1.5 * camCine) * curScale(), p.pos.z);
   const rx = Math.cos(camYaw), rz = -Math.sin(camYaw), sh = ((p.ch.form === 'giant' ? 1.8 : lerp(1.8, 0, tM)) + 2.2 * camBeam) * camK;
   const des = _b.copy(tgt).addScaledVector(camF, -dist);
   des.x += rx * sh; des.z += rz * sh; des.y += 0.6;
@@ -2759,7 +3052,7 @@ function updateMenuCamera(dt) {
 const ov = $('overlay'), oc = ov.getContext('2d');
 const radar = $('radar'), rc = radar.getContext('2d');
 const hudEl = {};
-for (const id of ['waveNum', 'score', 'hostiles', 'armorTxt', 'armorFill', 'thrustTxt', 'thrustFill', 'alt', 'spd', 'modeTag', 'plasmaTxt', 'missileTxt', 'bladeTxt', 'xformTxt', 'bossFill', 'boss', 'vignette', 'armorBar', 'thrustBar', 'wPlasma', 'wMissile', 'wBlade', 'tMslN', 'tX', 'wGunName', 'wMslName', 'wBladeName', 'tMslL']) hudEl[id] = $(id);
+for (const id of ['waveNum', 'score', 'hostiles', 'armorTxt', 'armorFill', 'thrustTxt', 'thrustFill', 'alt', 'spd', 'modeTag', 'plasmaTxt', 'missileTxt', 'bladeTxt', 'xformTxt', 'bossFill', 'boss', 'vignette', 'armorBar', 'thrustBar', 'wPlasma', 'wMissile', 'wBlade', 'tMslN', 'tX', 'wGunName', 'wMslName', 'wBladeName', 'tMslL', 'wCombine', 'combineTxt', 'tCombine', 'tCombineN', 'omegaBar', 'omegaFill']) hudEl[id] = $(id);
 const hudCache = {};
 function setText(id, v) { if (hudCache[id] !== v) { hudCache[id] = v; hudEl[id].textContent = v; } }
 function setStyle(id, prop, v) { const k = id + prop; if (hudCache[k] !== v) { hudCache[k] = v; hudEl[id].style[prop] = v; } }
@@ -2788,10 +3081,23 @@ function drawHUD(dt) {
   setText('alt', String(Math.round(Math.max(0, p.pos.y))));
   setText('spd', String(Math.round(p.vel.length() * 3.6)));
   const FL = FORM_INFO[p.ch.form].label.toUpperCase(), inF = p.mode === 1 && p.mech.morph > 0.5, swarmF = inF && p.ch.form === 'swarm';
-  setText('modeTag', p.mode ? FL + ' MODE' : 'MECH MODE');
+  setText('modeTag', omega.state !== 'off' ? 'GEARSTORM OMEGA' : p.mode ? FL + ' MODE' : 'MECH MODE');
   setText('xformTxt', p.mode ? 'TO MECH' : 'TO ' + FL);
   setText('tX', p.mode ? 'MECH' : FL);
-  setText('wGunName', inF && p.ch.altGun ? p.ch.altGun.name : p.ch.gun.name);
+  setText('wGunName', omega.state === 'on' ? OMEGA_GUN.name : inF && p.ch.altGun ? p.ch.altGun.name : p.ch.gun.name);
+  const atlas = p.ch.id === 'atlas';
+  if (hudEl.wCombine.hidden === atlas) hudEl.wCombine.hidden = !atlas;
+  if (hudEl.tCombine.hidden === (atlas && isTouch)) hudEl.tCombine.hidden = !(atlas && isTouch);
+  if (atlas) {
+    const ready = omega.state === 'off' && omega.charge >= 100;
+    const ct = omega.state === 'off' ? (ready ? 'READY' : Math.floor(omega.charge) + '%') : omega.state === 'on' ? Math.ceil(OMEGA_TIME - omega.t) + 's' : omega.state === 'release' ? '···' : 'LINKING';
+    setText('combineTxt', ct); setText('tCombineN', ready ? 'GO' : ct);
+    setClass('wCombine', 'dim', omega.state === 'off' && !ready);
+    setClass('tCombine', 'on', ready);
+  }
+  const showOmega = omega.state === 'on' || omega.state === 'power';
+  if (hudEl.omegaBar.hidden === showOmega) hudEl.omegaBar.hidden = !showOmega;
+  if (showOmega) setStyle('omegaFill', 'width', (omega.state === 'on' ? (OMEGA_TIME - omega.t) / OMEGA_TIME * 100 : 100).toFixed(1) + '%');
   const dogF = inF && p.ch.form === 'dog', beamC = !!p.ch.msl.beam;
   setText('wMslName', swarmF ? 'Latch drones' : dogF ? 'Howl' : p.ch.msl.name);
   setText('tMslL', swarmF ? 'DRONE' : dogF ? 'HOWL' : beamC ? 'BEAM' : 'MSL');
@@ -2955,6 +3261,7 @@ function clearCombat() {
   for (const ms of missiles) { ms.g.visible = false; (ms.friendly ? msPool.p : msPool.e).push(ms.g); }
   missiles.length = 0; dmgDirs.length = 0;
   recallDrones();
+  resetOmega(); omega.charge = 40; omega.readySaid = false; camCine = 0;
   beam.state = 'idle'; beam.cd = 0; beamFX.g.visible = false; player.howlCd = 0;
 }
 function startGame() {
