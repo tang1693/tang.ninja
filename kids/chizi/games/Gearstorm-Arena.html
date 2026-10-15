@@ -126,7 +126,7 @@ body.touch .deskonly{display:none}
 /* mech select: pinned bottom-right over the live 3D preview on wide screens, in the card flow otherwise */
 .roster{position:absolute;right:clamp(16px,4vw,56px);bottom:24px;width:min(470px,40vw);background:var(--glass);border:1px solid var(--edge);padding:12px 14px 14px;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);display:flex;flex-direction:column;gap:10px;clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px))}
 .roster-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
-.picks{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.picks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .pick{display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:0 0 8px;border:1px solid var(--edge);background:rgba(255,255,255,.04);color:var(--text);cursor:pointer;text-align:left;font:inherit;min-width:0;overflow:hidden}
 .pick .sw{display:block;width:100%;height:8px;background:linear-gradient(90deg,var(--c1) 0 62%,var(--c2) 62% 100%)}
 .pick b{font-family:var(--display);font-weight:400;font-size:19px;line-height:1;padding:6px 9px 0;letter-spacing:.02em}
@@ -198,7 +198,7 @@ body.touch .deskonly{display:none}
   <div id="touch" hidden>
     <div id="stick"><div id="knob"></div></div>
     <button class="tbtn" id="tFire" data-act="fire">FIRE</button>
-    <button class="tbtn" id="tMissile" data-act="missile">MSL<small id="tMslN">8</small></button>
+    <button class="tbtn" id="tMissile" data-act="missile"><span id="tMslL">MSL</span><small id="tMslN">8</small></button>
     <button class="tbtn" id="tMelee" data-act="melee">MELEE</button>
     <button class="tbtn" id="tFly" data-act="fly">FLY</button>
     <button class="tbtn" id="tBoost" data-act="boost">BOOST</button>
@@ -210,7 +210,7 @@ body.touch .deskonly{display:none}
     <div class="card">
       <div class="eyebrow" id="menuEyebrow">Arena sim 07 · Unit KX-7 Valkyr</div>
       <h1>Gearstorm<span>Arena</span></h1>
-      <p class="lede">Pick a mech that turns into a jet, a tank, an ape or a drone swarm, and fight through endless waves of hostile machines.</p>
+      <p class="lede">Pick a mech that turns into a jet, a tank, an ape, a drone swarm, a mega giant or a robot dog, and fight through endless waves of hostile machines.</p>
       <div class="keys deskonly">
         <div><kbd>WASD</kbd>Move / steer</div>
         <div><kbd>MOUSE</kbd>Aim</div>
@@ -230,7 +230,7 @@ body.touch .deskonly{display:none}
         <div><kbd>JET</kbd>Transform (button shows the form)</div>
       </div>
       <div class="roster" id="roster">
-        <div class="roster-head"><span class="lbl">Choose your mech</span><span class="lbl deskonly">← → or 1–4</span></div>
+        <div class="roster-head"><span class="lbl">Choose your mech</span><span class="lbl deskonly">← → or 1–6</span></div>
         <div class="picks" id="picks" role="radiogroup" aria-label="Choose your mech"></div>
         <div class="spec">
           <div class="spec-role" id="specRole">All-rounder</div>
@@ -409,11 +409,11 @@ function groundAt(x, z, y) {
   }
   return g;
 }
-function pushOut(p, r) {
+function pushOut(p, r, ignoreBelow = 0) {
   let hit = false;
   for (let i = 0; i < solids.length; i++) {
     const s = solids[i];
-    if (!s.on || p.y >= s.h - 0.5) continue;
+    if (!s.on || p.y >= s.h - 0.5 || s.h <= ignoreBelow) continue;
     const cx = clamp(p.x, s.x0, s.x1), cz = clamp(p.z, s.z0, s.z1);
     const dx = p.x - cx, dz = p.z - cz, d2 = dx * dx + dz * dz;
     if (d2 >= r * r) continue;
@@ -688,6 +688,7 @@ const SFX = {
   fall(dist, range = 420) { return clamp(1 - dist / range, 0.04, 1); },
   shoot(kind) {
     if (kind === 'cannon') { this.tone('sine', 160, 45, 0.25, 0.3); this.hiss(0.25, 0.22, 'lowpass', 1600, 120); return; }
+    if (kind === 'bark') { this.hiss(0.12, 0.3, 'bandpass', 900, 350, 3); this.tone('square', 330, 170, 0.12, 0.1); return; }
     if (kind === 'pulse') { this.tone('sawtooth', 1700, 600, 0.05, 0.05); this.hiss(0.04, 0.05, 'highpass', 5000, 3000); return; }
     this.tone('square', 1100, 260, 0.08, 0.07); this.hiss(0.07, 0.08, 'highpass', 4000, 1800);
   },
@@ -709,6 +710,20 @@ const SFX = {
   hit() { this.tone('triangle', 1900, 900, 0.04, 0.05); },
   hurt() { this.hiss(0.2, 0.25, 'lowpass', 1200, 200); this.tone('square', 160, 70, 0.15, 0.08); },
   warn() { this.tone('square', 880, 880, 0.09, 0.05); this.tone('square', 660, 660, 0.09, 0.05, 0.12); },
+  charge() { this.tone('sine', 180, 1500, 0.9, 0.08); this.tone('triangle', 90, 700, 0.9, 0.05); this.hiss(0.9, 0.12, 'bandpass', 300, 4000, 6); },
+  beam() {
+    this.tone('sawtooth', 120, 70, 2.4, 0.14); this.tone('square', 880, 520, 2.4, 0.03);
+    this.hiss(2.4, 0.28, 'bandpass', 1800, 700, 1.5); this.hiss(0.4, 0.4, 'lowpass', 3000, 200);
+  },
+  howl() {
+    if (!this.ok()) return;
+    const c = this.ctx, t = c.currentTime, o = c.createOscillator(), g = c.createGain(), lfo = c.createOscillator(), lg = c.createGain();
+    o.type = 'sawtooth'; o.frequency.setValueAtTime(380, t); o.frequency.linearRampToValueAtTime(820, t + 0.35); o.frequency.linearRampToValueAtTime(600, t + 1.1);
+    lfo.frequency.value = 7; lg.gain.value = 18; lfo.connect(lg); lg.connect(o.frequency);
+    const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 1800;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.16, t + 0.08); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.2);
+    o.connect(f); f.connect(g); g.connect(this.out); o.start(t); lfo.start(t); o.stop(t + 1.25); lfo.stop(t + 1.25);
+  },
   warp() { this.tone('sine', 200, 1400, 0.6, 0.06); this.hiss(0.6, 0.08, 'bandpass', 400, 3000, 5); },
   thrust(level, jet) {
     if (!this.ctx || !this.thrGain) return;
@@ -962,7 +977,24 @@ const CHARS = [
     altGun: { name: 'Drone lasers', rate: 0.05, heat: 1.7, dmg: 3.4, speed: 270, color: 0xc4ffb4, size: 0.55, sfx: 'pulse' },
     msl: { name: 'Hive launcher', salvo: 8, cap: 16, regen: 1.3, dmg: 45, locks: 8 },
     blade: { name: 'Stinger', dmg: 80, reach: 6, cd: 0.8, dash: 24 },
-    stats: [2, 3, 2, 5, 2] }
+    stats: [2, 3, 2, 5, 2] },
+  { id: 'atlas', name: 'Atlas', code: 'AX-1', role: 'Giant', form: 'giant', say: 'Atlas. The giant.',
+    perk: 'A towering giant: slow and very tough, it charges a Nova Beam in its chest. Mega mode makes it even bigger.',
+    pal: { armor: 0x2e3f72, frame: 0x1a1e29, trim: 0xe7b54a, glow: 0x72f2ff, blade: 0x9ff6ff }, scale: 2.3, look: { head: 'crown', bulk: 1.2, core: true, form: 'giant' },
+    hp: 420, walk: 8.5, boost: 15, jump: 10, giant: [6.5, 11], eRegen: 0.8, armorMul: 0.6,
+    gun: { name: 'Wrist cannon', rate: 0.22, heat: 5, dmg: 16, speed: 200, color: 0x8ff4ff, size: 1.8, splash: 3.5, sfx: 'cannon' },
+    msl: { name: 'Nova Beam', beam: true, salvo: 1, cap: 1, regen: 99, dmg: 0, locks: 0, cd: 11 },
+    blade: { name: 'Giant stomp', dmg: 140, reach: 12, cd: 1.2, dash: 10, slam: true },
+    stats: [5, 1, 4, 5, 4] },
+  { id: 'barkley', name: 'Barkley', code: 'BX-9', role: 'Robot dog', form: 'dog', say: 'Barkley. Good boy.',
+    perk: 'A small robot that turns into a Bernese mountain dog: very fast, pounces and bites, and its howl stuns enemies.',
+    pal: { armor: 0x26272c, frame: 0x9a5426, trim: 0xf2eee6, glow: 0xffb35c, blade: 0xffd29a }, scale: 0.62, look: { head: 'dog', dog: true, form: 'dog' },
+    hp: 70, walk: 17, boost: 34, jump: 15, dog: [30, 46], eRegen: 1.3,
+    gun: { name: 'Paw blaster', rate: 0.1, heat: 3, dmg: 6.5, speed: 240, color: 0xffd29a, size: 0.7, sfx: 'pulse' },
+    altGun: { name: 'Bark blast', rate: 0.3, heat: 7, dmg: 9, speed: 160, color: 0xffd29a, size: 1.2, spread: 3, sfx: 'bark' },
+    msl: { name: 'Mini missiles', salvo: 2, cap: 6, regen: 1.8, dmg: 45, locks: 2 },
+    blade: { name: 'Pounce bite', dmg: 85, reach: 4, cd: 0.6, dash: 30 },
+    stats: [1, 5, 2, 3, 4] }
 ];
 
 function buildMech(pal, scale = 1, look = {}) {
@@ -980,9 +1012,37 @@ function buildMech(pal, scale = 1, look = {}) {
   part(torso, GEO.box, M.glow, 0.55, 0.12, 0.05, 0, 1.27, -0.66 * Bz - 0.12, false);
   part(torso, GEO.box, M.armor, 1.6 * B, 0.35, 1.0 * Bz, 0, 1.92, 0);
   part(torso, GEO.box, M.frame, 1.5, 0.5, 0.2, 0, 0.6, -0.42);
+  if (look.core) {
+    part(torso, GEO.box, M.trim, 1.0, 0.66, 0.12, 0, 1.25, -0.66 * Bz - 0.1);
+    P.core = part(torso, GEO.box, M.glow, 0.76, 0.44, 0.06, 0, 1.25, -0.66 * Bz - 0.18, false);
+    P.coreTip = grp(torso, 0, 1.25, -0.66 * Bz - 0.5);
+  }
   // head
   const head = P.head = grp(torso, 0, 2.05, -0.05);
-  if (head0 === 'ape') {
+  if (head0 === 'crown') {
+    part(head, GEO.box, M.armor, 0.85, 0.62, 0.85, 0, 0.3, 0);
+    part(head, GEO.box, M.frame, 0.72, 0.24, 0.1, 0, 0.28, -0.43);
+    P.visor = part(head, GEO.box, M.glow, 0.62, 0.1, 0.05, 0, 0.3, -0.49, false);
+    for (const [sx, h] of [[-0.3, 0.34], [0, 0.56], [0.3, 0.34]]) part(head, GEO.box, M.trim, 0.13, h, 0.13, sx, 0.6 + h / 2, -0.2);
+    part(head, GEO.box, M.trim, 0.9, 0.1, 0.9, 0, 0.62, 0);
+  } else if (head0 === 'dog') {
+    part(head, GEO.box, M.armor, 0.82, 0.62, 0.86, 0, 0.3, 0);
+    part(head, GEO.box, M.trim, 0.14, 0.52, 0.06, 0, 0.4, -0.44);
+    P.visor = part(head, GEO.box, M.glow, 0.17, 0.08, 0.05, -0.21, 0.38, -0.45, false);
+    part(head, GEO.box, M.glow, 0.17, 0.08, 0.05, 0.21, 0.38, -0.45, false);
+    for (const sx of [-0.25, 0.25]) part(head, GEO.box, M.frame, 0.2, 0.12, 0.06, sx, 0.24, -0.45);
+    P.ears = [];
+    for (const sx of [-1, 1]) {
+      const ear = grp(head, sx * 0.44, 0.56, 0.05);
+      part(ear, GEO.box, M.armor, 0.12, 0.55, 0.4, 0, -0.26, 0);
+      ear.rotation.z = sx * 0.28; P.ears.push(ear);
+    }
+    P.snout = grp(head, 0, 0.16, -0.42);
+    part(P.snout, GEO.box, M.trim, 0.44, 0.3, 0.52, 0, 0, -0.26);
+    part(P.snout, GEO.box, M.frame, 0.46, 0.08, 0.3, 0, -0.12, -0.2);
+    part(P.snout, GEO.box, new THREE.MeshStandardMaterial({ color: 0x111114, roughness: 0.4 }), 0.2, 0.13, 0.1, 0, 0.1, -0.53);
+    P.snout.scale.setScalar(0.001); P.snout.visible = false;
+  } else if (head0 === 'ape') {
     part(head, GEO.box, M.armor, 0.95, 0.55, 0.85, 0, 0.25, 0.05);
     part(head, GEO.box, M.trim, 1.05, 0.2, 0.5, 0, 0.5, -0.25);
     part(head, GEO.box, M.frame, 0.7, 0.3, 0.35, 0, 0.0, -0.4);
@@ -1109,6 +1169,49 @@ function buildMech(pal, scale = 1, look = {}) {
     part(an, GEO.box, M.armor, 0.6, 0.18, 0.5, 0, 0.08, -0.55);
     P.footFlames.push(makeFlame(kn, 0, -1.58, 0.2, 0.3, 1.5));
   }
+  if (look.dog) {
+    // Bernese mountain dog: black coat, rust legs and cheeks, white chest, blaze, muzzle and paws
+    const fur = new THREE.MeshStandardMaterial({ color: 0x1d1d22, roughness: 0.9, metalness: 0.05 });
+    const rust = new THREE.MeshStandardMaterial({ color: 0xa8562a, roughness: 0.85 });
+    const white = new THREE.MeshStandardMaterial({ color: 0xf0ebe0, roughness: 0.85 });
+    const nose = new THREE.MeshStandardMaterial({ color: 0x0b0b0d, roughness: 0.3 });
+    const D = P.dog = grp(root, 0, 0, 0);
+    part(D, GEO.box, fur, 1.5, 1.45, 3.4, 0, 3.0, 0);
+    part(D, GEO.box, white, 1.05, 1.15, 0.5, 0, 2.85, -1.55);
+    part(D, GEO.box, fur, 1.0, 1.05, 1.0, 0, 3.7, -1.7);
+    part(D, GEO.box, M.frame, 1.12, 0.32, 1.6, 0, 3.86, 0.25);
+    part(D, GEO.box, M.glow, 0.14, 0.1, 1.4, 0, 4.06, 0.25, false);
+    P.dogLegs = [];
+    for (const [x, z, front] of [[-0.5, -1.2, 1], [0.5, -1.2, 1], [-0.5, 1.3, 0], [0.5, 1.3, 0]]) {
+      const leg = grp(D, x, 2.4, z);
+      part(leg, GEO.box, fur, 0.46, 1.25, 0.52, 0, -0.6, 0);
+      const low = grp(leg, 0, -1.2, 0);
+      part(low, GEO.box, rust, 0.38, 1.0, 0.42, 0, -0.5, 0);
+      part(low, GEO.box, white, 0.5, 0.3, 0.66, 0, -1.05, -0.08);
+      leg.userData.low = low; leg.userData.front = front; P.dogLegs.push(leg);
+    }
+    const H = P.dogHead = grp(D, 0, 4.25, -2.2);
+    part(H, GEO.box, fur, 1.2, 1.05, 1.15, 0, 0, -0.2);
+    part(H, GEO.box, white, 0.22, 0.75, 0.05, 0, 0.12, -0.79);
+    part(H, GEO.box, white, 0.72, 0.5, 0.82, 0, -0.28, -1.0);
+    part(H, GEO.box, nose, 0.32, 0.2, 0.16, 0, -0.08, -1.42);
+    for (const sx of [-1, 1]) {
+      part(H, GEO.box, M.glow, 0.17, 0.1, 0.05, sx * 0.3, 0.12, -0.79, false);
+      part(H, GEO.box, rust, 0.18, 0.08, 0.05, sx * 0.3, 0.27, -0.79, false);
+      part(H, GEO.box, rust, 0.24, 0.26, 0.42, sx * 0.4, -0.3, -0.72);
+    }
+    P.dogEars = [];
+    for (const sx of [-1, 1]) {
+      const ear = grp(H, sx * 0.64, 0.35, -0.1);
+      part(ear, GEO.box, fur, 0.18, 0.9, 0.62, 0, -0.4, 0);
+      ear.rotation.z = sx * 0.2; P.dogEars.push(ear);
+    }
+    P.dogMouth = grp(H, 0, -0.3, -1.5);
+    const T = P.dogTail = grp(D, 0, 3.45, 1.65);
+    part(T, GEO.box, fur, 0.4, 0.4, 1.7, 0, 0, 0.8);
+    part(T, GEO.box, white, 0.44, 0.44, 0.4, 0, 0, 1.7);
+    D.visible = false; D.scale.setScalar(0.001);
+  }
   if (look.tracks) {
     // tank treads live on the root so they stay level with the ground
     P.tracks = grp(root, 0, 0, 0); P.wheels = [];
@@ -1133,7 +1236,9 @@ const FORM_INFO = {
   jet:   { label: 'Jet',   center: 1.0, camY: 2.6, camD: 12.5, voice: 'Jet mode',   rate: 2.2, hint: 'Jet mode · steer with the mouse' },
   tank:  { label: 'Tank',  center: 1.6, camY: 3.4, camD: 11.5, voice: 'Tank mode',  rate: 1.8, hint: 'Tank mode · ram enemies at speed' },
   ape:   { label: 'Ape',   center: 2.4, camY: 3.8, camD: 10.5, voice: 'Beast mode', rate: 2.6, hint: 'Beast mode · run at a wall to climb, jump to leap' },
-  swarm: { label: 'Swarm', center: 0.0, camY: 1.4, camD: 9.5,  voice: 'Swarm mode', rate: 2.2, hint: 'Swarm mode · missile button latches drones on' }
+  swarm: { label: 'Swarm', center: 0.0, camY: 1.4, camD: 9.5,  voice: 'Swarm mode', rate: 2.2, hint: 'Swarm mode · missile button latches drones on' },
+  giant: { label: 'Mega',  center: 3.3, camY: 4.7, camD: 10.5, voice: 'Mega mode',  rate: 1.1, hint: 'Mega mode · bigger and tougher, beam recharges faster' },
+  dog:   { label: 'Dog',   center: 3.0, camY: 4.4, camD: 11,  voice: 'Dog mode',   rate: 2.6, hint: 'Dog mode · melee to pounce, missile button to howl' }
 };
 function poseMech(m, dt, s) {
   const P = m.P, F = m.form || 'jet', mo = clamp(m.morph, 0, 1), t = smooth(clamp((mo - 0.1) / 0.7, 0, 1));
@@ -1164,6 +1269,13 @@ function poseMech(m, dt, s) {
       bladeOut = k < 0.88 ? 1 : 0;
     }
   }
+  // beam stance: arms thrown back, chest out
+  m.beamB = damp(m.beamB || 0, s.beam ? 1 : 0, 8, dt);
+  if (m.beamB > 0.01) {
+    const b = m.beamB;
+    shLx = lerp(shLx, -0.55, b); shRx = lerp(shRx, -0.55, b); shLz = lerp(shLz, -0.85, b); shRz = lerp(shRz, 0.85, b);
+    elL = lerp(elL, -0.7, b); elR = lerp(elR, -0.7, b); torsoX = lerp(torsoX, -0.18, b);
+  }
   // climbing (ape) overrides the mech pose: hand-over-hand up the wall
   m.climbB = damp(m.climbB || 0, s.climb ? 1 : 0, 10, dt);
   if (m.climbB > 0.01) {
@@ -1188,7 +1300,7 @@ function poseMech(m, dt, s) {
   if (P.tracks) { const k = F === 'tank' ? tL : 0; P.tracks.visible = k > 0.02; P.tracks.scale.set(Math.max(0.001, k), Math.max(0.001, k), Math.max(0.001, k)); }
   P.body.scale.setScalar(1);
   // ---- form targets ----
-  let fBodyY = bodyY, fBodyX = bodyX, fHeadS = 1, fHeadY = 2.05, fHeadX = 0;
+  let fBodyY = bodyY, fBodyX = bodyX, fHeadS = 1, fHeadY = 2.05, fHeadX = 0, fHeadZ = -0.05;
   let fSh = [[shLx, 0, shLz], [shRx, 0, shRz]], fEl = [elL, elR], fHip = [[hipL, 0, 0], [hipR, 0, 0]], fKn = [knL, knR], fAn = null;
   let packZ = 0, canX = 0, armFold = 0, legFold = 0;
   if (F === 'jet') {
@@ -1214,14 +1326,41 @@ function poseMech(m, dt, s) {
     if (m.climbB > 0.01) { const c = m.climbB; fBodyX = lerp(fBodyX, bodyX, c); fBodyY = lerp(fBodyY, bodyY, c); fHeadX = lerp(fHeadX, 0, c); fSh = [[shLx, 0, shLz], [shRx, 0, shRz]]; fEl = [elL, elR]; fHip = [[hipL, 0, -0.1], [hipR, 0, 0.1]]; fKn = [knL, knR]; }
   } else if (F === 'swarm') {
     P.body.scale.setScalar(Math.max(0.001, 1 - smooth(clamp(mo * 1.25, 0, 1))));
+  } else if (F === 'dog') {
+    // the robot folds away and the dog takes its place
+    P.body.scale.setScalar(Math.max(0.001, 1 - smooth(clamp(mo * 1.4, 0, 1))));
+  }
+  if (P.dog) {
+    const k = F === 'dog' ? smooth(clamp((mo - 0.25) / 0.75, 0, 1)) : 0, D = P.dog;
+    D.visible = k > 0.01; D.scale.setScalar(Math.max(0.001, k));
+    if (D.visible) {
+      const run = clamp(s.speed / 26, 0, 1.2) * (1 - A), ph = m.walk * 1.4, air = A;
+      if (run > 0.04) m.walk += dt * 2.5;
+      const bite = s.melee >= 0 ? Math.sin(clamp(s.melee, 0, 1) * PI) : 0;
+      const offs = [0, 0.45, PI, PI + 0.45];
+      P.dogLegs.forEach((leg, i) => {
+        const a = ph + offs[i], f = leg.userData.front;
+        leg.rotation.x = Math.sin(a) * 0.8 * run + (f ? 0.75 : -0.75) * air + (f ? bite * 0.6 : 0);
+        leg.userData.low.rotation.x = f ? Math.max(0, Math.cos(a)) * 0.9 * run + air * 0.4 : -Math.max(0, -Math.cos(a)) * 0.9 * run - air * 0.5;
+      });
+      D.position.y = Math.abs(Math.cos(ph)) * 0.28 * run + air * 0.2;
+      D.rotation.x = Math.sin(ph) * 0.07 * run - air * 0.12 + bite * 0.12;
+      P.dogHead.rotation.x = -Math.sin(ph) * 0.12 * run + bite * 0.5 - 0.05;
+      P.dogHead.position.z = -2.2 - bite * 0.7;
+      m.wag = (m.wag || 0) + dt * (run > 0.2 ? 10 : 15);
+      P.dogTail.rotation.set(-0.55 + run * 0.35, Math.sin(m.wag) * 0.6, 0);
+      P.dogEars.forEach((ear, i) => { ear.rotation.x = Math.sin(ph + i) * 0.45 * run - air * 0.6; });
+    }
   }
   // ---- apply ----
   const fold = isJet ? Math.sin(tL * PI) : F === 'tank' ? Math.sin(tL * PI) * 0.6 : 0;
-  const armT = F === 'swarm' ? 0 : tA, legT = F === 'swarm' ? 0 : tL, bodyT = F === 'swarm' ? 0 : t;
+  const morphOut = F === 'swarm' || F === 'dog';
+  const armT = morphOut ? 0 : tA, legT = morphOut ? 0 : tL, bodyT = morphOut ? 0 : t;
   P.body.position.y = lerp(bodyY, fBodyY, bodyT);
   P.body.rotation.set(lerp(bodyX, fBodyX, bodyT), 0, lerp(bodyZ, 0, bodyT));
   P.torso.rotation.set(lerp(torsoX, 0, bodyT * (F === 'ape' ? 0 : 1)), lerp(torsoY, 0, bodyT), 0);
-  P.head.scale.setScalar(lerp(1, fHeadS, tN)); P.head.position.y = lerp(2.05, fHeadY, tN); P.head.rotation.x = lerp(0, fHeadX, t);
+  P.head.scale.setScalar(lerp(1, fHeadS, tN)); P.head.position.y = lerp(2.05, fHeadY, tN); P.head.rotation.x = lerp(0, fHeadX, t); P.head.position.z = lerp(-0.05, fHeadZ, t);
+  if (P.ears) for (const [i, ear] of P.ears.entries()) ear.rotation.x = Math.sin(m.walk + i) * 0.3 * st;
   P.pack.rotation.z = packZ * t;
   if (P.cannons) { P.cannons.rotation.x = canX * (F === 'tank' ? t : tA); P.cannons.position.z = 0.1 + (m.recoil || 0) * 0.35; }
   const sw = armFold * Math.sin(armT * PI);
@@ -1240,7 +1379,7 @@ function poseMech(m, dt, s) {
   m.thrust = damp(m.thrust, s.thrust, 12, dt);
   m.flick += dt * 40;
   const f = 0.85 + Math.sin(m.flick) * 0.1 + Math.random() * 0.12;
-  const vis = F === 'swarm' ? 1 - t : 1;
+  const vis = morphOut ? 1 - t : 1;
   const back = Math.max(m.thrust, isJet ? t * 0.55 : 0) * vis;
   for (const fl of P.flames) { fl.visible = back > 0.04; fl.scale.set(0.8 + back * 0.4, Math.max(0.01, back * f), 0.8 + back * 0.4); }
   const foot = Math.max(isJet ? t * (0.4 + m.thrust * 0.6) : 0, A * m.thrust * (F === 'tank' ? 1 - t : 1)) * vis;
@@ -1428,7 +1567,9 @@ function setCharacter(id) {
   try { localStorage.setItem('gearstorm-mech', ch.id); } catch (e) {}
   return ch;
 }
-function playerCenter() { return player.c.set(player.pos.x, player.pos.y + lerp(3.3, FORM_INFO[player.ch.form].center, smooth(player.mech.morph)) * player.ch.scale, player.pos.z); }
+// current size: the giant grows in Mega mode
+function curScale() { const m = player.mech; return player.ch.scale * (player.ch.form === 'giant' && m ? 1 + 0.4 * smooth(clamp(m.morph, 0, 1)) : 1); }
+function playerCenter() { return player.c.set(player.pos.x, player.pos.y + lerp(3.3, FORM_INFO[player.ch.form].center, smooth(player.mech.morph)) * curScale(), player.pos.z); }
 
 /* ---------------- bullets ---------------- */
 const boltGeo = (() => { const g = new THREE.CylinderGeometry(0.11, 0.11, 1, 6); g.rotateX(PI / 2); return g; })();
@@ -1478,7 +1619,7 @@ function updateBullets(dt) {
       if (!dead) for (const ms of missiles) {
         if (!ms.friendly && segSphere(b.prev, b.pos, ms.pos, 1.4)) { ms.life = 0; dead = true; score += 25; break; }
       }
-    } else if (!dead && player.alive && segSphere(b.prev, b.pos, playerCenter(), 2.3 * player.ch.scale)) {
+    } else if (!dead && player.alive && segSphere(b.prev, b.pos, playerCenter(), 2.3 * curScale())) {
       hurtPlayer(b.dmg, b.prev); impact(b.pos, false); dead = true;
     }
     if (!dead) {
@@ -1563,7 +1704,7 @@ function updateMissiles(dt) {
     if (!boom) {
       if (ms.friendly) {
         for (const e of enemies) if (e.alive && e.warp <= 0 && ms.pos.distanceToSquared(e.c) < (e.r + 0.8) ** 2) { boom = true; break; }
-      } else if (player.alive && ms.pos.distanceToSquared(playerCenter()) < 7.5 * player.ch.scale * player.ch.scale) boom = true;
+      } else if (player.alive && ms.pos.distanceToSquared(playerCenter()) < 7.5 * curScale() * curScale()) boom = true;
       if (solidAt(ms.pos.x, ms.pos.y, ms.pos.z) || ms.pos.y < 0.3) boom = true;
     }
     if (boom) missileExplode(ms, i);
@@ -1689,10 +1830,11 @@ function updateEnemy(e, dt) {
   const dx = player.pos.x - e.pos.x, dz = player.pos.z - e.pos.z, distXZ = Math.hypot(dx, dz);
   const active = e.warp <= 0 && player.alive;
   const fireMul = 1 / e.diff;
+  const stunned = e.stun > 0; if (stunned) { e.stun -= dt; if (Math.random() < 0.15) sparks(e.c, 2, [1, 0.9, 0.5], 5); }
   if (e.jam > 0) { e.jam -= dt; e.fireCd = Math.max(e.fireCd, 0.4); e.burst = 0; if (e.missileCd !== undefined) e.missileCd = Math.max(e.missileCd, 1); }
 
   if (e.type === 'drone') {
-    e.orbitA += e.orbitS * dt;
+    e.orbitA += e.orbitS * dt * (stunned ? 0.1 : 1);
     const tx = player.pos.x + Math.cos(e.orbitA) * e.orbitR, tz = player.pos.z + Math.sin(e.orbitA) * e.orbitR;
     const ty = Math.max(player.pos.y, 0) + e.alt + Math.sin(e.t * 1.3) * 3;
     _a.set(tx - e.pos.x, ty - e.pos.y, tz - e.pos.z);
@@ -1759,7 +1901,7 @@ function updateEnemy(e, dt) {
   e.thrust = 0;
   e.strafeT -= dt; if (e.strafeT <= 0) { e.strafe *= -1; e.strafeT = rand(1.5, 3.5); }
   let wx = 0, wz = 0;
-  if (active && distXZ > 0.1) {
+  if (active && distXZ > 0.1 && !stunned) {
     const nx = dx / distXZ, nz = dz / distXZ;
     const far = big ? 50 : 72, near = big ? 14 : 26;
     let toward = distXZ > far ? 1 : distXZ < near ? -0.8 : 0.15;
@@ -1772,7 +1914,7 @@ function updateEnemy(e, dt) {
   const acc = e.grounded ? 4 : 1.5;
   e.vel.x = damp(e.vel.x, wx, acc, dt); e.vel.z = damp(e.vel.z, wz, acc, dt);
   e.hopT -= dt;
-  if (!big && active && e.grounded && e.hopT <= 0) { e.vel.y = 17; e.grounded = false; e.hopT = rand(4, 9); e.thrustT = 0.7; }
+  if (!big && active && !stunned && e.grounded && e.hopT <= 0) { e.vel.y = 17; e.grounded = false; e.hopT = rand(4, 9); e.thrustT = 0.7; }
   if (e.thrustT > 0) { e.thrustT -= dt; e.vel.y += 22 * dt; e.thrust = 1; }
   e.vel.y -= 32 * dt;
   e.pos.addScaledVector(e.vel, dt);
@@ -1876,6 +2018,7 @@ function transform() {
       if (p.grounded) { p.vel.y = 10; p.pos.y += 0.5; }
     } else if (F === 'tank') p.tankSpeed = 0;
     else if (F === 'swarm') p.vel.multiplyScalar(0.3);
+    else if (F === 'giant') { spawnRing(p.pos.clone(), 22, true, p.ch.pal.glow, 0.9); addShake(0.7); }
     Voice.say(FORM_INFO[F].voice, { key: 'mode', cool: 0.6, prio: 2, show: false });
     showCallout(FORM_INFO[F].hint, 'good');
   } else {
@@ -1886,6 +2029,8 @@ function transform() {
 }
 
 function fireMissiles() {
+  if (player.ch.msl.beam) { startBeam(); return; }
+  if (player.ch.form === 'dog' && inForm()) { howl(); return; }
   if (player.ch.form === 'swarm' && inForm()) { latchDrones(); return; }
   if (player.salvoCd > 0 || player.missiles <= 0) return;
   let targets = enemies.filter(e => e.alive && e.lock >= 1).sort((a, b) => a.c.distanceToSquared(player.pos) - b.c.distanceToSquared(player.pos));
@@ -1912,8 +2057,9 @@ function fireMissiles() {
 
 function startMelee() {
   const p = player, F = p.ch.form;
-  if (p.meleeCd > 0 || p.melee >= 0) return;
-  if (p.mode === 1 && F !== 'ape') { transform(); p.queuedMelee = 0.45; return; }
+  if (p.meleeCd > 0 || p.melee >= 0 || beam.state !== 'idle') return;
+  if (p.mode === 1 && F !== 'ape' && F !== 'dog' && F !== 'giant') { transform(); p.queuedMelee = 0.45; return; }
+  if (F === 'dog' && p.mode === 1 && p.grounded) p.vel.y = 9;
   p.melee = 0; p.meleeHit = false; p.meleeCd = p.ch.blade.cd;
   SFX.swish();
   if (p.ch.blade.slam && !p.grounded && !p.climb) { p.diving = true; p.vel.y = -55; p.vel.x *= 0.5; p.vel.z *= 0.5; return; }
@@ -1931,9 +2077,9 @@ function meleeStrike(power = 1) {
   const p = player, B = p.ch.blade;
   const pc = playerCenter();
   const fx = -Math.sin(p.yaw), fz = -Math.cos(p.yaw);
-  const ahead = B.slam ? 2.5 : 3.6;
+  const ahead = (B.slam ? 2.5 : 3.6) * curScale();
   _a.set(pc.x + fx * ahead, B.slam ? p.pos.y + 1.5 : pc.y, pc.z + fz * ahead);
-  const reach = B.reach * (power > 1 ? 1.35 : 1);
+  const reach = B.reach * (power > 1 ? 1.35 : 1) * (curScale() / p.ch.scale);
   let hit = false;
   if (B.slam) {
     const g = _b.set(_a.x, groundAt(_a.x, _a.z, p.pos.y + 1) + 0.2, _a.z);
@@ -2059,6 +2205,96 @@ function updateSwarm(dt) {
   }
 }
 
+/* ---------------- Atlas: Nova Beam ---------------- */
+const beamFX = (() => {
+  const g = new THREE.Group(); g.visible = false; scene.add(g);
+  const geo = new THREE.CylinderGeometry(1, 1, 1, 18, 1, true); geo.rotateX(PI / 2);
+  const outer = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0x72f2ff, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, side: THREE.DoubleSide }));
+  const inner = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xf2ffff, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+  outer.renderOrder = inner.renderOrder = 7;
+  g.add(outer, inner);
+  return { g, outer, inner };
+})();
+const beam = { state: 'idle', t: 0, cd: 0, boomT: 0 };
+const beamO = new V3(), beamDir = new V3(), beamEnd = new V3();
+function startBeam() {
+  if (beam.state !== 'idle' || player.melee >= 0) return;
+  if (beam.cd > 0) { Voice.say('Beam recharging', { key: 'bcd', cool: 3, prio: 1, cls: 'alert' }); return; }
+  beam.state = 'charge'; beam.t = 0;
+  SFX.charge();
+  Voice.say('Nova Beam!', { key: 'beam', cool: 1, prio: 3, cls: 'good' });
+}
+function updateBeam(dt) {
+  beam.cd = Math.max(0, beam.cd - dt);
+  const p = player;
+  if (beam.state === 'idle' || !p.alive) { beam.state = 'idle'; beamFX.g.visible = false; return; }
+  const S = curScale(), P = p.mech.P;
+  beam.t += dt;
+  (P.coreTip || P.head).getWorldPosition(beamO);
+  if (beam.state === 'charge') {
+    for (let k = 0; k < 6; k++) {
+      const a = rand(0, TAU), b = rand(-1, 1), R = rand(3, 6) * S, q = Math.sqrt(1 - b * b);
+      const x = beamO.x + Math.cos(a) * R * q, y = beamO.y + b * R, z = beamO.z + Math.sin(a) * R * q;
+      fire.spawn(x, y, z, (beamO.x - x) * 3, (beamO.y - y) * 3, (beamO.z - z) * 3, 0.33, 0.7 * S, 0.25 * S, 0.5, 0.95, 1, 1, 1, 1, 1, 0, 0);
+    }
+    fire.spawn(beamO.x, beamO.y, beamO.z, 0, 0, 0, 0.1, (0.6 + beam.t * 2.5) * S, 0.4 * S, 0.6, 1, 1, 0.4, 0.9, 1, 1, 0, 0);
+    if (P.core) P.core.scale.set(0.76 + beam.t * 0.6, 0.44 + beam.t * 0.4, 0.06);
+    if (beam.t >= 0.9) { beam.state = 'fire'; beam.t = 0; beam.boomT = 0; SFX.beam(); addShake(0.7); }
+    return;
+  }
+  // firing: a thick beam from the chest reactor along the crosshair, stopped by buildings
+  beamDir.subVectors(aimPoint, beamO).normalize();
+  const L = Math.max(4, rayWorld(beamO, beamDir, 420));
+  beamEnd.copy(beamO).addScaledVector(beamDir, L);
+  const fade = Math.min(1, beam.t / 0.12) * Math.min(1, (2.4 - beam.t) / 0.25);
+  const w = (0.75 + Math.sin(beam.t * 45) * 0.1) * S * 0.55 * fade;
+  beamFX.g.visible = true;
+  beamFX.g.position.copy(beamO).addScaledVector(beamDir, L / 2);
+  beamFX.g.lookAt(beamEnd);
+  beamFX.outer.scale.set(w * 2.2, w * 2.2, L); beamFX.inner.scale.set(w * 0.7, w * 0.7, L);
+  const mega = p.mode === 1 && p.ch.form === 'giant';
+  for (const e of enemies) {
+    if (!e.alive || e.warp > 0 || !segSphere(beamO, beamEnd, e.c, e.r + 1.1 * S)) continue;
+    damageEnemy(e, 150 * dt * (mega ? 1.3 : 1), true);
+    e.flash = 0.05; hitMarker = 0.08; e.stun = Math.max(e.stun || 0, 0.25);
+    if (Math.random() < 0.5) sparks(e.c, 5, [0.6, 1, 1], 16);
+  }
+  for (const t of tanks) if (t.alive && segSphere(beamO, beamEnd, t.pos, 2.6)) damageTank(t, 200 * dt);
+  for (const ms of missiles) if (!ms.friendly && segSphere(beamO, beamEnd, ms.pos, 2)) ms.life = 0;
+  fire.spawn(beamO.x, beamO.y, beamO.z, 0, 0, 0, 0.08, 2.4 * S, 1.2 * S, 0.7, 1, 1, 0.4, 0.9, 1, 1, 0, 0);
+  sparks(beamEnd, 4, [0.6, 1, 1], 22);
+  beam.boomT -= dt;
+  if (beam.boomT <= 0) { beam.boomT = 0.14; explode(beamEnd.clone(), 0.5, { debris: false, quiet: true }); spawnLight(beamEnd, 4, 40, 0x72f2ff, 0.2); }
+  if (P.core) P.core.scale.set(1.2, 0.8, 0.06);
+  if (beam.t >= 2.4) {
+    beam.state = 'idle'; beamFX.g.visible = false;
+    beam.cd = p.ch.msl.cd * (mega ? 0.6 : 1);
+    if (P.core) P.core.scale.set(0.76, 0.44, 0.06);
+  }
+}
+
+/* ---------------- Barkley: howl ---------------- */
+function howl() {
+  const p = player;
+  if ((p.howlCd || 0) > 0) return;
+  p.howlCd = 9;
+  const pc = playerCenter().clone();
+  for (let k = 0; k < 3; k++) setTimeout(() => spawnRing(p.pos.clone().setY(p.pos.y + 0.5), 30 + k * 8, true, p.ch.pal.glow, 0.8), k * 160);
+  spawnRing(pc, 10, false, 0xffe0b0, 0.5);
+  let n = 0;
+  for (const e of enemies) {
+    if (!e.alive || e.warp > 0) continue;
+    if (e.c.distanceTo(pc) > 36) continue;
+    n++;
+    e.jam = Math.max(e.jam || 0, 3); e.stun = 2.6;
+    damageEnemy(e, 10, true);
+    if (!e.boss) { _a.subVectors(e.pos, p.pos).setY(0).normalize(); e.vel.x += _a.x * 18; e.vel.z += _a.z * 18; }
+  }
+  SFX.howl();
+  Voice.say('Woof!', { key: 'woof', cool: 1, prio: 2, show: false });
+  showCallout(n ? 'Howl · ' + n + ' stunned' : 'Howl', 'good');
+}
+
 function updatePlayer(dt) {
   const p = player, m = p.mech, F = p.ch.form, FI = FORM_INFO[F];
   if (!p.alive) return;
@@ -2088,12 +2324,13 @@ function updatePlayer(dt) {
   if (p.thrLock && p.energy > 30) p.thrLock = false;
   const canThrust = !p.thrLock;
   const sx = -Math.sin(camYaw), sz = -Math.cos(camYaw), rx = Math.cos(camYaw), rz = -Math.sin(camYaw);
-  const S = p.ch.scale;
+  const S = curScale(), bigFoot = S > 1.5, beamOn = beam.state !== 'idle';
+  p.howlCd = (p.howlCd || 0) - dt;
   p.climbCd = (p.climbCd || 0) - dt;
 
   // shared ground handling for walkers (mech, tank, ape)
   const landWalk = (r) => {
-    const g = groundAt(p.pos.x, p.pos.z, p.pos.y);
+    const g = groundAt(p.pos.x, p.pos.z, p.pos.y + (bigFoot ? 3.2 : 0));
     if (p.pos.y <= g) {
       if (!p.grounded && p.vel.y < -20) { spawnRing(p.pos.clone(), 8, true, 0xd8c8b0, 0.45); addShake(0.25); for (let k = 0; k < 14; k++) smoke.spawn(p.pos.x, p.pos.y + 0.3, p.pos.z, rand(-8, 8), rand(0, 2), rand(-8, 8), 1, 1.5, 4, 0.45, 0.42, 0.4, 0.5, 0.48, 0.46, 0.5, 2, 0, 1); }
       const wasAir = !p.grounded;
@@ -2101,26 +2338,38 @@ function updatePlayer(dt) {
       if (wasAir && p.diving) { p.diving = false; p.meleeHit = true; meleeStrike(1.45); }
     } else if (p.pos.y > g + 0.25) { p.grounded = false; p.airT += dt; }
     if (p.pos.y > 140) { p.pos.y = 140; p.vel.y = Math.min(0, p.vel.y); }
-    return pushOut(p.pos, r);
+    if (bigFoot) for (const t of tanks) if (t.alive && Math.hypot(t.pos.x - p.pos.x, t.pos.z - p.pos.z) < r + 1.2) damageTank(t, 99);
+    return pushOut(p.pos, r, bigFoot ? 3.7 : 0);
   };
 
-  if (p.mode === 0 || m.morph < 0.5) {
-    // ---- mech mode ----
-    boosting = boostHeld && canThrust && il > 0.1;
-    const spd = boosting ? p.ch.boost : p.ch.walk;
+  if (p.mode === 0 || m.morph < 0.5 || F === 'giant') {
+    // ---- mech mode (and the giant's Mega mode) ----
+    const mega = F === 'giant' && p.mode === 1;
+    boosting = boostHeld && canThrust && il > 0.1 && !beamOn;
+    let spd = boosting ? p.ch.boost : p.ch.walk;
+    if (mega) spd = boosting ? p.ch.giant[1] : p.ch.giant[0];
+    if (beamOn) spd *= 0.25;
     let wx = (sx * iz + rx * ix) * spd, wz = (sz * iz + rz * ix) * spd;
     const acc = p.grounded ? (boosting ? 6 : 10) : 2.6;
     if (p.dashT > 0) { p.dashT -= dt; wx = p.dashDir.x * 62; wz = p.dashDir.z * 62; p.vel.y = Math.max(p.vel.y, p.dashDir.y * 40); p.vel.x = wx; p.vel.z = wz; }
     else { p.vel.x = damp(p.vel.x, wx, acc, dt); p.vel.z = damp(p.vel.z, wz, acc, dt); }
     if (boosting) { p.energy -= 22 * dt; thrust = 0.75; }
-    if (jumpPressed && p.grounded) { p.vel.y = p.ch.jump; p.grounded = false; p.airT = 0; }
-    else if (flyHeld && !p.grounded && canThrust && p.airT > 0.12) {
+    if (jumpPressed && p.grounded && !mega) { p.vel.y = p.ch.jump; p.grounded = false; p.airT = 0; }
+    else if (flyHeld && !p.grounded && canThrust && p.airT > 0.12 && !mega) {
       p.vel.y = Math.min(p.vel.y + 56 * dt, 15); p.energy -= 24 * dt; thrust = 1;
     }
     if (downHeld && !p.grounded) p.vel.y -= 40 * dt;
     p.vel.y -= 32 * dt;
     p.pos.addScaledVector(p.vel, dt);
     landWalk(1.7 * S);
+    if (bigFoot && p.grounded) {
+      p.stepAcc = (p.stepAcc || 0) + Math.hypot(p.vel.x, p.vel.z) * dt;
+      if (p.stepAcc > 3.6 * S) {
+        p.stepAcc = 0;
+        spawnRing(p.pos.clone(), 3.5 * S, true, 0xd8c8b0, 0.4); addShake(0.12 * S / 2.3);
+        for (let k = 0; k < 6; k++) smoke.spawn(p.pos.x + rand(-1, 1) * S, p.pos.y + 0.3, p.pos.z + rand(-1, 1) * S, rand(-6, 6), rand(0, 2), rand(-6, 6), 1, 1.5 * S, 4 * S, 0.45, 0.42, 0.4, 0.5, 0.48, 0.46, 0.45, 2, 0, 1);
+      }
+    }
     if (p.melee < 0 && p.dashT <= 0) p.yaw += wrapA(camYaw - p.yaw) * (1 - Math.exp(-14 * dt));
     p.pitch = damp(p.pitch, 0, 8, dt); p.roll = damp(p.roll, 0, 8, dt);
     if (p.grounded && !boosting) p.energy += 30 * p.ch.eRegen * dt; else if (!thrust) p.energy += 8 * p.ch.eRegen * dt;
@@ -2186,6 +2435,32 @@ function updatePlayer(dt) {
       const bx = p.pos.x + Math.sin(p.yaw) * 3.2 * S, bz = p.pos.z + Math.cos(p.yaw) * 3.2 * S, side = Math.random() < 0.5 ? -1 : 1, ox = Math.cos(p.yaw) * 2.2 * S * side, oz = -Math.sin(p.yaw) * 2.2 * S * side;
       smoke.spawn(bx + ox, p.pos.y + 0.4, bz + oz, rand(-2, 2), rand(1, 3), rand(-2, 2), 1, 1.2, 4, 0.5, 0.46, 0.42, 0.55, 0.52, 0.5, 0.4, 2, 0, 1);
     }
+  } else if (F === 'dog') {
+    // ---- dog: gallop on four paws, pounce, leap ----
+    const D = p.ch.dog;
+    boosting = boostHeld && canThrust && il > 0.1;
+    const spd = boosting ? D[1] : D[0];
+    let wx = (sx * iz + rx * ix) * spd, wz = (sz * iz + rz * ix) * spd;
+    if (p.dashT > 0) { p.dashT -= dt; wx = p.dashDir.x * 58; wz = p.dashDir.z * 58; p.vel.x = wx; p.vel.z = wz; }
+    else { const acc = p.grounded ? 9 : 1.5; p.vel.x = damp(p.vel.x, wx, acc, dt); p.vel.z = damp(p.vel.z, wz, acc, dt); }
+    if (boosting) p.energy -= 12 * dt;
+    if (jumpPressed && p.grounded) {
+      const big = canThrust && p.energy > 10;
+      const hx = il > 0.1 ? (sx * iz + rx * ix) / il : -Math.sin(p.yaw), hz = il > 0.1 ? (sz * iz + rz * ix) / il : -Math.cos(p.yaw);
+      p.vel.x = hx * (big ? 26 : 12); p.vel.z = hz * (big ? 26 : 12); p.vel.y = big ? 19 : 12;
+      if (big) p.energy -= 12;
+      p.grounded = false; p.airT = 0; SFX.swish();
+    }
+    p.vel.y -= 34 * dt;
+    p.pos.addScaledVector(p.vel, dt);
+    landWalk(1.4 * S + 0.4);
+    const hs = Math.hypot(p.vel.x, p.vel.z);
+    if (p.melee < 0 && p.dashT <= 0) {
+      const want = hs > 3 ? Math.atan2(-p.vel.x, -p.vel.z) : camYaw;
+      p.yaw += wrapA(want - p.yaw) * (1 - Math.exp(-(hs > 3 ? 12 : 5) * dt));
+    }
+    if (p.grounded && !boosting) p.energy += 28 * p.ch.eRegen * dt; else p.energy += 6 * dt;
+    p.pitch = damp(p.pitch, 0, 8, dt); p.roll = damp(p.roll, 0, 8, dt);
   } else if (F === 'ape') {
     // ---- ape: gallop, leap between rooftops, climb walls ----
     const AP = p.ch.ape;
@@ -2270,12 +2545,13 @@ function updatePlayer(dt) {
   const tM = smooth(m.morph);
   m.root.position.copy(p.pos);
   m.root.rotation.set(p.pitch * tM, p.yaw, p.roll * tM);
+  if (F === 'giant') m.root.scale.setScalar(S);
 
   // weapons
   p.fireCd -= dt; p.salvoCd -= dt; p.meleeCd -= dt; p.coolDelay -= dt;
   if (p.missiles < p.ch.msl.cap) { p.regen += dt; if (p.regen > p.ch.msl.regen) { p.regen = 0; p.missiles++; } } else p.regen = 0;
   const inF = p.mode === 1 && m.morph > 0.5;
-  const firing = input.fire && !p.overheat && p.melee < 0 && !p.climb;
+  const firing = input.fire && !p.overheat && p.melee < 0 && !p.climb && !beamOn;
   if (firing && p.fireCd <= 0) {
     const G = inF && p.ch.altGun ? p.ch.altGun : p.ch.gun, jetF = inF && F === 'jet';
     p.fireCd = G.rate * (jetF ? 0.8 : 1);
@@ -2288,15 +2564,18 @@ function updatePlayer(dt) {
       from = pool.length ? pool[(p.muzzleSide = (p.muzzleSide + 1) % pool.length)].pos : p.pos;
       _c.copy(from);
     } else {
-      const muzzle = inF && F === 'tank' && m.P.cMuz ? m.P.cMuz[(p.muzzleSide ^= 1)] : (jetF || G.twin) ? ((p.muzzleSide ^= 1) ? m.P.muzzleL : m.P.muzzleR) : m.P.muzzleR;
+      const muzzle = inF && F === 'dog' && m.P.dogMouth ? m.P.dogMouth : inF && F === 'tank' && m.P.cMuz ? m.P.cMuz[(p.muzzleSide ^= 1)] : (jetF || G.twin) ? ((p.muzzleSide ^= 1) ? m.P.muzzleL : m.P.muzzleR) : m.P.muzzleR;
       muzzle.getWorldPosition(_c);
     }
     const dir = _b.subVectors(aimPoint, _c).normalize();
     const spr = inF && F === 'swarm' ? 0.02 : 0.006;
     dir.x += rand(-spr, spr); dir.y += rand(-spr, spr); dir.z += rand(-spr, spr); dir.normalize();
-    const b = spawnBullet(_c, dir, G.speed, G.dmg * (jetF ? 0.8 : 1), true, G.size);
-    b.splash = G.splash || 0;
-    if (jetF) b.vel.add(p.vel);
+    for (let k = 0; k < (G.spread || 1); k++) {
+      const d2 = k === 0 ? dir : _a.copy(dir).applyAxisAngle(UP, (k % 2 ? 1 : -1) * 0.08 * Math.ceil(k / 2));
+      const b = spawnBullet(_c, d2, G.speed, G.dmg * (jetF ? 0.8 : 1), true, G.size);
+      b.splash = G.splash || 0;
+      if (jetF) b.vel.add(p.vel);
+    }
     fire.spawn(_c.x, _c.y, _c.z, p.vel.x, p.vel.y, p.vel.z, 0.07, 3.2 * G.size, 1.5, 0.7, 0.9, 1, 0.3, 0.6, 1, 1, 0, 0);
     if (Math.random() < 0.3) spawnLight(_c, 1.2, 18, G.color, 0.08);
     SFX.shoot(G.sfx);
@@ -2330,11 +2609,12 @@ function updatePlayer(dt) {
       if (Math.random() < 0.5) smoke.spawn(p.pos.x + rand(-2, 2), gy + 0.3, p.pos.z + rand(-2, 2), rand(-10, 10), 1, rand(-10, 10), 0.8, 1.5, 5, 0.5, 0.47, 0.44, 0.55, 0.52, 0.5, 0.45, 2.5, 0, 1);
     }
   }
+  updateBeam(dt);
   const sp = Math.hypot(p.vel.x, p.vel.z);
   poseMech(m, dt, {
     speed: sp, fwd: p.vel.x * -Math.sin(p.yaw) + p.vel.z * -Math.cos(p.yaw), side: p.vel.x * Math.cos(p.yaw) - p.vel.z * Math.sin(p.yaw),
-    grounded: p.grounded || !!p.climb, thrust, aim: !p.climb, aimL: !!p.ch.gun.twin && p.melee < 0 && input.fire, aimPitch: camPitch, melee: p.melee,
-    slam: !!p.ch.blade.slam, climb: !!p.climb, climbSpeed: p.climb ? Math.abs(p.vel.y) > 1 : false, turret, treadSpeed
+    grounded: p.grounded || !!p.climb, thrust, aim: !p.climb && !beamOn, aimL: !!p.ch.gun.twin && p.melee < 0 && input.fire, aimPitch: camPitch, melee: p.melee,
+    slam: !!p.ch.blade.slam && !(F === 'dog' && p.mode === 1), climb: !!p.climb, beam: beamOn, climbSpeed: p.climb ? Math.abs(p.vel.y) > 1 : false, turret, treadSpeed
   });
   SFX.thrust(Math.max(thrust, F === 'jet' ? tM * 0.6 : F === 'tank' ? tM * Math.min(1, Math.abs(p.tankSpeed || 0) / 30) * 0.5 : 0), tM > 0.5 && F === 'jet');
   p.flyPrev = flyHeld;
@@ -2399,7 +2679,7 @@ function updateWaves(dt) {
 
 /* ---------------- camera ---------------- */
 const LOOK_SENS = 0.0023;
-let fov = 63, menuAng = 0.6, menuMorphT = 0;
+let fov = 63, menuAng = 0.6, menuMorphT = 0, camBeam = 0;
 function updateCamera(dt) {
   const p = player, tM = smooth(p.mech.morph);
   // look input
@@ -2418,10 +2698,11 @@ function updateCamera(dt) {
   camF.set(-Math.sin(camYaw) * Math.cos(camPitch), Math.sin(camPitch), -Math.cos(camYaw) * Math.cos(camPitch));
   const speed = p.vel.length();
   const portrait = camera.aspect < 1;
-  const camK = p.ch.scale * (1 + ((p.ch.look.bulk || 1) - 1) * 0.6);
-  const dist = (lerp(10.5, FI.camD, tM) * camK + clamp(speed - 30, 0, 90) * 0.04) * (portrait ? 1.3 : 1);
-  const tgt = _a.set(p.pos.x, p.pos.y + lerp(4.7, FI.camY, tM) * p.ch.scale, p.pos.z);
-  const rx = Math.cos(camYaw), rz = -Math.sin(camYaw), sh = lerp(1.8, 0, tM) * camK;
+  const camK = curScale() * (1 + ((p.ch.look.bulk || 1) - 1) * 0.6);
+  camBeam = damp(camBeam, beam.state !== 'idle' ? 1 : 0, 3, dt); // pull back over the shoulder so the beam is in view
+  const dist = (lerp(10.5, FI.camD, tM) * camK + clamp(speed - 30, 0, 90) * 0.04) * (portrait ? 1.3 : 1) * (1 + 0.45 * camBeam);
+  const tgt = _a.set(p.pos.x, p.pos.y + (lerp(4.7, FI.camY, tM) + 2.2 * camBeam) * curScale(), p.pos.z);
+  const rx = Math.cos(camYaw), rz = -Math.sin(camYaw), sh = ((p.ch.form === 'giant' ? 1.8 : lerp(1.8, 0, tM)) + 2.2 * camBeam) * camK;
   const des = _b.copy(tgt).addScaledVector(camF, -dist);
   des.x += rx * sh; des.z += rz * sh; des.y += 0.6;
   _c.subVectors(des, tgt); const L = _c.length(); _c.divideScalar(L);
@@ -2459,12 +2740,14 @@ function updateMenuCamera(dt) {
   const lift = jet ? 5 : F === 'swarm' ? 3.2 : 0;
   p.pos.set(0, tM * lift + (jet ? Math.sin(performance.now() / 700) * 0.4 * tM : 0), 0);
   m.root.position.copy(p.pos); m.root.rotation.set(jet ? 0.12 * tM : 0, 0.62, jet ? Math.sin(performance.now() / 900) * 0.15 * tM : 0);
+  const SC = curScale(); if (F === 'giant') m.root.scale.setScalar(SC);
   poseMech(m, dt, { speed: 0, fwd: 0, side: 0, grounded: !jet || tM < 0.1, thrust: jet && tM > 0.5 ? 0.6 : 0, aim: false, aimPitch: 0, melee: -1, turret: F === 'tank' ? Math.sin(performance.now() / 1300) * 0.6 : 0 });
   const narrow = innerWidth < 700, rosterPinned = innerWidth > 1000 && innerHeight > 660;
-  const r = (narrow ? 17 : 15) * p.ch.scale;
+  const r = (narrow ? 17 : 15) * SC;
   const ang = PI + 0.62 + Math.sin(menuAng * 0.9) * 0.7; // swing in front of the mech, on the sunlit side
-  camera.position.set(Math.sin(ang) * r, 5 + tM * (jet ? 2 : F === 'swarm' ? 0.5 : -1), Math.cos(ang) * r);
-  _a.set(0, (rosterPinned ? 1.5 : 3.4) + tM * (jet ? 3 : F === 'swarm' ? 1.2 : -0.8), 0);
+  const ground = F === 'tank' || F === 'ape' || F === 'dog';
+  camera.position.set(Math.sin(ang) * r, (5 + tM * (jet ? 2 : F === 'swarm' ? 0.5 : ground ? -1 : 0)) * SC, Math.cos(ang) * r);
+  _a.set(0, ((rosterPinned ? 1.5 : 3.4) + tM * (jet ? 3 : F === 'swarm' ? 1.2 : ground ? -0.8 : 0)) * SC, 0);
   camera.lookAt(_a);
   if (!narrow) { // push the mech to the right third, clear of the menu card
     camera.rotation.order = 'YXZ'; camera.rotateY(0.32);
@@ -2476,7 +2759,7 @@ function updateMenuCamera(dt) {
 const ov = $('overlay'), oc = ov.getContext('2d');
 const radar = $('radar'), rc = radar.getContext('2d');
 const hudEl = {};
-for (const id of ['waveNum', 'score', 'hostiles', 'armorTxt', 'armorFill', 'thrustTxt', 'thrustFill', 'alt', 'spd', 'modeTag', 'plasmaTxt', 'missileTxt', 'bladeTxt', 'xformTxt', 'bossFill', 'boss', 'vignette', 'armorBar', 'thrustBar', 'wPlasma', 'wMissile', 'wBlade', 'tMslN', 'tX', 'wGunName', 'wMslName', 'wBladeName']) hudEl[id] = $(id);
+for (const id of ['waveNum', 'score', 'hostiles', 'armorTxt', 'armorFill', 'thrustTxt', 'thrustFill', 'alt', 'spd', 'modeTag', 'plasmaTxt', 'missileTxt', 'bladeTxt', 'xformTxt', 'bossFill', 'boss', 'vignette', 'armorBar', 'thrustBar', 'wPlasma', 'wMissile', 'wBlade', 'tMslN', 'tX', 'wGunName', 'wMslName', 'wBladeName', 'tMslL']) hudEl[id] = $(id);
 const hudCache = {};
 function setText(id, v) { if (hudCache[id] !== v) { hudCache[id] = v; hudEl[id].textContent = v; } }
 function setStyle(id, prop, v) { const k = id + prop; if (hudCache[k] !== v) { hudCache[k] = v; hudEl[id].style[prop] = v; } }
@@ -2509,13 +2792,18 @@ function drawHUD(dt) {
   setText('xformTxt', p.mode ? 'TO MECH' : 'TO ' + FL);
   setText('tX', p.mode ? 'MECH' : FL);
   setText('wGunName', inF && p.ch.altGun ? p.ch.altGun.name : p.ch.gun.name);
-  setText('wMslName', swarmF ? 'Latch drones' : p.ch.msl.name);
+  const dogF = inF && p.ch.form === 'dog', beamC = !!p.ch.msl.beam;
+  setText('wMslName', swarmF ? 'Latch drones' : dogF ? 'Howl' : p.ch.msl.name);
+  setText('tMslL', swarmF ? 'DRONE' : dogF ? 'HOWL' : beamC ? 'BEAM' : 'MSL');
   setText('wBladeName', p.climb ? 'Climbing' : p.ch.blade.name);
   setText('plasmaTxt', p.overheat ? 'OVERHEAT' : 'HEAT ' + Math.round(p.heat) + '%');
   setClass('wPlasma', 'warn', p.overheat);
-  setText('missileTxt', swarmF ? freeDrones() + ' / ' + p.ch.drones : p.missiles + ' / ' + p.ch.msl.cap);
-  setText('tMslN', String(swarmF ? freeDrones() : p.missiles));
-  setClass('wMissile', 'dim', p.missiles === 0);
+  const special = beamC ? (beam.state === 'fire' ? 'FIRING' : beam.state === 'charge' ? 'CHARGING' : beam.cd > 0 ? Math.ceil(beam.cd) + 's' : 'READY')
+    : dogF ? ((p.howlCd || 0) > 0 ? Math.ceil(p.howlCd) + 's' : 'READY') : null;
+  setText('missileTxt', special || (swarmF ? freeDrones() + ' / ' + p.ch.drones : p.missiles + ' / ' + p.ch.msl.cap));
+  setText('tMslN', special ? (special === 'READY' ? 'GO' : special.endsWith('s') ? special : '··') : String(swarmF ? freeDrones() : p.missiles));
+  setClass('wMissile', 'warn', beamC && beam.state !== 'idle');
+  setClass('wMissile', 'dim', !p.ch.msl.beam && !(p.mode === 1 && p.ch.form === 'dog') && p.missiles === 0);
   setText('bladeTxt', p.meleeCd > 0 ? '···' : 'READY');
   setClass('wBlade', 'dim', p.meleeCd > 0);
   const showBoss = !!(boss && boss.alive);
@@ -2667,6 +2955,7 @@ function clearCombat() {
   for (const ms of missiles) { ms.g.visible = false; (ms.friendly ? msPool.p : msPool.e).push(ms.g); }
   missiles.length = 0; dmgDirs.length = 0;
   recallDrones();
+  beam.state = 'idle'; beam.cd = 0; beamFX.g.visible = false; player.howlCd = 0;
 }
 function startGame() {
   SFX.init(); Voice.stop(); if (!Voice.voice) Voice.pick();
@@ -2705,7 +2994,7 @@ function gameOver() {
 }
 /* ---------------- mech select ---------------- */
 const picksEl = $('picks');
-const STAT_NAMES = ['Armor', 'Speed', 'Firepower', 'Missiles', 'Melee'];
+const STAT_NAMES = ['Armor', 'Speed', 'Firepower', 'Special', 'Melee'];
 const hex6 = n => '#' + n.toString(16).padStart(6, '0');
 CHARS.forEach((ch, i) => {
   const b = document.createElement('button');
