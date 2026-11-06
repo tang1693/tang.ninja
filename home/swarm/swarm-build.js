@@ -13,6 +13,9 @@
 // Inspired by Joel Califa's Swarm (https://github.com/califa/swarm-site).
 // Written from scratch; no code from that project.
 //
+// tang.ninja change: several agents can share a role. A crew name that starts with a role and a
+// dash ('planner-2') works as that role, and each step goes to whichever of them is free first.
+//
 // Markup (see references/api.md):
 //   <section data-swarm>                      a region; built when it scrolls into view
 //     <h1 data-swarm-step="type"              typed by the writer
@@ -32,6 +35,8 @@ const DEFAULT_CREW = {
   eval: '#6aa8ff', guardrail: '#8dffb9', 'red-team': '#ff3b3b',
 };
 const ROLE = { frame: 'planner', fetch: 'retriever', type: 'writer', stream: 'writer', count: 'eval', reveal: null };
+const ROLES = ['planner', 'retriever', 'writer', 'stylist', 'eval', 'guardrail', 'red-team'];
+const roleOf = (id) => ROLES.find((r) => id === r || id.startsWith(r + '-')) || id;
 const SCRAMBLE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/#%&*+=<>';
 const EASE = {
   linear: (p) => p,
@@ -211,9 +216,9 @@ export function swarmBuild(options = {}) {
       if (stepsOf(el).includes('type') && $$(ACCENTS, el).length) need.add('stylist');
       if (el.dataset.swarmAttack) { need.add('red-team'); need.add('guardrail'); }
     });
-    if (isFirst) Object.keys(o.crew).forEach((id) => need.add(id));
-    const A = {};
-    Object.keys(o.crew).filter((id) => need.has(id)).forEach((id, i) => {
+    if (isFirst) Object.keys(o.crew).forEach((id) => need.add(roleOf(id)));
+    const A = {}, pool = {};
+    Object.keys(o.crew).filter((id) => need.has(roleOf(id))).forEach((id, i) => {
       const el = put('sb-ag');
       el.dataset.g = 'arrow';
       el.style.setProperty('--c', o.crew[id]);
@@ -224,6 +229,7 @@ export function swarmBuild(options = {}) {
       a.set = (x, y) => { a.x = x; a.y = y; el.style.transform = `translate3d(${x}px,${y}px,0)`; };
       a.set(-9999, -9999);
       A[id] = a;
+      (pool[roleOf(id)] = pool[roleOf(id)] || []).push(a);
       agentsUsed.add(id);
     });
     const crew = Object.values(A);
@@ -290,7 +296,7 @@ export function swarmBuild(options = {}) {
       tl.call(t + 0.4, () => accent.classList.remove('sb-plain'));
       tl.tween(t + 0.42, 0.2, 'out', (p) => { hl.style.opacity = 1 - p; });
       glyph(a, 'arrow', t + 0.45);
-      log('stylist', 'accent → “' + accent.textContent.trim() + '”', t + 0.05);
+      log(a.id, 'accent → “' + accent.textContent.trim() + '”', t + 0.05);
       return t + 0.45;
     }
     function scramble(el, t, d = 0.45) {
@@ -390,8 +396,8 @@ export function swarmBuild(options = {}) {
     if (isFirst) {
       const anchor = document.querySelector('[data-swarm-origin]') || list[0] || region;
       const b = rel(anchor), cx = b.x + b.w / 2, cy = b.y + b.h / 2;
-      const R = innerWidth <= 720 ? 36 : 50, W = v0.x1 - v0.x0, H = v0.y1 - v0.y0;
       const orbiters = crew.filter((a) => a.id !== 'red-team');
+      const R = (innerWidth <= 720 ? 36 : 50) * Math.max(1, orbiters.length / 6), W = v0.x1 - v0.x0, H = v0.y1 - v0.y0;
       const seed = put('sb-seed');
       Object.assign(seed.style, { left: cx + 'px', top: cy + 'px', opacity: 0 });
       tl.tween(0, 0.35, 'out', (p) => { seed.style.opacity = p; seed.style.transform = `scale(${p})`; });
@@ -417,16 +423,17 @@ export function swarmBuild(options = {}) {
 
     // 2. the steps, in DOM order; each agent works through its own queue
     const free = {}, shown = new Map();
+    const pick = (role) => (pool[role] ? pool[role].reduce((b, x) => ((free[x.id] || 0) < (free[b.id] || 0) ? x : b)) : null);
     const waitFor = (el) => { let t = 0; shown.forEach((at, host) => { if (host !== el && host.contains(el)) t = Math.max(t, at); }); return t; };
     let cursor = start, end = start;
     list.forEach((el) => {
       stepsOf(el).forEach((s) => {
-        const role = ROLE[s], a = role ? A[role] : null;
-        let t = Math.max(cursor, waitFor(el), role ? free[role] || 0 : 0);
+        const role = ROLE[s], a = role ? pick(role) : null;
+        let t = Math.max(cursor, waitFor(el), a ? free[a.id] || 0 : 0);
         if (shown.has(el)) t = Math.max(t, shown.get(el));
         let done = t;
         if (s === 'frame' && a) {
-          log('planner', 'frame ' + label(el), t);
+          log(a.id, 'frame ' + label(el), t);
           done = frame(a, el, t, 0.42);
           fade(el, done + 0.02, 0.3);
           shown.set(el, done + 0.05);
@@ -436,7 +443,7 @@ export function swarmBuild(options = {}) {
         } else if (s === 'fetch' && a) {
           const b = rel(el);
           go(a, b.x + Math.min(b.w, 80) + 8, b.y + b.h * 0.5, t - 0.22, 0.22);
-          log('retriever', 'fetched ' + label(el), t);
+          log(a.id, 'fetched ' + label(el), t);
           scramble(el, t, 0.45);
           done = t + 0.25;
           shown.set(el, t);
@@ -444,22 +451,22 @@ export function swarmBuild(options = {}) {
           const b = rel(el);
           go(a, b.x + b.w * 0.6, b.y - 16, t - 0.4, 0.4);
           count(el, t, 0.8);
-          chip('✓ verified', o.crew.eval, b.x + b.w * 0.6 + 16, b.y + 20, t + 0.15, 1.0);
-          log('eval', 'verified ' + label(el), t + 0.1);
+          chip('✓ verified', o.crew[a.id], b.x + b.w * 0.6 + 16, b.y + 20, t + 0.15, 1.0);
+          log(a.id, 'verified ' + label(el), t + 0.1);
           done = t + 0.5;
           shown.set(el, t);
         } else if (s === 'type' && a) {
           const chars = $$('.sb-ch', el);
           if (!chars.length) return;
-          log('writer', 'typing ' + label(el), t);
+          log(a.id, 'typing ' + label(el), t);
           tl.call(t, () => el.classList.add('sb-built'));
           done = type(a, chars, t, parseFloat(el.dataset.swarmCps) || (el.matches('h1') ? 36 : 50));
           shown.set(el, t);
-          const st = A.stylist;
+          const st = pick('stylist');
           if (st) {
-            let ts = Math.max(done + 0.35, free.stylist || 0);
+            let ts = Math.max(done + 0.35, free[st.id] || 0);
             $$(ACCENTS, el).forEach((acc) => { ts = restyle(st, acc, ts) + 0.05; });
-            free.stylist = ts;
+            free[st.id] = ts;
             done = Math.max(done, ts - 0.4);
           }
           if (el.dataset.swarmAttack) done = attack(el, chars, done + 0.35);
@@ -469,7 +476,7 @@ export function swarmBuild(options = {}) {
           const b = rel(words[0]), d = Math.min(1.4, 0.018 * words.length + 0.2);
           glyph(a, 'ibeam', t - 0.3);
           go(a, b.x, b.y + b.h * 0.5, t - 0.3, 0.3);
-          log('writer', 'streaming ' + label(el) + ' · ' + words.length + ' tokens', t);
+          log(a.id, 'streaming ' + label(el) + ' · ' + words.length + ' tokens', t);
           tl.call(t, () => el.classList.add('sb-built'));
           words.forEach((w, i) => tl.call(t + (i / words.length) * d, () => {
             w.classList.add('on');
@@ -479,7 +486,7 @@ export function swarmBuild(options = {}) {
           done = t + d;
           shown.set(el, t);
         }
-        if (role) free[role] = done + 0.05;
+        if (a) free[a.id] = done + 0.05;
         cursor += 0.2;
         end = Math.max(end, done);
       });
