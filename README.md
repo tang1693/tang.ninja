@@ -35,6 +35,7 @@ Yang Tang 的科研主页，加上孩子们做的浏览器游戏。
 - 05 Service 里每本期刊旁边的影响因子是 JCR 2025（2026 年 6 月发布）的数据，每年 7 月新的 JCR 出来后，告诉 Claude 更新一下。
 - 顶部的插画：`home/hero/` 里的图层和动画小件，全部由 `tools/hero.py` 画出来（运行 `python3 tools/hero.py`）。想改画面，告诉 Claude。
 - 以后要加“项目”板块，告诉 Claude 放在哪一节后面就行。
+- 开场的“搭建”动画：每个浏览器会话第一次打开主页时，几个带名字的光标（planner、writer、retriever、eval）当着访客的面把页面搭出来：打出名字和标题、给卡片画框、数出引用数。代码在 `home/swarm/`（开源库 swarm-build），想再看一遍就开一个新的无痕窗口。
 
 ## 每个孩子的页面风格
 
