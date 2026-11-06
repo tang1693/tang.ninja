@@ -2,10 +2,12 @@
 // builds the page in front of the visitor, each with a job and a mind of its own. A boot terminal calls
 // the roll and sends each one out to work. The hero city is rebuilt like a photogrammetry job (control
 // points, aligned cameras, a point cloud, a mesh, textures, lights) and its characters are brought to
-// life through menus. Text is typed, reviewed, revised and typed again; cards arrive in a heap and are
-// laid out; a red-team agent keeps trying to break things and someone always puts them right. The page
-// is built floor by floor, like a house: nothing below the floor being built can be scrolled to. Floors
-// overlap, the crew moving down as it frees up, and nobody stands about with nothing to do.
+// life through menus. The rest of the page is built where the visitor is, a part at a time, never more
+// than 1.3 screens at once; every part is first drawn as a wireframe (pencil boxes with their sizes, grey
+// bars for the text), inked and painted, then filled in: text typed, reviewed, revised and typed again,
+// numbers counted and checked; a red-team agent keeps trying to break things and someone always puts
+// them right; at the end the blocks are snapped to the grid and the wireframe erased. The crew spreads
+// over the floor, moves on as it frees up, and nobody stands about with nothing to do.
 //
 // The engine is swarm-build (MIT, ./swarm-build.js, with our changes listed at its top). Everything
 // specific to this page is here; the markup is data-swarm-step / data-swarm-act / data-swarm-by /
@@ -195,9 +197,10 @@ function think(c, ag, t, text, life = 1.8) {
     if (!w) w = n.offsetWidth || 120;
     const v = c.view(), flip = ag.x + 16 + w > v.x1 - 8;   // near the right edge: think on the left
     n.classList.toggle('is-left', flip);
-    n.style.left = (flip ? ag.x - 10 - w : ag.x + 16) + 'px';
+    n.style.left = Math.max(v.x0 + 6, flip ? ag.x - 10 - w : ag.x + 16) + 'px';
     n.style.top = Math.max(v.y0 + 6, ag.y - 36) + 'px';
-    n.style.opacity = ag.gone ? '0' : String(Math.max(0, Math.min(1, (k * life) / 0.15, ((1 - k) * life) / 0.25)));
+    const away = ag.x < v.x0 || ag.x > v.x1 || ag.y < v.y0 || ag.y > v.y1;   // no thought without its thinker
+    n.style.opacity = ag.gone || away ? '0' : String(Math.max(0, Math.min(1, (k * life) / 0.15, ((1 - k) * life) / 0.25)));
   });
 }
 
@@ -382,14 +385,14 @@ function countIn(c, el, t, d = 0.9) {
 // When each agent is next free, across the acts of its region (agents are the region's own objects);
 // when it is last needed at all (USE: the next floor gets everyone who is done here); and the spans in
 // which a story keeps its people together, so they do not wander off mid-conversation (HOLD).
-const BUSY = new WeakMap(), USE = new WeakMap(), HOLD = new WeakMap();
+const BUSY = new WeakMap(), USE = new WeakMap(), HOLD = new WeakMap(), LATE = new WeakMap();   // LATE: when it gets here from another floor
 const busy = (ag, t) => { if (ag) BUSY.set(ag, Math.max(BUSY.get(ag) || 0, t)); };
 const use = (ag, t) => { if (ag) USE.set(ag, Math.max(USE.get(ag) || 0, t)); };
 const hold = (ag, t0, t1) => { if (ag) { if (!HOLD.has(ag)) HOLD.set(ag, []); HOLD.get(ag).push([t0, t1]); use(ag, t1); } };
 // Each agent works through its own jobs in order: q(agent, wanted start, job) runs the job when the
 // agent is next free and returns when it ends; q.pick(agents, t) is whichever of them is free first.
 function queue() {
-  const free = new Map(), when = (ag) => Math.max(free.get(ag) || 0, BUSY.get(ag) || 0);
+  const free = new Map(), when = (ag) => Math.max(free.get(ag) || 0, BUSY.get(ag) || 0, LATE.get(ag) || 0);
   const q = (ag, t, job) => {
     if (!ag) return t;
     const s = Math.max(t, when(ag)), e = job(ag, s);
@@ -1048,10 +1051,10 @@ function aside(c, ags, el, t) {
     return { x: Math.min(b.x + b.w + 22 + k * 16, v.x1 - 90), y: b.y + b.h * 0.35 + k * 22 };
   }, t + k * 0.06, 0.45));
 }
-// typed in, no story
+// typed in, no story (a year heading brings the rule above its papers)
 ACTS.type = (c) => {
   const restore = blank(c, c.t, c.el);
-  c.call(c.t, () => show(c.el));
+  c.call(c.t, () => { show(c.el); if (c.el.matches('.year')) c.el.parentElement.classList.add('cl-rule'); });
   const t = writeIn(c, c.a, c.el, c.t + 0.1, { mode: 'type', cps: 18 });
   restore(t + 0.05);
   return t + 0.1;
@@ -1065,43 +1068,35 @@ ACTS.stream = (c) => {
   return t + 0.1;
 };
 
-// the hero's section index: framed by the planner, then typed in line by line
+// the hero's section index, boxed in the wireframe: typed in line by line
 ACTS.index = (c) => {
   const nav = c.el, A = agentIn(c), P = A('planner'), W = A('writer-3'), links = $$('a', nav);
   const restore = blank(c, c.t, nav, 'ol', true);
-  c.log(P.id, 'frame · section index', c.t);
-  let t = c.frame(P, nav, c.t + 0.55);
+  let t = c.t + 0.1;
   c.call(t, () => show(nav));
   think(c, P, t, `${links.length} sections. one index.`, 1.5);
+  c.log(W.id, 'section index · 6 lines', t);
   links.forEach((a) => { t = writeIn(c, W, a, t + 0.08, { mode: 'type', cps: 34 }); });
   restore(t + 0.05);
   return t + 0.1;
 };
 
 // ---------------------------------------------------------------- 01 · research
-// The three cards land in a heap; the planner lays them out in a row; the stylists insert their shapes,
-// the writers fill them in, and the red-team turns the triangle upside down until a stylist turns it back.
+// The three cards are in the wireframe already, painted; the stylists insert their shapes, the writers
+// fill them in, and the red-team turns the triangle upside down until a stylist turns it back.
 ACTS.cards = (c) => {
   const box = c.el, cards = $$('.area', box), q = queue(), A = agentIn(c), t0 = c.t;
-  const P = A('planner'), Ws = [A('writer-2'), A('writer-3'), A('writer')], Ss = [A('stylist'), A('stylist-2')], R = A('retriever'), E = A('editor');
+  const Ws = [A('writer-2'), A('writer-3'), A('writer')], Ss = [A('stylist'), A('stylist-2')], R = A('retriever'), E = A('editor');
   const shapes = cards.map((k) => $('.area-shape', k));
   const restore = blank(c, t0, box, '.area');
-  const off = scatter(c, cards, t0, (i, rs) => ({ x: rs[0].left - rs[i].left + i * 18, y: rs[0].top - rs[i].top + i * 14, r: [-6, 4, -2][i] || 0, s: 0.92 }));
   c.call(t0, () => { shapes.forEach((s) => { if (s) s.style.opacity = '0'; }); show(box); });
-  think(c, P, t0 + 0.1, 'a heap. let’s fix that.', 1.6);
-  const row = innerWidth > 1000;
-  let t = menu(c, P, t0 + 0.5, { at: () => { const b = c.rel(cards[0]); return { x: b.x + b.w * 0.45, y: b.y + 60 }; }, title: 'Auto layout',
-    items: [{ label: 'Stack', key: '⌥S' }, { label: 'Row · 3 columns', key: '⌥R' }, { label: 'Grid · 2 columns', key: '⌥G' }], pick: row ? 1 : 0,
-    say: row ? 'Auto layout ▸ Row · 3 columns · gap 20' : 'Auto layout ▸ Stack · gap 20' }).hit;
-  t = settle(c, P, cards, off, t + 0.1, { hop: 0.3 });
-  guides(c, t, cards);
-  think(c, P, t + 0.1, 'room to breathe.', 1.4);
+  const t = t0 + 0.05;
   const NAMES = ['Triangle', 'Square', 'Circle'], COLORS = ['yellow', 'red', 'blue'];
   let end = t;
   cards.forEach((card, i) => {
     const k = card.classList.contains('area-p') ? 0 : card.classList.contains('area-r') ? 1 : 2, s = shapes[i];
     if (s) {
-      end = Math.max(end, q(Ss[i % 2], t + 0.2 + i * 0.6, (S, ts) => {
+      end = Math.max(end, q(Ss[i % 2], t + 0.1 + i * 0.5, (S, ts) => {
         const m = menu(c, S, ts, { at: center(c, card, 0.55, 0.16), title: 'Insert shape', move: 0.45,
           items: [{ label: '▲  Triangle', key: '⇧T' }, { label: '■  Square', key: '⇧S' }, { label: '●  Circle', key: '⇧C' }], pick: k,
           say: `Insert ▸ ${NAMES[k]} · Bauhaus ${COLORS[k]}` });
@@ -1110,7 +1105,7 @@ ACTS.cards = (c) => {
         return m.hit + 0.62;
       }));
     }
-    const h3 = $('h3', card), p = $('p', card), link = $('.area-link', card), tw = t + 0.6 + i * 0.5;
+    const h3 = $('h3', card), p = $('p', card), link = $('.area-link', card), tw = t + 0.2 + i * 0.35;
     const tp = q(q.pick(Ws, tw), tw, (W, ts) => {
       const ed = Editor(c, h3);
       ed.clear(ts - 0.02);
@@ -1227,24 +1222,16 @@ ACTS.stats = (c) => {
 };
 
 // ---------------------------------------------------------------- 02 · honors
-// Four cards in a heap, laid out 2 × 2; every word typed in; the eval checks the Best Paper sum; the
-// red-team tilts the yellow square and pushes it off; the stylist puts it back from the Transform panel.
+// Four cards, drawn and painted in the wireframe; every word typed in; the eval checks the Best Paper sum;
+// the red-team tilts the yellow square and pushes it off; the stylist puts it back from the Transform panel.
 ACTS.awards = (c) => {
   const box = c.el, cards = $$('.award', box), q = queue(), A = agentIn(c), t0 = c.t;
-  const P = A('planner'), P2 = A('planner-2'), Ws = [A('writer-2'), A('writer-3'), A('writer')], R = A('retriever'), Ev = A('eval'), Ed = A('editor'), Ss = [A('stylist'), A('stylist-2')];
+  const Ws = [A('writer-2'), A('writer-3'), A('writer')], R = A('retriever'), Ev = A('eval'), Ed = A('editor'), Ss = [A('stylist'), A('stylist-2')];
   const shapes = cards.map((k) => $('.award-shape', k));
   const restore = blank(c, t0, box, '.award');
-  const off = scatter(c, cards, t0, (i, rs) => ({ x: rs[0].left - rs[i].left + i * 20, y: rs[0].top - rs[i].top + i * 16, r: [-7, 5, -3, 8][i] || 0, s: 0.9 }));
   c.call(t0, () => { shapes.forEach((s) => { if (s) s.style.opacity = '0'; }); show(box); });
-  think(c, P, t0 + 0.1, 'four awards, one pile.', 1.6);
-  const grid = innerWidth > 1000;
-  let t = menu(c, P, t0 + 0.5, { at: () => { const b = c.rel(cards[0]); return { x: b.x + b.w * 0.4, y: b.y + 70 }; }, title: 'Auto layout',
-    items: [{ label: 'Stack', key: '⌥S' }, { label: 'Row', key: '⌥R' }, { label: 'Grid · 2 × 2', key: '⌥G' }], pick: grid ? 2 : 0,
-    say: grid ? 'Auto layout ▸ Grid · 2 × 2 · gap 20' : 'Auto layout ▸ Stack · gap 20' }).hit;
-  t = settle(c, P, cards, off, t + 0.1, { hop: 0.32 });
-  guides(c, t, cards, 1.7);
-  think(c, P2, t + 0.2, '20 all round. even.', 1.5);
-  let end = t;
+  const t = t0 - 0.2;
+  let end = t0;
   const SHAPES = { 'award-y': 'black circle', 'award-r': 'yellow square', 'award-b': 'three white dots', 'award-k': 'circle, square and triangle' };
   cards.forEach((card, i) => {
     const ts = t + 0.3 + i * 0.7;
@@ -1326,21 +1313,21 @@ ACTS.tilt = (c) => {
   return end + 0.1;
 };
 
-// the lists under the cards: the writers type the lines, the retriever the years, the eval-2 does the sums
+// a list under the cards (the two run side by side): a writer types the lines, a researcher the years,
+// an eval does the sums
 ACTS.honorsList = (c) => {
-  const box = c.el, q = queue(), A = agentIn(c), t0 = c.t;
-  const Ws = [A('writer-2'), A('writer-3')], R = A('retriever'), Ev = A('eval-2');
+  const box = c.el, q = queue(), t0 = c.t, by = (re) => c.who.find((g) => re.test(g.id));
+  const W = by(/^writer/) || c.a, R = by(/^retriever|^researcher/) || W, Ev = by(/^eval/);
   const restore = blank(c, t0, box, 'h3, li');
   c.call(t0, () => show(box));
-  let end = t0;
-  $$('h3', box).forEach((h, i) => { end = Math.max(end, q(Ws[i], t0 + 0.1 + i * 0.3, (W, s) => writeIn(c, W, h, s, { mode: 'type', cps: 16 }))); });
-  think(c, Ev, t0 + 0.3, 'every ratio gets a sum.', 1.5);
+  let end = q(W, t0 + 0.1, (Wg, s) => writeIn(c, Wg, $('h3', box), s, { mode: 'type', cps: 16 }));
+  if (Ev && $('.ratio', box)) think(c, Ev, t0 + 0.3, 'every ratio gets a sum.', 1.5);
   $$('.plain-list li', box).forEach((li, i) => {
     const [a, b] = li.children;
-    const ta = q(q.pick(Ws, t0 + 0.7 + i * 0.3), t0 + 0.7 + i * 0.3, (W, s) => writeIn(c, W, a, s, { mode: 'type', cps: 66 }));
+    const ta = q(W, t0 + 0.5 + i * 0.3, (Wg, s) => writeIn(c, Wg, a, s, { mode: 'type', cps: 66 }));
     const tb = b ? q(R, ta - 0.4, (Rr, s) => writeIn(c, Rr, b, s, { mode: 'type', cps: 28 })) : ta;
     const em = $('.ratio', li), m = em && em.textContent.match(RATIO);
-    const tc = m ? q(Ev, ta, (E, s) => {
+    const tc = m && Ev ? q(Ev, ta, (E, s) => {
       c.go(E, center(c, em, 1, 0.5), s, 0.3);
       chipAt(c, s + 0.3, `${m[1]} ÷ ${m[2]} = ${share(num(m[1]), num(m[2]))} ✓`, c.color(E.id), () => { const bb = c.rel(em); return { x: bb.x + bb.w + 10, y: bb.y - 3 }; }, 1.2);
       return s + 0.85;
@@ -1352,39 +1339,44 @@ ACTS.honorsList = (c) => {
 };
 
 // ---------------------------------------------------------------- 03 · papers
-// The years arrive shuffled; titles are typed, authors and venues looked up, citations counted, badges
-// placed; the librarian sorts the years, newest first; the red-team drags the oldest to the top and the
-// librarian puts it back.
-ACTS.papers = (c) => {
-  const box = c.el, groups = $$('.year-group', box), pubs = $$('.pub', box), q = queue(), A = agentIn(c), t0 = c.t;
-  const L = A('librarian'), Ws = [A('writer-2'), A('writer-3')], Rs = [A('retriever'), A('researcher')], Es = [A('eval'), A('eval-2')], S = A('stylist');
-  const restore = blank(c, t0, box, '.year-group, .pub');
-  const badges = $$('.badge', box);
-  const order = groups.map((_, i) => i), r = rng(groups.length * 31 + 7);
-  for (let i = order.length - 1; i > 0; i--) { const j = (r() * (i + 1)) | 0; [order[i], order[j]] = [order[j], order[i]]; }
-  const off = [];
-  c.call(t0, () => {
-    badges.forEach((b) => { b.style.opacity = '0'; });
-    const rs = groups.map((n) => n.getBoundingClientRect());
-    let y = rs[0].top;
-    const slot = [];
-    order.forEach((idx) => { slot[idx] = y; y += rs[idx].height; });
-    groups.forEach((n, i) => { off[i] = { x: 0, y: slot[i] - rs[i].top }; n.style.transform = `translateY(${off[i].y}px)`; });
-    show(box);
-  });
-  think(c, L, t0 + 0.2, 'in no order at all. hm.', 1.6);
-  groups.forEach((g, i) => q(L, t0 + 0.3 + i * 0.05, (Lg, s) => writeIn(c, Lg, $('.year', g), s, { mode: 'type', cps: 22 })));
-  think(c, Ws[0], t0 + 0.7, `${pubs.length} titles. typing fast.`, 1.5);
+// Each year is a floor of its own, several building at once. Its papers are drawn in the wireframe; the
+// writers type the titles (a typo now and then, caught and fixed), the retriever and the researcher look
+// up the authors and the venues, the evals count the citations, the stylist puts the badges on; then
+// the researcher picks out Yang Tang in each author list and sets it in bold.
+const TYPO = { 'Olbedo: An': ['outdoor environments', 'outdoor enviroments'], 'Remote sensing object': ['deep learning era', 'deep learnign era'],
+  'Active and low-cost': ['low-light environment', 'low-ligth environment'], 'An evaluation of PlanetScope': ['change detection', 'change detetcion'] };
+ACTS.pubs = (c) => {
+  const box = c.el, pubs = $$('.pub', box), q = queue(), t0 = c.t, of = (re) => c.who.filter((g) => re.test(g.id));
+  const Ws = of(/^writer/), Rs = of(/^retriever|^researcher/), Es = of(/^eval/), S = of(/^stylist/)[0], Rb = of(/^researcher/)[0] || Rs[0];
+  const restore = blank(c, t0, box, '.pub');
+  const badges = $$('.badge', box), names = $$('.pub-authors b', box);
+  c.call(t0, () => { badges.forEach((b) => { b.style.opacity = '0'; }); names.forEach((b) => b.classList.add('cl-plain')); show(box); });
   let end = t0;
   pubs.forEach((pub, i) => {
     const title = $('.pub-title', pub), au = $('.pub-authors', pub), ve = $('.pub-venue', pub), ci = $('.pub-cites', pub);
-    const tt = q(Ws[i % 2], t0 + 0.5 + i * 0.06, (W, s) => writeIn(c, W, title, s, { mode: 'type', cps: 100 }));
-    const ta = q(Rs[i % 2], tt - 0.3, (Rr, s) => { scrambleIn(c, null, ve, s + 0.1, 0.4); return scrambleIn(c, Rr, au, s, 0.45); });
-    const tc = ci && ci.textContent.trim() ? q(Es[i % 2], tt - 0.2, (E, s) => { c.go(E, center(c, ci, 0.5, 0.5), s, 0.22); return countIn(c, ci, s + 0.22, 0.45); }) : tt;
+    const want = t0 + 0.1 + i * 0.2, W = q.pick(Ws, want);
+    const tt = q(W, want, (Wg, s) => {
+      const ed = Editor(c, title), typo = Object.keys(TYPO).find((k) => ed.original.startsWith(k));
+      ed.clear(s - 0.02);
+      if (!typo || !ed.original.includes(TYPO[typo][0])) { const e = ed.type(Wg, s, ed.original, { cps: 60 }); ed.done(e); return e; }
+      let e = ed.type(Wg, s, ed.original.replace(TYPO[typo][0], TYPO[typo][1]), { cps: 60 });
+      think(c, Wg, e + 0.05, 'typo. hang on.', 1.1);
+      e = ed.to(Wg, e + 0.6, ed.original, { cps: 20, keys: true });
+      ed.done(e);
+      return e;
+    });
+    const ta = q(Rs[i % Rs.length], tt - 0.5, (Rr, s) => { scrambleIn(c, null, ve, s + 0.15, 0.45); return scrambleIn(c, Rr, au, s, 0.5); });
+    const tc = ci && ci.textContent.trim() ? q(Es[i % Es.length], tt - 0.3, (E, s) => {
+      c.go(E, center(c, ci, 0.5, 0.5), s, 0.24);
+      const e = countIn(c, ci, s + 0.24, 0.5);
+      chipAt(c, e - 0.1, '✓', c.color(E.id), () => { const b = c.rel(ci); return { x: b.x + b.w + 8, y: b.y }; }, 0.7);
+      return e;
+    }) : tt;
     let tb = tc;
     $$('.badge', pub).forEach((bdg) => {
-      tb = q(S, tt, (Sg, s) => {
+      tb = q(S || Ws[0], tt - 0.2, (Sg, s) => {
         c.go(Sg, center(c, bdg, 0.2, 0.5), s, 0.25);
+        ripple(c, s + 0.25, center(c, bdg, 0.2, 0.5), c.color(Sg.id));
         c.tween(s + 0.25, 0.3, 'out', (k) => { bdg.style.opacity = String(k); bdg.style.scale = String(0.7 + 0.3 * k); });
         const e = writeIn(c, null, bdg, s + 0.25, { mode: 'type', cps: 60 });
         c.call(e + 0.05, () => { bdg.style.opacity = ''; bdg.style.scale = ''; });
@@ -1393,34 +1385,57 @@ ACTS.papers = (c) => {
     });
     end = Math.max(end, tt, ta, tc, tb);
   });
-  think(c, Rs[0], t0 + 1.4, 'authors, straight from Scholar.', 1.5);
-  c.log(L.id, 'sorting by year, newest first', end + 0.2);
-  think(c, L, end + 0.2, 'newest first. always.', 1.6);
-  end = settle(c, L, groups, off, end + 0.2, { hop: 0.28, dur: 0.5 });
+  // the name in bold, paper by paper
+  if (Rb && names.length) {
+    const sel = names.map(() => { const h = node(c, 'cl-sel'); h.style.opacity = 0; return h; });
+    let t = q(Rb, end - 0.6, (Rr, s) => {
+      c.log(Rr.id, `Yang Tang in bold · ${names.length} author list${names.length > 1 ? 's' : ''}`, s);
+      if (names.length > 1) think(c, Rr, s, 'bold the name. every time.', 1.3);
+      let tt = s;
+      names.forEach((b, k) => {
+        c.go(Rr, () => { const r = c.rel(b); return { x: r.x + r.w + 4, y: r.y + r.h * 0.55 }; }, tt, 0.3);
+        tt += 0.32;
+        c.call(tt, () => { const r = c.rel(b); Object.assign(sel[k].style, { left: r.x + 'px', top: r.y + 'px', width: r.w + 'px', height: r.h + 'px', background: c.color(Rr.id) + '66', opacity: 1 }); });
+        tt += 0.2;
+        c.call(tt, () => { b.classList.remove('cl-plain'); });
+        chipAt(c, tt, '⌘B', c.color(Rr.id), () => { const r = c.rel(b); return { x: r.x + r.w + 8, y: r.y - 22 }; }, 0.6);
+        c.tween(tt + 0.1, 0.25, 'out', (p) => { sel[k].style.opacity = String(1 - p); });
+        tt += 0.18;
+      });
+      return tt + 0.1;
+    });
+    end = Math.max(end, t);
+  }
   restore(end + 0.05);
-  c.call(end + 0.05, () => badges.forEach((b) => { b.style.opacity = ''; b.style.scale = ''; }));
+  c.call(end + 0.05, () => { badges.forEach((b) => { b.style.opacity = ''; b.style.scale = ''; }); names.forEach((b) => b.classList.remove('cl-plain')); });
   return end + 0.1;
 };
-// The red-team drags the oldest year to the top; the librarian puts it back at the bottom.
-ACTS.drag = (c) => {
-  const last = c.el, first = last.parentElement.firstElementChild, A = agentIn(c), RT = A('red-team'), L = A('librarian');
+// The red-team adds a zero to the most cited paper; the eval checks Scholar and takes it off again.
+ACTS.inflate = (c) => {
+  const el = c.el, A = agentIn(c), RT = A('red-team'), E = A('eval'), tn = textsOf(el)[0];
   let end = c.t;
-  if (RT && first && last !== first) {
-    const ta = c.t + 0.1, yr = $('.year', last) || last, grab = () => { const b = c.rel(yr); return { x: b.x + 10, y: b.y + 14 }; };
-    let dy = 0;
-    c.call(ta - 0.01, () => { const v = c.view(); RT.set(v.x1 + 60, c.rel(last).y); dy = first.getBoundingClientRect().top - last.getBoundingClientRect().top; });
-    c.go(RT, grab, ta, 0.6);
-    think(c, RT, ta + 0.6, 'oldest first. for nostalgia.', 1.7);
-    c.log(RT.id, `dragging ${yr.textContent.trim()} to the top`, ta + 0.7);
-    c.tween(ta + 0.8, 0.8, 'inOut2', (p) => { last.style.transform = `translateY(${dy * p}px)`; last.style.zIndex = '2'; const g = grab(); RT.set(g.x, g.y); });
-    c.go(RT, () => ({ x: c.view().x1 + 80, y: RT.y }), ta + 1.7, 0.6, 'in');
-    c.go(L, grab, ta + 1.8, 0.5);
-    think(c, L, ta + 2.3, 'nope. newest first.', 1.5);
-    c.log(L.id, `put ${yr.textContent.trim()} back at the bottom`, ta + 2.4);
-    c.tween(ta + 2.4, 0.8, 'inOut2', (p) => { last.style.transform = `translateY(${dy * (1 - p)}px)`; const g = grab(); L.set(g.x, g.y); });
-    c.call(ta + 3.25, () => { last.style.transform = ''; last.style.zIndex = ''; });
-    use(RT, ta + 2.3); use(L, ta + 3.3);
-    end = ta + 3.3;
+  if (RT && E && tn) {
+    const real = tn.data, fake = fmt(num(real) * 10), ta = c.t + 0.1, at = () => { const b = c.rel(el); return { x: b.x + b.w + 4, y: b.y + b.h * 0.55 }; };
+    const hl = node(c, 'cl-sel');
+    hl.style.opacity = 0;
+    c.call(ta - 0.01, () => { const v = c.view(); RT.set(v.x1 + 60, c.rel(el).y - 30); });
+    c.glyph(RT, 'ibeam', ta);
+    c.go(RT, at, ta, 0.6);
+    think(c, RT, ta + 0.55, 'one more zero. who checks?', 1.6);
+    c.log(RT.id, `citations ${real} → ${fake}`, ta + 0.8);
+    [...fake].forEach((_, k) => c.call(ta + 0.8 + k * 0.08, () => { tn.data = fake.slice(0, k + 1); }));
+    const tb = ta + 0.8 + fake.length * 0.08;
+    c.call(tb, () => { const b = c.rel(el); Object.assign(hl.style, { left: b.x - 3 + 'px', top: b.y + 'px', width: b.w + 6 + 'px', height: b.h + 'px', background: '#ff3b3b55', opacity: 1 }); });
+    c.glyph(RT, 'arrow', tb);
+    c.go(RT, () => ({ x: c.view().x1 + 80, y: RT.y - 40 }), tb + 0.2, 0.6, 'in');
+    c.go(E, () => { const b = c.rel(el); return { x: b.x - 10, y: b.y - 10 }; }, tb + 0.3, 0.5);
+    bubble(c, tb + 0.8, { at: above(c, el, 0, 60), who: E.id, text: `${fake}? Scholar says ${real}.`, life: 1.8 });
+    c.log(E.id, `checked Scholar · ${real}, not ${fake}`, tb + 0.9);
+    c.call(tb + 1.9, () => { tn.data = real; hl.style.opacity = 0; });
+    chipAt(c, tb + 1.95, `✓ ${real} · Scholar`, c.color(E.id), () => { const b = c.rel(el); return { x: b.x - 60, y: b.y + b.h + 6 }; }, 1.3);
+    c.call(tb + 1.9, () => c.attacked());
+    use(RT, tb + 0.8); use(E, tb + 2.4);
+    end = tb + 2.4;
   }
   return end + 0.1;
 };
@@ -1428,7 +1443,7 @@ ACTS.drag = (c) => {
 // the topic filter, tried once and put back; then the note under the list
 const press = (b) => $$('.filter button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
 ACTS.filter = (c) => {
-  const note2 = c.el, ag = c.a, years = $('#papers .years');
+  const note2 = c.el, ag = c.a, years = $('#papers .years');   // the list of years (each its own floor)
   const btn = $('.filter button[data-filter="p"]'), all = $('.filter button[data-filter="all"]');
   const restore = blank(c, c.t, note2);
   let t = c.t;
@@ -1453,14 +1468,13 @@ ACTS.filter = (c) => {
   return t + 0.1;
 };
 
-// pills: the planner frames the row if there is one, the stylist puts each pill down, a writer types it
+// pills, boxed in the wireframe: the stylist puts each one down, a writer types it
 ACTS.pills = (c) => {
   const box = c.el, A = agentIn(c), t0 = c.t, items = $$('button, a', box);
-  const P = c.who.find((g) => g.id.startsWith('planner')), S = A('stylist'), W = c.who.find((g) => g.id.startsWith('writer')) || c.a;
+  const S = c.who.find((g) => g.id.startsWith('stylist')) || A('stylist'), W = c.who.find((g) => g.id.startsWith('writer')) || c.a;
   const restore = blank(c, t0, box);
   c.call(t0, () => items.forEach((x) => { x.style.opacity = '0'; }));
   let t = t0 + 0.05;
-  if (P) { c.log(P.id, 'frame · ' + (box.getAttribute('aria-label') || 'links'), t); t = c.frame(P, box, t + 0.5); }
   c.call(t, () => show(box));
   items.forEach((x) => {
     c.go(S, center(c, x, 0.5, 0.5), t, 0.3);
@@ -1475,21 +1489,16 @@ ACTS.pills = (c) => {
 };
 
 // ---------------------------------------------------------------- 04 · education and experience
-// The two columns start the wrong way round; the planner swaps them back; the historians add each
-// entry, newest first; the red-team squeezes the columns together and the planner opens the gap again.
+// The two columns, drawn and painted in the wireframe: the historians add each entry, newest first, one
+// column each; the red-team squeezes the columns together and the planner opens the gap again.
 ACTS.cv = (c) => {
   const box = c.el, cols = $$('.cv-col', box), q = queue(), A = agentIn(c), t0 = c.t;
-  const P = A('planner'), H = [A('historian'), A('historian-2')];
+  const H = [A('historian'), A('historian-2')];
   const lis = cols.map((col) => $$('.timeline li', col));
   const restore = blank(c, t0, box, '.cv-col, .timeline li');
-  const off = scatter(c, cols, t0, (i, rs) => { const j = cols.length - 1 - i; return { x: rs[j].left - rs[i].left, y: rs[j].top - rs[i].top, r: i ? 2 : -2 }; });
   c.call(t0, () => { lis.flat().forEach((li) => { li.style.opacity = '0'; }); show(box); });
-  const th = cols.map((col, ci) => q(H[ci] || H[0], t0 + 0.2 + ci * 0.2, (Ag, s) => writeIn(c, Ag, $('h3', col), s, { mode: 'type', cps: 14 })));
-  const ts = Math.max(...th);
-  think(c, P, ts + 0.1, 'experience before education? no.', 1.8);
-  c.log(P.id, 'swapping the columns · Education first', ts + 0.6);
-  let t = settle(c, P, cols, off, ts + 0.6, { hop: 0.25, dur: 0.6 });
-  guides(c, t, cols);
+  const th = cols.map((col, ci) => q(H[ci] || H[0], t0 + 0.1 + ci * 0.15, (Ag, s) => writeIn(c, Ag, $('h3', col), s, { mode: 'type', cps: 14 })));
+  const t = Math.min(...th);
   let end = t;
   cols.forEach((col, ci) => {
     const Hg = H[ci] || H[0];
@@ -1596,9 +1605,11 @@ ACTS.reverse = (c) => {
   return end + 0.1;
 };
 
-// a list written in: the heading typed, each line typed, the years looked up
+// a list written in: the heading typed, each line typed (the first two agents taking turns), the years
+// looked up by the last
 ACTS.lines = (c) => {
-  const box = c.el, q = queue(), A = agentIn(c), t0 = c.t, W = A('writer-3'), W2 = A('writer-3'), R = A('retriever');
+  const box = c.el, q = queue(), t0 = c.t, ws = c.who.length > 2 ? c.who.slice(0, -1) : c.who.slice(0, 1);
+  const W = ws[0], W2 = ws[1] || W, R = c.who[c.who.length - 1];
   const restore = blank(c, t0, box, 'h3, li');
   c.call(t0, () => show(box));
   let end = t0;
@@ -1623,7 +1634,7 @@ const sleep = (ms) => new Promise((res) => setTimeout(res, skipBoot ? 0 : ms / 1
 async function boot() {
   if (!BOOT) return;
   const log = $('.crew-boot__log', BOOT), roster = $('.crew-boot__roster', BOOT), title = $('.crew-boot__title', BOOT);
-  const LINES = [['mounting survey drive', 'ok'], ['loading 2,481 aerial images', 'ok'], ['target  : tang.ninja'], ['plan    : the city first, then the page, floor by floor'],
+  const LINES = [['mounting survey drive', 'ok'], ['loading 2,481 aerial images', 'ok'], ['target  : tang.ninja'], ['plan    : the city first, then the page as you read it'],
     ['calibrating 3 cameras', 'ok'], ['deploying build agents', String(ORDER.length)]];
   const stop = () => { skipBoot = true; };
   const evs = ['keydown', 'pointerdown'];
@@ -1684,7 +1695,7 @@ function entrance(c) {
     c.tween(0.02, 0.35, 'out', (p) => fade.forEach((n) => { n.style.opacity = String(1 - p); }));
     c.tween(0.05, 0.95, 'inOut2', (p) => { if (bg) bg.style.transform = `translateY(${-101 * p}%)`; });
   }
-  c.log('orchestrator', `${c.crew.length} agents deployed · goal: build tang.ninja, floor by floor`, 0.1);
+  c.log('orchestrator', `${c.crew.length} agents deployed · goal: build tang.ninja`, 0.1);
   const T = (id) => 0.32 + ORDER.indexOf(id) * 0.07, D = 0.8;
   ORDER.forEach((id, i) => {
     const ag = c.crew.find((a) => a.id === id);
@@ -1725,47 +1736,380 @@ function entrance(c) {
   c.log('librarian', 'heading down to Papers · see you there', T('librarian') + 0.3);
   c.log('historian', 'heading down to Education and experience', T('historian') + 0.3);
   c.call(T(ORDER[ORDER.length - 1]) + D + 0.1, () => dropBoot(true));
+  heroSketch(c, (id) => T(id) + D);
   return 1.35;
 }
 
-// The crew arriving at a floor: whoever was on the floor above comes down from there (its cursor taken
-// over), the others come in from the sides; all wait in the space above the floor's first line, the
-// red-team out of sight. Anyone still busy upstairs comes down as soon as it is free (late, seconds).
+// ---------------------------------------------------------------- the wireframe
+// Every floor is drawn before it is built: a pencil box round each block, edge by edge with its size
+// noted, and grey bars where the lines of text will go. The boxes are inked (dashed to solid), the
+// coloured ones painted, and what sits on a painted block is drawn once the paint is on. Only then does
+// the content go in, to be refined and revised; at the end the floor is snapped to its grid and the
+// wireframe erased. It lives in the crew's layer, follows its blocks when they move, and goes with it.
+const SK_BOX = '.hero-index, .area, .impact-total, .bars, .stats > div, .award, .more-honors > div, .filter, .pub, .cv-col, .review-stats > div, .venue, .members, .contact-links a';
+const SK_FILL = '.impact, .contact';   // shown before they are built, so their paint waits for the crew
+const SK_TEXT = 'h1, h2, h3, .lede, .aff, .hero-index a, .area p, .area-link, .big-label, .bars figcaption, .stats dt, .award p, .plain-list li > span, .filter button, .papers-note, .pub-title, .pub-authors, .pub-venue, .t-when, .t-what, .t-where, .t-note, .review-stats dt, .service-lede, .venue-name, .venue-pub, .venues-note, .contact-mail';
+const SK_STATIC = '.venue';   // slots: the cards arrive in the wrong ones and are sorted into them
+const SK_LOOSE = '.area, .award, .cv-col, .stats > div, .review-stats > div, .more-honors > div';   // drawn a little off, snapped at the end
+const svgEl = (tag, cls, parent) => { const n = document.createElementNS(NS, tag); if (cls) n.setAttribute('class', cls); if (parent) parent.appendChild(n); return n; };
+const PENCIL = [150, 154, 163], INK = [29, 29, 31];
+const Sketch = {
+  all: new Map(), raf: 0,
+  of(c) {
+    let sk = this.all.get(c.region);
+    if (!sk) {
+      const svg = svgEl('svg', 'cl-sk');
+      c.layer.insertBefore(svg, c.layer.firstChild);   // under the cursors, menus and notes
+      sk = { region: c.region, svg, fills: svgEl('g', '', svg), bars: svgEl('g', '', svg), lines: svgEl('g', '', svg), boxes: [], barsets: [] };
+      this.all.set(c.region, sk);
+      if (!this.raf) this.raf = requestAnimationFrame((t) => this.tick(t));
+    }
+    return sk;
+  },
+  drop(region) { this.all.delete(region); },
+  box(sk, el, opts = {}) {
+    const b = { el, p: 0, dash: 1, op: 1, tag: 0, fp: 0, fop: 1, color: opts.color || null, rx: opts.rx || 0, light: !!opts.light, stat: null, statMe: !!opts.stat,
+      lines: [0, 1, 2, 3].map(() => svgEl('line', 'cl-sk__l', sk.lines)), label: svgEl('text', 'cl-sk__t', sk.lines),
+      fill: opts.color ? svgEl('rect', 'cl-sk__f', sk.fills) : null };
+    if (b.fill) b.fill.setAttribute('fill', opts.color);
+    b.label.style.fill = b.light ? 'rgba(245,245,247,0.6)' : 'rgb(120,124,133)';
+    sk.boxes.push(b);
+    return b;
+  },
+  rect(sk, b, g = sk.region.getBoundingClientRect()) {   // in the layer's coordinates
+    if (b.stat) return b.stat;
+    const r = b.el.getBoundingClientRect();
+    return { x: r.left - g.left, y: r.top - g.top, w: r.width, h: r.height };
+  },
+  // the four edges, each running a little past the corners as a sketch does; where the pencil is after p of them
+  pen(r, p) {
+    const o = 6, x0 = r.x, y0 = r.y, x1 = r.x + r.w, y1 = r.y + r.h;
+    const E = [[x0 - o, y0, x1 + o, y0], [x1, y0 - o, x1, y1 + o], [x1 + o, y1, x0 - o, y1], [x0, y1 + o, x0, y0 - o]];
+    const i = Math.min(3, Math.floor(p)), k = Math.min(1, p - i), [ax, ay, bx, by] = E[i];
+    return { x: ax + (bx - ax) * k, y: ay + (by - ay) * k, E };
+  },
+  tick(now) {
+    this.raf = 0;
+    this.all.forEach((sk, region) => {
+      if (!sk.svg.isConnected) { this.all.delete(region); return; }
+      try { this.render(sk, now); } catch (err) { this.all.delete(region); }
+    });
+    if (this.all.size) this.raf = requestAnimationFrame((t) => this.tick(t));
+  },
+  // every rect and visibility is read first, then everything is written, so the page is laid out once a frame
+  render(sk, now) {
+    const g = sk.region.getBoundingClientRect();
+    if (g.bottom < -300 || g.top > innerHeight + 300) return;   // nobody is looking
+    const rb = sk.boxes.map((b) => (b.cleared ? null : this.rect(sk, b, g)));
+    const swap = sk.boxes.map((b) => !!(b.fill && b.fop > 0 && b.fp >= 1 && b.swapOn && seen(b.swapOn)));
+    const rs = sk.barsets.map((set) => (set.gone ? null : set.el.getBoundingClientRect()));
+    const came = sk.barsets.map((set) => !set.shown && !set.gone && !!set.el.textContent.trim() && seen(set.el));
+    sk.boxes.forEach((b, i) => {
+      const r = rb[i];
+      if (!r) return;
+      const { E } = this.pen(r, 0), ink = 1 - b.dash;
+      const col = b.light ? `rgba(245,245,247,${(0.45 + 0.5 * ink).toFixed(2)})`
+        : `rgb(${PENCIL.map((v, j) => Math.round(v + (INK[j] - v) * ink)).join(',')})`;
+      b.lines.forEach((l, j) => {
+        const k = Math.max(0, Math.min(1, b.p - j)), [ax, ay, bx, by] = E[j];
+        l.setAttribute('x1', ax); l.setAttribute('y1', ay);
+        l.setAttribute('x2', ax + (bx - ax) * k); l.setAttribute('y2', ay + (by - ay) * k);
+        l.style.opacity = k > 0 ? b.op : 0;
+        l.style.stroke = col;
+        l.style.strokeDasharray = b.dash > 0.02 ? `5 ${(4 * b.dash).toFixed(2)}` : 'none';
+      });
+      if (b.tag > 0) {
+        b.label.textContent = `${Math.round(r.w)} × ${Math.round(r.h)}`;
+        b.label.setAttribute('x', r.x + r.w); b.label.setAttribute('y', r.y - 9);
+      }
+      b.label.style.opacity = Math.min(b.tag, b.op);
+      if (b.fill) {
+        // the paint stands in for the block until the block itself shows; then the real one takes over
+        if (swap[i]) b.fop = 0;
+        b.fill.setAttribute('x', r.x); b.fill.setAttribute('y', r.y);
+        b.fill.setAttribute('width', Math.max(0, r.w * b.fp)); b.fill.setAttribute('height', r.h);
+        b.fill.setAttribute('rx', Math.min(b.rx, (r.w * b.fp) / 2));
+        b.fill.style.opacity = b.fop;
+      }
+      if (b.op <= 0 && (!b.fill || b.fop <= 0)) b.cleared = true;
+    });
+    sk.barsets.forEach((set, i) => {
+      const r = rs[i];
+      if (!r) return;
+      if (came[i]) set.shown = now;   // the words have come: the bars go
+      const fade = set.shown ? Math.max(0, 1 - (now - set.shown) / 300) : 1;
+      if (fade <= 0 || set.op <= 0) set.gone = true;
+      set.bars.forEach((bar, j) => {
+        const k = Math.max(0, Math.min(1, set.p - j));
+        bar.n.setAttribute('x', r.left - g.left + bar.dx); bar.n.setAttribute('y', r.top - g.top + bar.dy);
+        bar.n.setAttribute('width', Math.max(0, bar.w * k)); bar.n.setAttribute('height', bar.h);
+        bar.n.style.opacity = k > 0 && !set.gone ? fade * set.op : 0;
+      });
+    });
+  },
+  // grey bars where the lines of an element's text are
+  measure(sk, el, light) {
+    const set = { el, p: 0, op: 1, bars: [], shown: 0 };
+    const er = el.getBoundingClientRect(), rows = [];
+    textsOf(el).flatMap((tn) => { const rg = document.createRange(); rg.selectNodeContents(tn); return [...rg.getClientRects()]; }).filter((q) => q.width > 2 && q.height > 2).forEach((q) => {
+      const row = rows.find((w) => Math.abs(w.top - q.top) < 4);
+      if (row) { row.l = Math.min(row.l, q.left); row.r = Math.max(row.r, q.right); row.h = Math.max(row.h, q.height); }
+      else rows.push({ top: q.top, l: q.left, r: q.right, h: q.height });
+    });
+    rows.forEach((w) => {
+      const n = svgEl('rect', 'cl-sk__b', sk.bars);
+      n.setAttribute('rx', Math.min(5, w.h * 0.25));
+      n.style.fill = light ? 'rgba(255,255,255,0.22)' : 'rgba(29,29,31,0.1)';
+      const h = Math.max(4, Math.min(40, w.h * 0.5));
+      set.bars.push({ n, dx: w.l - er.left, dy: w.top - er.top + (w.h - h) / 2, w: w.r - w.l, h });
+    });
+    sk.barsets.push(set);
+    return set;
+  },
+};
+// a block's own paint (the dark panels are kept unpainted until the crew paints them, so look underneath)
+function fillOf(el) {
+  const hidden = el.matches(SK_FILL) && !el.classList.contains('cl-fill');
+  if (hidden) el.classList.add('cl-fill');
+  const bg = getComputedStyle(el).backgroundColor;
+  if (hidden) el.classList.remove('cl-fill');
+  const m = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+  const alpha = m && m[4] != null ? +m[4] : 1;
+  return m && alpha > 0.02 ? { css: bg, dark: alpha >= 0.6 && (0.3 * m[1] + 0.59 * m[2] + 0.11 * m[3]) / 255 < 0.5 } : null;
+}
+
+// One agent draws a box: to its top left corner, then the four edges with the pencil, the size noted.
+function drawBox(c, sk, A, el, s, opts) {
+  const b = Sketch.box(sk, el, opts);
+  b.by = A;
+  c.glyph(A, 'cross', s - 0.1);
+  c.go(A, () => { const r = Sketch.rect(sk, b); return { x: r.x - 6, y: r.y }; }, s - 0.34, 0.32);
+  c.call(s, () => { if (b.statMe) { const r = b.el.getBoundingClientRect(), g = sk.region.getBoundingClientRect(); b.stat = { x: r.left - g.left, y: r.top - g.top, w: r.width, h: r.height }; } });
+  const d = Math.min(1.0, Math.max(0.55, (Sketch.rect(sk, b).w + Sketch.rect(sk, b).h) / 1400));
+  c.tween(s, d, 'linear', (k) => { b.p = k * 4; const q = Sketch.pen(Sketch.rect(sk, b), b.p); A.set(q.x, q.y); });
+  c.tween(s + d, 0.25, 'out', (k) => { b.tag = k; });
+  c.tween(s + d + 0.35, 0.35, 'inOut2', (k) => { b.dash = 1 - k; });   // inked a moment later
+  c.glyph(A, 'arrow', s + d + 0.02);
+  use(A, s + d);
+  b.drawn = s + d;
+  return b;
+}
+// One agent paints a box: a wipe from left to right, the agent riding the edge of the paint.
+function fillBox(c, sk, A, b, s) {
+  c.go(A, () => { const r = Sketch.rect(sk, b); return { x: r.x + 4, y: r.y + r.h * 0.5 }; }, s - 0.3, 0.3);
+  c.tween(s, 0.5, 'inOut2', (k) => { b.fp = k; const r = Sketch.rect(sk, b); A.set(r.x + r.w * k, r.y + r.h * 0.5); });
+  use(A, s + 0.5);
+  return s + 0.5;
+}
+// One agent lays the grey bars of an element's text, line by line.
+function drawBars(c, sk, A, el, s, light) {
+  const lh = parseFloat(getComputedStyle(el).lineHeight) || 20, n = Math.max(1, Math.round(c.rel(el).h / lh)), d = Math.min(1.1, 0.16 * n + 0.14);
+  let set = null;
+  c.call(s - 0.01, () => { set = Sketch.measure(sk, el, light); });
+  c.glyph(A, 'cross', s - 0.25);
+  c.go(A, () => { const r = c.rel(el); return { x: r.x, y: r.y + Math.min(r.h, lh) * 0.5 }; }, s - 0.3, 0.3);
+  c.tween(s, d, 'linear', (k) => {
+    if (!set || !set.bars.length) return;
+    set.p = k * set.bars.length;
+    const j = Math.min(set.bars.length - 1, Math.floor(set.p)), bar = set.bars[j], r = el.getBoundingClientRect(), g = c.region.getBoundingClientRect();
+    A.set(r.left - g.left + bar.dx + bar.w * Math.min(1, set.p - j) + 3, r.top - g.top + bar.dy + bar.h / 2);
+  });
+  c.glyph(A, 'arrow', s + d + 0.02);
+  use(A, s + d);
+  return s + d;
+}
+
+// k contiguous runs of a list, as even as can be (empty runs fall between full ones)
+const deal = (list, k) => Array.from({ length: k }, (_, i) => list.slice(Math.floor((i * list.length) / k), Math.floor(((i + 1) * list.length) / k)));
+
+// The wireframe of a region: its blocks and texts in reading order, dealt out in runs of neighbours, one
+// run per agent, so the crew spreads over the floor and draws all of it at once. The inks follow the
+// pencil; the stylists paint the coloured blocks; whatever sits on a painted block is drawn once the paint
+// is on; each step of the region waits for the wireframe of what it builds.
+function sketchPass(c, mates, late = {}, { t0 = 0.08, only = null } = {}) {
+  const region = c.region, sk = Sketch.of(c), mine = (el) => el.closest('[data-swarm]') === region;
+  const laid = (el) => el.getClientRects().length && c.rel(el).w > 4 && c.rel(el).h > 4;
+  const inScope = (el) => mine(el) && laid(el) && (!only || only.some((o) => o === el || o.contains(el)));
+  const blocks = [...new Set([...(region.matches(`${SK_BOX}, ${SK_FILL}`) ? [region] : []), ...$$(`${SK_BOX}, ${SK_FILL}`, region)])].filter(inScope);
+  const texts = $$(SK_TEXT, region).filter((el) => inScope(el) && el.textContent.trim() && !blocks.includes(el) && !$$(SK_TEXT, el).length);
+  if ((!blocks.length && !texts.length) || !mates.length) return null;
+  const paint = new Map();
+  blocks.forEach((el) => { const f = fillOf(el); if (f) paint.set(el, f); });
+  const holder = (el) => { for (let p = el.parentElement; p; p = p.parentElement) { if (paint.has(p)) return p; if (p === region) break; } return null; };
+  const dark = !!region.closest('.hero');
+  const lightOn = (el) => dark || (holder(el) ? paint.get(holder(el)).dark : false);
+  const order = (list) => list.map((el) => ({ el, r: c.rel(el), box: blocks.includes(el) }))
+    .sort((a, b) => (Math.abs(a.r.y - b.r.y) < 6 ? a.r.x - b.r.x : a.r.y - b.r.y) || (a.box ? -1 : 1));
+  const outer = order([...blocks, ...texts].filter((el) => !holder(el))), inner = order([...blocks, ...texts].filter((el) => holder(el)));
+  // the blocks a little off where a sketch would put them; snapped at the end
+  const loose = blocks.filter((el) => el.matches(SK_LOOSE)), rr = rng(blocks.length * 7 + texts.length + 3);
+  const offs = loose.map(() => ({ x: Math.round((rr() - 0.5) * 12), y: Math.round((rr() - 0.5) * 9) }));
+  if (loose.length) c.call(0.01, () => loose.forEach((el, i) => { el.style.translate = `${offs[i].x}px ${offs[i].y}px`; }));
+  sk.loose = (sk.loose || []).concat(loose.map((el, i) => ({ el, o: offs[i] })));
+  // the crew: whoever is here now first, those still busy upstairs take the later runs
+  const now = mates.filter((a) => !late[a.id]), later = mates.filter((a) => late[a.id]).sort((a, b) => late[a.id] - late[b.id]);
+  const n = outer.length + inner.length, crew = [...now, ...later].slice(0, Math.max(1, Math.min(mates.length, Math.ceil(n / 2.2))));   // two or three things each
+  const q = queue(), doneAt = new Map(), boxes = new Map(), startOf = (A, k) => Math.max(t0 + k * 0.07, late[A.id] ? late[A.id] + 0.25 : 0);
+  const job = (it, after = 0) => (Ag, s) => {
+    s = Math.max(s, after);
+    if (!it.box) { const e = drawBars(c, sk, Ag, it.el, s, lightOn(it.el)); doneAt.set(it.el, e); return e; }
+    const f = paint.get(it.el), rx = parseFloat(getComputedStyle(it.el).borderTopLeftRadius) || 0;
+    const b = drawBox(c, sk, Ag, it.el, s, { color: f && f.css, rx, light: lightOn(it.el), stat: it.el.matches(SK_STATIC) });
+    boxes.set(it.el, b);
+    doneAt.set(it.el, b.drawn);
+    return b.drawn;
+  };
+  // 1 · the blocks and texts on the page itself
+  deal(outer, crew.length).forEach((run, k) => { let t = startOf(crew[k], k); run.forEach((it) => { t = q(crew[k], t, job(it)) + 0.05; }); });
+  // 2 · the paint, once the ink is on, by the stylists (or whoever drew the box)
+  const painters = c.crew.filter((a) => /^stylist|^painter/.test(a.id) && !late[a.id]);
+  const painted = new Map(), hands = new Set(crew);
+  const paintAll = () => boxes.forEach((b, el) => {
+    if (!b.fill || painted.has(el)) return;
+    const want = b.drawn + 0.7, P = q.pick([...painters, b.by], want);
+    const e = q(P, want, (Ag, s) => fillBox(c, sk, Ag, b, s));
+    hands.add(P);
+    painted.set(el, e);
+    if (el.matches(SK_FILL)) c.call(e, () => { el.classList.add('cl-fill'); b.fop = 0; });
+    else b.swapOn = el;
+    doneAt.set(el, Math.max(doneAt.get(el) || 0, e));
+  });
+  paintAll();
+  // 3 · what sits on a painted block, once the paint is on (its own boxes painted in turn)
+  deal(inner, crew.length).forEach((run, k) => {
+    let t = startOf(crew[k], k);
+    run.forEach((it) => { t = q(crew[k], t, job(it, painted.get(holder(it.el)) || 0)) + 0.05; });
+  });
+  paintAll();
+  // every step of the region waits for the wireframe of what it builds (or of what it sits in)
+  $$('[data-swarm-step]', region).filter(mine).forEach((step) => {
+    let t = 0;
+    doneAt.forEach((e, el) => { if (step === el || step.contains(el) || el.contains(step)) t = Math.max(t, e); });
+    if (t) c.wait(step, t + 0.12);
+  });
+  sk.crew = (sk.crew || []).concat([...hands].filter((a) => !(sk.crew || []).includes(a)));
+  return { crew: [...hands], end: Math.max(0, ...doneAt.values()) };
+}
+
+// The hero's own wireframe, in white on the night sky: each writer lays the bars of the line it will
+// write as it reaches its place, the planner boxes the section index and writer-3 its lines.
+function heroSketch(c, T) {
+  const A = agentIn(c), sk = Sketch.of(c), h1 = $('.hero h1'), lede = $('.hero .lede'), aff = $('.hero .aff'), idx = $('.hero-index');
+  const wait = new Map(), mark = (step, e) => wait.set(step, Math.max(wait.get(step) || 0, e));
+  [[A('writer'), h1], [A('writer-2'), lede], [A('retriever'), aff]].forEach(([W, el]) => { if (W && el) mark(el, drawBars(c, sk, W, el, T(W.id) + 0.15, true)); });
+  if (idx && idx.getClientRects().length) {
+    const P = A('planner'), W3 = A('writer-3');
+    if (P) { const b = drawBox(c, sk, P, idx, T(P.id) + 0.12, { light: true }); mark(idx, b.drawn + 0.7); }
+    if (W3) { let t = T(W3.id) + 0.15; $$('a', idx).forEach((a) => { t = drawBars(c, sk, W3, a, t, true) + 0.05; }); mark(idx, t); }
+  }
+  wait.forEach((e, el) => c.wait(el, e + 0.12));
+}
+
+// The crew arriving at a floor: whoever is on a floor still being built comes over from there when it is
+// free (late, seconds), its cursor carried across; the others come in from the side of the screen. Each
+// goes straight to its run of the wireframe; anyone with nothing to draw steps off the screen until an act
+// needs it, so nobody waits about in a crowd.
 const HELLO = {
   research: ['writer', 'section one. no pressure.'], honors: ['planner', 'careful. these are awards.'],
-  papers: ['librarian', () => `${$$('#papers .pub').length} papers. I have a system.`], cv: ['historian', 'let’s start at the start.'],
+  papers: ['editor', () => `${$$('#papers .pub').length} papers. bring coffee.`], cv: ['historian', 'let’s start at the start.'],
   service: ['librarian', 'impact factors. my favourite.'], contact: ['writer', 'top floor! well, bottom.'],
 };
 function arrival(c, first, late = {}) {
-  const v = c.view(), b = c.rel(first), mates = c.crew.filter((a) => a.id !== 'red-team');
-  const per = Math.max(3, Math.floor((v.x1 - v.x0 - 80) / 54)), cols = Math.min(per, mates.length);
-  const x0 = Math.max(v.x0 + 24, Math.min(b.x + 12, v.x1 - cols * 54 - 24));
-  mates.forEach((a, i) => {
-    const row = Math.floor(i / per), col = i % per, lateBy = late[a.id] || 0, at = lateBy ? lateBy : 0.02 + i * 0.05;
-    if (lateBy) busy(a, lateBy + 0.7);
-    c.call(at, () => {
-      const p = c.takeOver(a.id, a), g = c.region.getBoundingClientRect(), vv = c.view();
-      if (p) a.set(p.x - g.left, p.y - g.top);
-      else a.set(i % 2 ? vv.x1 + 60 : vv.x0 - 60, b.y - 40 - row * 26 + col * 5);
-    });
-    c.go(a, { x: x0 + col * 54, y: b.y - 46 - row * 30 - (col % 2) * 9 }, at + 0.02, lateBy ? 0.75 : 0.6);
-  });
+  const v = c.view(), mates = c.crew.filter((a) => a.id !== 'red-team');
+  c.crew.forEach((a) => { if (late[a.id]) LATE.set(a, late[a.id] + 0.3); });
+  const b0 = c.rel(first), mid = Math.max(v.y0 + 60, Math.min(v.y1 - 60, b0.y + 40));
+  mates.forEach((a, i) => a.set(i % 2 ? v.x1 + 50 : v.x0 - 160, mid + (i % 5) * 26));   // out of sight, name tag and all
+  mates.forEach((a) => c.call(late[a.id] || 0, () => {
+    const p = c.takeOver(a.id), g = c.region.getBoundingClientRect();
+    if (p) a.set(p.x - g.left, p.y - g.top);
+  }));
   const rt = c.crew.find((a) => a.id === 'red-team');
   if (rt) {
-    rt.set(v.x1 + 90, b.y);
+    rt.set(v.x1 + 90, b0.y);
     c.call(late['red-team'] || 0.02, () => c.takeOver('red-team'));
   }
+  const pass = sketchPass(c, mates, late), drawing = new Set(pass ? pass.crew : []);
+  mates.filter((a) => !drawing.has(a)).forEach((a, i) => c.go(a, () => {
+    const w = c.view();
+    return { x: a.x < (w.x0 + w.x1) / 2 ? w.x0 - 160 : w.x1 + 50, y: a.y };
+  }, (late[a.id] || 0) + 0.05 + i * 0.04, 0.7, 'in'));
   const key = c.region.id || (c.region.classList.contains('impact') ? 'impact' : '');
   const hi = key === 'impact' ? ['researcher', 'numbers time.'] : HELLO[key];
   const ag = hi && c.crew.find((a) => a.id === hi[0]);
-  if (ag) think(c, ag, Math.max(0.8, (late[ag.id] || 0) + 0.8), typeof hi[1] === 'function' ? hi[1]() : hi[1], 1.6);
+  if (ag && drawing.has(ag)) think(c, ag, Math.max(0.9, (late[ag.id] || 0) + 0.9), typeof hi[1] === 'function' ? hi[1]() : hi[1], 1.6);
 }
 
-// ---------------------------------------------------------------- nobody stands about
-// While a floor is being built, an agent the script has left alone for a moment finds something to do: it
-// looks over a finished line or card (now and then saying what it thinks of it), keeps a busy colleague
-// company, or wanders a little. The moment the script needs it again it drops whatever it was doing.
-// None of this changes the page, so it runs outside the timeline.
+// The end of a floor: the blocks drawn a little off are snapped onto their grid, then the wireframe is
+// erased, box by box, by whoever is free (one agent for a few boxes, up to three for many). Returns when
+// it is gone.
+function finale(c, end) {
+  const sk = Sketch.all.get(c.region);
+  if (!sk || (!sk.boxes.length && !sk.barsets.length)) return end;
+  const crew = c.crew.filter((a) => a.id !== 'red-team' && !a.gone), free = (a) => Math.max(USE.get(a) || 0, LATE.get(a) || 0);
+  if (!crew.length) return end;
+  const order = (re, t) => [...crew].sort((a, b) => (re.test(b.id) - re.test(a.id)) || (Math.max(t, free(a)) - Math.max(t, free(b))));
+  let t = end + 0.15;
+  if (sk.loose && sk.loose.length) {
+    const P = order(/^planner|^stylist/, t)[0], els = sk.loose.map(({ el }) => el);
+    c.go(P, () => { const r = c.rel(els[0]); return { x: r.x - 10, y: r.y - 16 }; }, t - 0.35, 0.35);
+    c.log(P.id, `Align ▸ snap ${els.length} blocks to the grid`, t);
+    think(c, P, t, 'snap to grid.', 1.1);
+    c.tween(t + 0.1, 0.45, 'inOut2', (k) => sk.loose.forEach(({ el, o }) => { el.style.translate = `${o.x * (1 - k)}px ${o.y * (1 - k)}px`; }));
+    c.call(t + 0.57, () => sk.loose.forEach(({ el }) => { el.style.translate = ''; }));
+    guides(c, t + 0.55, els, 1.1);
+    use(P, t + 0.6);
+    t += 0.7;
+  }
+  const boxes = [...sk.boxes].sort((a, b) => Sketch.rect(sk, a).y - Sketch.rect(sk, b).y || Sketch.rect(sk, a).x - Sketch.rect(sk, b).x);
+  const k = Math.max(1, Math.min(3, Math.ceil(boxes.length / 6))), Es = order(/^editor|^stylist|^planner/, t).slice(0, k);
+  let te = t;
+  deal(boxes, Es.length).forEach((run, i) => {
+    const E = Es[i], hop = Math.max(0.08, Math.min(0.16, 1.8 / Math.max(1, run.length)));
+    let ti = Math.max(t, free(E)) + 0.1 + i * 0.12;
+    if (!run.length) return;
+    c.glyph(E, 'cross', ti - hop);
+    if (i === 0) { c.log(E.id, `erasing the wireframe · ${boxes.length} box${boxes.length > 1 ? 'es' : ''}`, ti); think(c, E, ti, 'clean up.', 1.1); }
+    run.forEach((b) => {
+      ti += hop;
+      c.go(E, () => { const r = Sketch.rect(sk, b); return { x: r.x + r.w * 0.5, y: r.y }; }, ti - hop, hop);
+      c.tween(ti, 0.3, 'out', (p) => { b.op = 1 - p; });
+    });
+    c.glyph(E, 'arrow', ti + 0.3);
+    use(E, ti + 0.3);
+    te = Math.max(te, ti + 0.3);
+  });
+  c.call(te, () => sk.barsets.forEach((set) => { set.op = 0; }));
+  return te;
+}
+
+// Where a floor may start: the hero first; then where the visitor is: the first floor once the page has
+// been scrolled to it, the others once their top is on the screen and within 1.3 screens of the top of
+// the highest floor still being built, so what is on the screen builds at once and the rest waits for
+// the floors above. A floor the visitor has scrolled right past is finished at once (catchUp).
+function ownBox(r) {
+  const mine = $$('[data-swarm-step]', r).filter((el) => el.closest('[data-swarm]') === r && el.getClientRects().length);
+  if (!mine.length) { const g = r.getBoundingClientRect(); return { top: g.top, bottom: g.bottom }; }
+  const rs = mine.map((el) => el.getBoundingClientRect());
+  return { top: Math.min(...rs.map((q) => q.top)), bottom: Math.max(...rs.map((q) => q.bottom)) };
+}
+function canStart(r, building) {
+  const rs = $$('[data-swarm]');
+  if (!rs[0].classList.contains('swarm-done')) return false;
+  const vh = innerHeight, b = ownBox(r);
+  if (b.top > vh * (r === rs[1] ? 0.6 : 0.92)) return false;   // not reached yet
+  const up = building.filter((x) => x !== rs[0]);
+  return !up.length || b.top - Math.min(...up.map((x) => ownBox(x).top)) < vh * 1.3;
+}
+const BUILDING = new Set();
+function catchUp() {
+  for (let i = 0; i < 60 && !swarm.stopped; i++) {
+    swarm.poke();
+    const past = [...BUILDING].filter((r) => !r.matches('.hero') && ownBox(r).bottom < 0);
+    if (!past.length) return;
+    past.forEach((r) => swarm.finish(r));
+  }
+}
+
 const MUSE = {
   copy: ['reads well.', 'typo? no.', 'comma… fine.', 'nice line.', 'spelled right.', 'short and clear.'],
   layout: ['2 px off? no.', 'on the grid ✓', 'nice gap.', 'aligned ✓', 'kerning ok.', 'that yellow ✓'],
@@ -1859,9 +2203,10 @@ const Idle = {
   },
   pick(run, a, s, v, now, mates) {
     const { c, r } = run, kind = KIND[a.id.replace(/-\d+$/, '')] || 'check', inView = (b) => b.x > v.x0 && b.x < v.x1 && b.y > v.y0 && b.y < v.y1;
-    const busyOnes = mates.filter((b) => b !== a && inView(b) && run.st.get(b) && !run.st.get(b).beh && now - run.st.get(b).still < 250);
-    const roll = r();
-    if (busyOnes.length && roll < 0.42) {   // keep a busy colleague company
+    const busyOnes = mates.filter((b) => b !== a && inView(b) && run.st.get(b) && !run.st.get(b).beh && now - run.st.get(b).still < 250
+      && !mates.some((o) => o !== a && o !== b && Math.hypot(o.x - b.x, o.y - b.y) < 110));
+    const roll = kind === 'city' && c.region.matches('.hero') ? 0.9 : r();   // the city crew stays in the city
+    if (busyOnes.length && roll < 0.16) {   // keep a busy colleague company (one who has no one else about)
       const b = busyOnes[(r() * busyOnes.length) | 0], ang = (a.id.length * 1.7 + r()) % (Math.PI * 2), d = 1500 + r() * 900;
       const ox = Math.cos(ang) * 52, oy = -30 - Math.abs(Math.sin(ang)) * 16, cur = { x: a.x, y: a.y };
       let said = false;
@@ -1878,7 +2223,8 @@ const Idle = {
         const q = el.getBoundingClientRect(), x = q.left - g.left, y = q.top - g.top;
         return { el, x, y, w: q.width, h: q.height, d: Math.hypot(x + q.width / 2 - a.x, y - a.y) };
       }).filter((e) => e.w > 12 && e.h > 8 && e.x + e.w > v.x0 + 20 && e.x < v.x1 - 20 && e.y > v.y0 + 30 && e.y < v.y1 - 30 && e.d < 700)
-        .sort((p, q) => p.d - q.d).slice(0, 7).filter((e) => e.el.textContent.trim() && seen(e.el));
+        .map((e) => ({ ...e, d: e.d + 260 * mates.filter((o) => o !== a && Math.hypot(o.x - (e.x + e.w / 2), o.y - e.y) < 160).length }))   // somewhere with no one else about
+        .sort((p, q) => p.d - q.d).slice(0, 6).filter((e) => e.el.textContent.trim() && seen(e.el));
       if (near.length) {
         const e = near[(r() * near.length) | 0], fx = 0.15 + r() * 0.5, sweep = Math.min(90, e.w * 0.3) * (r() < 0.5 ? -1 : 1);
         const at = () => { const q = e.el.getBoundingClientRect(), gg = c.region.getBoundingClientRect(); return { x: q.left - gg.left + q.width * fx, y: q.top - gg.top - 24 }; };
@@ -1897,88 +2243,32 @@ const Idle = {
   },
 };
 
-// ---------------------------------------------------------------- the house rule: one floor at a time
-// While the page is being built, the sheet ends just below the floor the crew is on, so no one scrolls
-// past work that is not done; a hazard tape marks the edge, and each finished floor opens the next.
-const TAPE = 88;
-const nameOf = (r) => r.getAttribute('aria-label') || (($('h2', r) || {}).textContent || '').replace(/^\s*\d+\s*/, '').trim() || r.id || 'the page';
-const Gate = {
-  on: false, h: -1, sheet: null, tape: null, label: null, regions: [], names: new Map(), timer: 0,
-  init() {
-    this.sheet = $('.sheet');
-    this.regions = $$('[data-swarm]');
-    if (!this.sheet) return;
-    this.regions.forEach((r) => this.names.set(r, nameOf(r)));
-    const tape = document.createElement('div');
-    tape.className = 'crew-gate';
-    tape.setAttribute('aria-hidden', 'true');
-    tape.innerHTML = '<p><b>Under construction</b><span></span></p>';
-    this.sheet.appendChild(tape);
-    this.tape = tape;
-    this.label = $('span', tape);
-    this.on = true;
-    this.update();
-    this.timer = setInterval(() => this.update(), 300);
-    addEventListener('resize', () => this.update(), { passive: true });
-  },
-  update() {
-    if (!this.on) return;
-    const rs = this.regions, done = (r) => r.classList.contains('swarm-done'), building = (r) => r.classList.contains('sb-host');
-    if (rs.every(done) || swarm.stopped) { this.open(); return; }
-    // down to the lowest floor started; if that one is finished and nothing is being built, the next too
-    let k = -1;
-    rs.forEach((r, i) => { if (done(r) || building(r)) k = i; });
-    let low = rs[k] || rs[0];
-    if (done(low) && !rs.some(building) && rs[k + 1]) low = rs[k + 1];
-    let h = 0;
-    if (this.sheet.contains(low)) {
-      const top = this.sheet.getBoundingClientRect().top;
-      const upto = rs.slice(0, rs.indexOf(low) + 1).filter((r) => this.sheet.contains(r));
-      h = Math.ceil(Math.max(...upto.map((r) => r.getBoundingClientRect().bottom)) - top) + TAPE;
-    }
-    if (h !== this.h) { this.h = h; root.style.setProperty('--crew-gate', h + 'px'); }
-    const working = building(low), n = working ? $$(':scope > .sb-layer > .sb-ag', low).filter((e) => e.style.opacity !== '0').length : 0;
-    const text = ` · ${this.names.get(low)}` + (working ? ` · ${n} agents at work · click to speed up` : ' · next floor, scroll on');
-    if (this.label && this.label.textContent !== text) this.label.textContent = text;
-  },
-  open() {
-    if (!this.on && root.classList.contains('cl-open')) return;
-    this.on = false;
-    clearInterval(this.timer);
-    root.classList.add('cl-open');
-    root.style.removeProperty('--crew-gate');
-    const tape = this.tape;
-    this.tape = null;
-    if (tape) { tape.classList.add('is-out'); setTimeout(() => tape.remove(), 500); }
-  },
-};
-
 // ---------------------------------------------------------------- running it, Skip and replay
 let heroStarted = false;
 const swarm = swarmBuild({
   crew: CREW, acts: Object.fromEntries(Object.entries(ACTS).map(([k, f]) => [k, (c) => {
-    c.t = Math.max(c.t, ...c.who.map((g) => BUSY.get(g) || 0));
+    c.t = Math.max(c.t, ...c.who.map((g) => Math.max(BUSY.get(g) || 0, LATE.get(g) || 0)));
     instrument(c);
     const e = f(c);
     c.who.forEach((g) => busy(g, +e || 0));
     return e;
   }])),
-  entrance, arrival, speed: 1.2, pace: 1.6, gap: 0.3, traceDots: true,
-  // the next floor starts once this one is 60% of the way through and its first step has its people
-  handoff: 0.6,
+  entrance, arrival, canStart, speed: 1.2, pace: 1.6, gap: 0.3, traceDots: true,
   useOf: (ag) => USE.get(ag) || 0,
-  planned: (c) => Idle.start(c),
+  planned: (c, { end }) => { Idle.start(c); return finale(c, end); },
   ffEvents: ['keydown', 'click'],
   onRegionStart: (region) => {
+    BUILDING.add(region);
     if (region.matches('.hero')) heroStarted = true; else if (!heroStarted) dropBoot();
-    Gate.update();
   },
   onRegionEnd: (region) => {
+    BUILDING.delete(region);
     Idle.stop(region);
+    Sketch.drop(region);
     if (region.matches('.hero')) { finishScene(); dropBoot(true); }
     for (let i = RESTORE.length - 1; i >= 0; i--) if (RESTORE[i].region === region) { RESTORE[i].put(); RESTORE.splice(i, 1); }
-    Gate.update();
-    if ($$('[data-swarm]').every((r) => r.classList.contains('swarm-done'))) { skipButton(false); Gate.open(); }
+    $$(SK_FILL, region).concat(region.matches(SK_FILL) ? [region] : []).forEach((el) => el.classList.add('cl-fill'));
+    if ($$('[data-swarm]').every((r) => r.classList.contains('swarm-done'))) skipButton(false);
   },
 });
 
@@ -2008,7 +2298,7 @@ function stopAll() {
   swarm.stop();
   finishScene();
   dropBoot(true);
-  Gate.open();
+  $$(SK_FILL).forEach((el) => el.classList.add('cl-fill'));
   skipButton(false);
 }
 
@@ -2036,16 +2326,23 @@ function skipButton(on) {
     for (const el of $$('[data-swarm-step]')) if (!el.getClientRects().length) el.removeAttribute('data-swarm-step');
     const again = $('.crew-replay');
     if (again) { again.hidden = false; again.addEventListener('click', () => swarm.replay()); }
-    if (!swarm.active) { dropBoot(true); root.classList.add('cl-open'); swarm.start(); return; }
-    Gate.init();
+    if (!swarm.active) { dropBoot(true); swarm.start(); return; }
     skipButton(true);
     // a link to a part of the page that is not built yet: stop building and go there
     addEventListener('click', (e) => {
-      if (!Gate.on) return;
+      if (swarm.stopped || !skipEl) return;
       const a = e.target.closest && e.target.closest('a[href^="#"]');
       const to = a && document.getElementById(decodeURIComponent(a.getAttribute('href').slice(1)));
       if (to && !to.closest('.hero')) stopAll();
     }, true);
+    // the floors start where the visitor is: ask again as they scroll (and now and then, as things move)
+    let ask = 0;
+    addEventListener('scroll', () => {
+      const hero = $('.hero');
+      if (hero && hero.classList.contains('sb-host') && scrollY > innerHeight * 0.5) swarm.finish(hero);   // scrolled past the hero: finish it
+      if (!ask) ask = requestAnimationFrame(() => { ask = 0; catchUp(); });
+    }, { passive: true });
+    const tick = setInterval(() => { if (swarm.stopped || !skipEl) clearInterval(tick); else catchUp(); }, 500);
     const clouds = Promise.race([Cloud.load(), new Promise((res) => setTimeout(res, 2500))]);
     await boot();
     await clouds;
@@ -2056,6 +2353,6 @@ function skipButton(on) {
     console.error('[crew]', err);
     try { swarm.stop(); } catch (e) { /* nothing left to stop */ }
     dropBoot(true);
-    Gate.open();
+    $$(SK_FILL).forEach((el) => el.classList.add('cl-fill'));
   }
 })();

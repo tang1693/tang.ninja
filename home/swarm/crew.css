@@ -225,25 +225,18 @@
 /* the dots a cursor leaves when the crew is sent out */
 .cl-trail { position: absolute; left: 0; top: 0; width: 6px; height: 6px; border-radius: 50%; background: var(--c); box-shadow: 0 0 8px var(--c); }
 
-/* ---------- One floor at a time: the sheet ends below the floor being built ---------- */
-.swarm-js:not(.cl-open) .sheet { height: var(--crew-gate, 0px); overflow: hidden; transition: height 0.9s cubic-bezier(0.2, 0.7, 0.2, 1); }
-@supports (overflow: clip) { .swarm-js:not(.cl-open) .sheet { overflow: visible; overflow-y: clip; } }
-.crew-gate { position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; height: 88px; pointer-events: none; transition: opacity 0.4s ease; }
-.crew-gate::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 14px; background: repeating-linear-gradient(-45deg, var(--yellow) 0 14px, #111 14px 28px); }
-.crew-gate p {
-  margin: 0;
-  padding: 30px max(20px, calc((100% - 1180px) / 2)) 0;
-  overflow: hidden;
-  color: var(--muted);
-  font: 600 11px/1.4 var(--sb-mono);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-.crew-gate b { color: var(--ink); font-weight: 600; }
-.crew-gate b::before { content: "▲ "; color: var(--yellow); }
-.crew-gate.is-out { opacity: 0; }
+/* ---------- The wireframe: pencil boxes and text bars, inked, painted, erased ---------- */
+.cl-sk { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; pointer-events: none; }
+.cl-sk__l { fill: none; stroke-width: 1.5; stroke-linecap: round; }
+.cl-sk__t { font: 600 10px var(--sb-mono); text-anchor: end; letter-spacing: 0.02em; }
+/* the dark panels wait for the crew's paint (and their shapes with them) */
+.swarm-js .impact:not(.swarm-done):not(.cl-fill),
+.swarm-js #contact:not(.swarm-done) .contact:not(.cl-fill) { background: transparent; }
+.swarm-js #contact:not(.swarm-done) .contact::before, .swarm-js #contact:not(.swarm-done) .contact::after { transition: opacity 0.5s ease; }
+.swarm-js #contact:not(.swarm-done) .contact:not(.cl-fill)::before, .swarm-js #contact:not(.swarm-done) .contact:not(.cl-fill)::after { opacity: 0; }
+/* a year's rule comes with its heading; Yang Tang is set in bold by the crew */
+.swarm-js .year-group:not(.swarm-done):not(.cl-rule) { border-top-color: transparent; }
+.pub-authors b.cl-plain { color: inherit; font-weight: inherit; }
 
 .cl-gcp { position: absolute; width: 18px; height: 18px; transform: translate(-50%, -50%); }
 .cl-gcp i {

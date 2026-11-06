@@ -8,9 +8,10 @@
   <meta name="theme-color" content="#000000">
   <meta property="og:title" content="Yang Tang">
   <meta property="og:description" content="Photogrammetry, remote sensing and hyperspectral imaging.">
-  <!-- The page builds itself on the first visit of a session (swarm-build, home/swarm/), floor by floor.
-       This decides, before anything paints, whether this visit builds; it is the only thing that ever hides
-       content. A link to a part of the page (a #hash) skips the build. -->
+  <!-- The page builds itself on the first visit of a session (swarm-build, home/swarm/): the hero first, then
+       each part of the page as the visitor reaches it. This decides, before anything paints, whether this
+       visit builds; it is the only thing that ever hides content. A link to a part of the page (a #hash)
+       skips the build. -->
   <script>
   (function () {
     try {
@@ -107,7 +108,7 @@
         </a>
       </div>
 
-      <div class="impact" aria-label="Research in numbers" data-swarm>
+      <div class="impact" aria-label="Research in numbers" data-swarm data-swarm-by="stylist planner writer-2">
         <div class="impact-total" data-swarm-step="act" data-swarm-act="scholar" data-swarm-by="researcher" data-swarm-keep>
           <p class="big-number" data-swarm-step="count" data-swarm-label="citations">1,045</p>
           <p class="big-label" data-swarm-step="act" data-swarm-act="stream" data-swarm-by="researcher">citations on Google Scholar</p>
@@ -161,8 +162,8 @@
           <p>ASPRS and the editorial board of <i>Photogrammetric Engineering &amp; Remote Sensing</i>, the society's journal since 1934.</p>
         </article>
       </div>
-      <div class="more-honors" data-swarm-step="act" data-swarm-act="honorsList" data-swarm-by="writer-2 writer-3 retriever eval-2">
-        <div>
+      <div class="more-honors" data-swarm>
+        <div data-swarm-step="act" data-swarm-act="honorsList" data-swarm-by="writer-2 retriever eval-2">
           <h3>More honors</h3>
           <ul class="plain-list">
             <li><span>Editor's Choice paper, <i>Remote Sensing</i>: the object detection review</span><span>2025</span></li>
@@ -174,7 +175,7 @@
             <li><span>Outstanding Student Leader, Wroclaw University of Technology</span><span>2009</span></li>
           </ul>
         </div>
-        <div>
+        <div data-swarm-step="act" data-swarm-act="honorsList" data-swarm-by="writer-3 researcher eval">
           <h3>Scholarships</h3>
           <ul class="plain-list">
             <li><span>JASSO short-term scholarship, full, The University of Tokyo <em class="ratio">2 of 225 · top 0.9%</em></span><span>2012 to 2013</span></li>
@@ -189,7 +190,7 @@
     <section class="block wrap" id="papers" aria-labelledby="papers-title" data-swarm>
       <div class="papers-head">
         <h2 id="papers-title" data-swarm-step="act" data-swarm-act="edit" data-swarm-story="papers" data-swarm-by="writer editor"><span class="h-num" aria-hidden="true">03</span>Papers</h2>
-        <div class="filter" role="group" aria-label="Show papers by topic" data-swarm-step="act" data-swarm-act="pills" data-swarm-by="planner writer stylist-2">
+        <div class="filter" role="group" aria-label="Show papers by topic" data-swarm-step="act" data-swarm-act="pills" data-swarm-by="writer stylist-2">
           <button type="button" data-filter="all" aria-pressed="true">All</button>
           <button type="button" data-filter="p" aria-pressed="false">Photogrammetry</button>
           <button type="button" data-filter="r" aria-pressed="false">Remote sensing</button>
@@ -197,16 +198,17 @@
         </div>
       </div>
 
-      <div class="years" data-swarm-step="act" data-swarm-act="papers" data-swarm-by="librarian writer-2 writer-3 retriever researcher eval eval-2 stylist">
-        <div class="year-group">
-          <h3 class="year">2026</h3>
-          <ol class="pubs">
+      <!-- each year is built as a floor of its own, two crews taking turns so neighbouring years build at once -->
+      <div class="years">
+        <div class="year-group" data-swarm>
+          <h3 class="year" data-swarm-step="act" data-swarm-act="type" data-swarm-by="librarian">2026</h3>
+          <ol class="pubs" data-swarm-step="act" data-swarm-act="pubs" data-swarm-by="writer retriever eval stylist">
             <li class="pub" data-area="p"><span class="pub-shape" aria-hidden="true"></span><div><a class="pub-title" href="https://arxiv.org/abs/2602.22025">Olbedo: An albedo and shading aerial dataset for large-scale outdoor environments</a><p class="pub-authors">Shuang Song, Debao Huang, Deyan Deng, Haolin Xiong, <b>Yang Tang</b>, Yajie Zhao, Rongjun Qin</p><p class="pub-venue">IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)</p></div><span class="pub-cites" title="Citations on Google Scholar">15</span></li>
           </ol>
         </div>
-        <div class="year-group">
-          <h3 class="year">2025</h3>
-          <ol class="pubs">
+        <div class="year-group" data-swarm>
+          <h3 class="year" data-swarm-step="act" data-swarm-act="type" data-swarm-by="librarian">2025</h3>
+          <ol class="pubs" data-swarm-step="act" data-swarm-act="pubs" data-swarm-by="writer-2 writer-3 researcher eval-2 stylist-2">
             <li class="pub" data-area="r"><span class="pub-shape" aria-hidden="true"></span><div><a class="pub-title" href="https://scholar.google.com/scholar?q=%22Synthetic+Data+Matters%3A+Re-training+with+Geo-typical+Synthetic+Labels+for+Building+Detection%22">Synthetic data matters: re-training with geo-typical synthetic labels for building detection</a><p class="pub-authors">Shuang Song, <b>Yang Tang</b>, Rongjun Qin</p><p class="pub-venue">IEEE Transactions on Geoscience and Remote Sensing</p></div><span class="pub-cites" title="Citations on Google Scholar">60</span></li>
             <li class="pub" data-area="r"><span class="pub-shape" aria-hidden="true"></span><div><a class="pub-title" href="https://scholar.google.com/scholar?q=%22On+the+Transferability+of+Semantic+Segmentation+for+Very-High-Resolution+Remote+Sensing+Data%22">On the transferability of semantic segmentation for very-high-resolution remote sensing data of multi-city environments</a><p class="pub-authors">Rongjun Qin, Guixiang Zhang, <b>Yang Tang</b></p><p class="pub-venue">Photogrammetric Engineering &amp; Remote Sensing 91 (8), 517–528</p><p class="badges"><span class="badge badge-y">Talbert Abrams Award, First Honorable Mention</span></p></div><span class="pub-cites" title="Citations on Google Scholar">38</span></li>
             <li class="pub" data-area="r"><span class="pub-shape" aria-hidden="true"></span><div><a class="pub-title" href="https://scholar.google.com/scholar?q=%22Weakly+supervised+land-cover+classification+of+high-resolution+images+with+low-resolution+labels%22">Weakly supervised land-cover classification of high-resolution images with low-resolution labels through optimized label refinement</a><p class="pub-authors"><b>Yang Tang</b>, Guixiang Zhang, Jung Kuan Liu, Rongjun Qin</p><p class="pub-venue">International Journal of Remote Sensing 46 (5), 1913–1937</p></div><span class="pub-cites" title="Citations on Google Scholar">87</span></li>
@@ -214,54 +216,56 @@
             <li class="pub" data-area=""><span class="pub-shape" aria-hidden="true"></span><div><a class="pub-title" href="https://scholar.google.com/scholar?q=%22Geodesy+for+Climate+Actions%22">Geodesy for climate actions</a><p class="pub-authors">C. K. Shum, Shengdao Wang, Yu Zhang, Yixin Xiao, <b>Yang Tang</b>, Metehan Uz, Kazim Atman, et al.</p><p class="pub-venue">IAG Scientific Assembly 2025</p></div><span class="pub-cites" title="Citations on Google Scholar">2</span></li>
           </ol>
         </div>
-        <div class="year-group">
-          <h3 class="year">2024</h3>
-          <ol class="pubs">
-            <li class="pub" data-area="r"><span class="pub-shape" aria-hidden="true"></span><div><a class="pub-title" href="https://doi.org/10.3390/rs16020327">Remote sensing object detection in the deep learning era: a review</a><p class="pub-authors">Shengxi Gui, Shuang Song, Rongjun Qin, <b>Yang Tang</b></p><p class="pub-venue">Remote Sensing 16 (2), 327</p><p class="badges"><span class="badge badge-r">Best Paper Award, Second Prize</span><span class="badge badge-b">Top 1% highly cited</span><span class="badge">Editor's Choice</span></p></div><span class="pub-cites" title="Citations on Google Scholar">453</span></li>
+        <div class="year-group" data-swarm>
+          <h3 class="year" data-swarm-step="act" data-swarm-act="type" data-swarm-by="librarian">2024</h3>
+          <ol class="pubs" data-swarm-step="act" data-swarm-act="pubs" data-swarm-by="writer retriever eval stylist">
+            <li class="pub" data-area="r"><span class="pub-shape" aria-hidden="true"></span><div><a class="pub-title" href="https://doi.org/10.3390/rs16020327">Remote sensing object detection in the deep learning era: a review</a><p class="pub-authors">Shengxi Gui, Shuang Song, Rongjun Qin, <b>Yang Tang</b></p><p class="pub-venue">Remote Sensing 16 (2), 327</p><p class="badges"><span class="badge badge-r">Best Paper Award, Second Prize</span><span class="badge badge-b">Top 1% highly cited</span><span class="badge">Editor's Choice</span></p></div><span class="pub-cites" title="Citations on Google Scholar" data-swarm-step="act" data-swarm-act="inflate" data-swarm-by="red-team eval" data-swarm-keep>453</span></li>
             <li class="pub" data-area="r"><span class="pub-shape" aria-hidden="true"></span><div><a class="pub-title" href="https://scholar.google.com/scholar?q=%22Image+fusion+in+remote+sensing%3A+An+overview+and+meta-analysis%22">Image fusion in remote sensing: an overview and meta-analysis</a><p class="pub-authors">Hessah Albanwan, Rongjun Qin, <b>Yang Tang</b></p><p class="pub-venue">Photogrammetric Engineering &amp; Remote Sensing 90 (12), 755–775</p><p class="badges"><span class="badge badge-b">Top 1% highly cited</span></p></div><span class="pub-cites" title="Citations on Google Scholar">69</span></li>
             <li class="pub" data-area=""><span class="pub-shape" aria-hidden="true"></span><div><a class="pub-title" href="https://scholar.google.com/scholar?q=%22Correlation+between+building+density+and+myopia+for+Chinese+children%22">Correlation between building density and myopia for Chinese children: a multi-center and cross-sectional study</a><p class="pub-authors">Yahan Yang, <b>Yang Tang</b>, Duoru Lin, Haotian Lin</p><p class="pub-venue">Investigative Ophthalmology &amp; Visual Science 65 (7), 157</p></div><span class="pub-cites" title="Citations on Google Scholar">37</span></li>
           </ol>
         </div>
-        <div class="year-group">
-          <h3 class="year">2023</h3>
-          <ol class="pubs">
+        <div class="year-group" data-swarm>
+          <h3 class="year" data-swarm-step="act" data-swarm-act="type" data-swarm-by="librarian">2023</h3>
+          <ol class="pubs" data-swarm-step="act" data-swarm-act="pubs" data-swarm-by="writer-2 writer-3 researcher eval-2 stylist-2">
             <li class="pub" data-area="h"><span class="pub-shape" aria-hidden="true"></span><div><a class="pub-title" href="https://doi.org/10.3390/s23031437">Active and low-cost hyperspectral imaging for the spectral analysis of a low-light environment</a><p class="pub-authors"><b>Yang Tang</b>, Shuang Song, Shengxi Gui, Weilun Chao, Chinmin Cheng, Rongjun Qin</p><p class="pub-venue">Sensors 23 (3), 1437</p><p class="badges"><span class="badge badge-b">Top 1% highly cited</span><span class="badge">Editor's Choice</span></p></div><span class="pub-cites" title="Citations on Google Scholar">95</span></li>
             <li class="pub" data-area="r"><span class="pub-shape" aria-hidden="true"></span><div><a class="pub-title" href="https://scholar.google.com/scholar?q=%22Satellite-based+tools+enabling+India+forest+sustainability%22">Satellite-based tools enabling India forest sustainability</a><p class="pub-authors">Ying Zuo, C. K. Shum, Soumitri Das, Yuanyuan Jia, Orhan Akyilmaz, Yu Zhang, <b>Yang Tang</b>, et al.</p><p class="pub-venue">XXVIII General Assembly of the International Union of Geodesy and Geophysics (IUGG)</p></div><span class="pub-cites"></span></li>
           </ol>
         </div>
-        <div class="year-group">
-          <h3 class="year">2022</h3>
-          <ol class="pubs">
+        <div class="year-group" data-swarm>
+          <h3 class="year" data-swarm-step="act" data-swarm-act="type" data-swarm-by="librarian">2022</h3>
+          <ol class="pubs" data-swarm-step="act" data-swarm-act="pubs" data-swarm-by="writer retriever eval stylist">
             <li class="pub" data-area="p"><span class="pub-shape" aria-hidden="true"></span><div><a class="pub-title" href="https://scholar.google.com/scholar?q=%22An+evaluation+of+PlanetScope+images+for+3D+reconstruction+and+change+detection%22">An evaluation of PlanetScope images for 3D reconstruction and change detection: experimental validations with case studies</a><p class="pub-authors">Debao Huang, <b>Yang Tang</b>, Rongjun Qin</p><p class="pub-venue">GIScience &amp; Remote Sensing 59 (1), 744–761</p></div><span class="pub-cites" title="Citations on Google Scholar">63</span></li>
             <li class="pub" data-area="p"><span class="pub-shape" aria-hidden="true"></span><div><a class="pub-title" href="https://isprs-archives.copernicus.org/articles/XLIII-B2-2022/379/2022/">Sat2LoD2: a software for automated LoD-2 building reconstruction from satellite-derived orthophoto and digital surface model</a><p class="pub-authors">Shengxi Gui, Rongjun Qin, <b>Yang Tang</b></p><p class="pub-venue">The International Archives of the Photogrammetry, Remote Sensing and Spatial Information Sciences 43, 379–386</p></div><span class="pub-cites" title="Citations on Google Scholar">17</span></li>
             <li class="pub" data-area="r"><span class="pub-shape" aria-hidden="true"></span><div><a class="pub-title" href="https://scholar.google.com/scholar?q=%22Satellite+Remote+Sensing-Based+Environmental+Monitoring+of+Inland+Water+and+Natural+Hazards%22">Satellite remote sensing-based environmental monitoring of inland water and natural hazards towards forest sustainability over India</a><p class="pub-authors">Yuanyuan Jia, C. K. Shum, Ying Zuo, <b>Yang Tang</b></p><p class="pub-venue">AGU Fall Meeting Abstracts 2022, G31A-04</p></div><span class="pub-cites" title="Citations on Google Scholar">2</span></li>
           </ol>
         </div>
-        <div class="year-group">
-          <h3 class="year">2021</h3>
-          <ol class="pubs">
+        <div class="year-group" data-swarm>
+          <h3 class="year" data-swarm-step="act" data-swarm-act="type" data-swarm-by="librarian">2021</h3>
+          <ol class="pubs" data-swarm-step="act" data-swarm-act="pubs" data-swarm-by="writer-2 writer-3 researcher eval-2 stylist-2">
             <li class="pub" data-area="r"><span class="pub-shape" aria-hidden="true"></span><div><a class="pub-title" href="https://scholar.google.com/scholar?q=%22Design+of+remote+sensing+image+data+analysis+and+processing+platform+based+on+environmental+monitoring%22">Design of remote sensing image data analysis and processing platform based on environmental monitoring</a><p class="pub-authors"><b>Yang Tang</b>, Jiongchao Yan, Yueqi Wu, Jie Hong, Lei Xu, Zhangrui Lin</p><p class="pub-venue">Journal of Physics: Conference Series 2136 (1), 012056</p></div><span class="pub-cites" title="Citations on Google Scholar">3</span></li>
           </ol>
         </div>
-        <div class="year-group">
-          <h3 class="year">2019</h3>
-          <ol class="pubs">
+        <div class="year-group" data-swarm>
+          <h3 class="year" data-swarm-step="act" data-swarm-act="type" data-swarm-by="librarian">2019</h3>
+          <ol class="pubs" data-swarm-step="act" data-swarm-act="pubs" data-swarm-by="writer retriever eval stylist">
             <li class="pub" data-area=""><span class="pub-shape" aria-hidden="true"></span><div><a class="pub-title" href="https://scholar.google.com/scholar?q=%22Study+on+microclimate+observation+network+for+urban+unit%22">Study on microclimate observation network for urban unit: a case study in a campus of Shenzhen, China</a><p class="pub-authors">Xin Lai, <b>Yang Tang</b>, Lei Li, PakWai Chan, Qingfeng Zeng</p><p class="pub-venue">Physics and Chemistry of the Earth, Parts A/B/C 110, 117–124</p></div><span class="pub-cites" title="Citations on Google Scholar">15</span></li>
             <li class="pub" data-area="" lang="zh"><span class="pub-shape" aria-hidden="true"></span><div><a class="pub-title" href="https://scholar.google.com/scholar?q=%E5%9F%BA%E4%BA%8E%E7%89%A9%E8%81%94%E7%BD%91%E7%9A%84%E5%9F%8E%E5%B8%82%E5%8D%95%E5%85%83%E4%BD%93%E5%BE%AE%E6%B0%94%E5%80%99%E7%8E%AF%E5%A2%83%E8%A7%82%E6%B5%8B%E7%AE%A1%E7%90%86%E6%A8%A1%E5%BC%8F">基于物联网的城市单元体微气候环境观测管理模式</a><p class="pub-authors">曾庆锋, 高瑞泉, 温精敏, 李磊, 许磊, <b>汤洋</b>, 赖鑫</p><p class="pub-venue">收藏 3</p></div><span class="pub-cites"></span></li>
           </ol>
         </div>
-        <div class="year-group" data-swarm-step="act" data-swarm-act="drag" data-swarm-by="red-team librarian" data-swarm-keep>
-          <h3 class="year">2013</h3>
-          <ol class="pubs">
+        <div class="year-group" data-swarm>
+          <h3 class="year" data-swarm-step="act" data-swarm-act="type" data-swarm-by="librarian">2013</h3>
+          <ol class="pubs" data-swarm-step="act" data-swarm-act="pubs" data-swarm-by="writer-2 writer-3 researcher eval-2 stylist-2">
             <li class="pub" data-area=""><span class="pub-shape" aria-hidden="true"></span><div><a class="pub-title" href="https://scholar.google.com/scholar?q=%22Analyzing+Patterns+from+Twitter+Happiness%22">Analyzing patterns from Twitter happiness referring stock market and American unemployment rate announcement</a><p class="pub-authors"><b>Yang Tang</b>, Yoshihiro Kawahara, Tohru Asami, Danushka Bollegala</p><p class="pub-venue">Proceedings of the IEICE General Conference 2013, BS-1-12</p></div><span class="pub-cites"></span></li>
           </ol>
         </div>
       </div>
-      <p class="papers-note" data-swarm-step="act" data-swarm-act="filter" data-swarm-by="researcher librarian">Numbers on the right are Google Scholar citations, October 2026. <a href="https://scholar.google.com/citations?user=Eo3rkZcAAAAJ">Google Scholar profile</a></p>
+      <div class="papers-foot" data-swarm>
+        <p class="papers-note" data-swarm-step="act" data-swarm-act="filter" data-swarm-by="researcher librarian">Numbers on the right are Google Scholar citations, October 2026. <a href="https://scholar.google.com/citations?user=Eo3rkZcAAAAJ">Google Scholar profile</a></p>
+      </div>
     </section>
 
     <!-- 04 Education and experience -->
-    <section class="block wrap" id="cv" aria-labelledby="cv-title" data-swarm>
+    <section class="block wrap" id="cv" aria-labelledby="cv-title" data-swarm data-swarm-by="stylist writer-3 eval-2">
       <h2 id="cv-title" data-swarm-step="act" data-swarm-act="edit" data-swarm-story="cv" data-swarm-by="writer editor"><span class="h-num" aria-hidden="true">04</span>Education and experience</h2>
       <div class="cv" data-swarm-step="act" data-swarm-act="cv" data-swarm-by="planner historian historian-2">
         <div class="cv-col">
@@ -297,6 +301,7 @@
         </dl>
         <p class="service-lede" data-swarm-step="act" data-swarm-act="edit" data-swarm-story="serviceLede" data-swarm-by="writer-2 editor">Including these journals, in order of their impact factor, and two conferences.</p>
       </div>
+      <div class="venues-wrap" data-swarm data-swarm-by="stylist">
       <ol class="venues" data-swarm-step="act" data-swarm-act="rank" data-swarm-by="librarian writer writer-3 retriever researcher eval eval-2">
           <li class="venue" data-swarm-step="act" data-swarm-act="reverse" data-swarm-by="red-team librarian" data-swarm-keep>
             <span class="venue-if"><b>12.9</b><small>impact factor</small></span>
@@ -382,9 +387,10 @@
           </li>
       </ol>
       <p class="venues-note" data-swarm-step="act" data-swarm-act="stream" data-swarm-by="writer-2 librarian">Impact factors from Clarivate's Journal Citation Reports 2025 (released June 2026). The two conferences have no impact factor; CVPR's place is Google Scholar's ranking of every publication by h5-index.</p>
-      <div class="members" data-swarm-step="act" data-swarm-act="lines" data-swarm-by="writer-3 retriever">
-        <h3>Member</h3>
-        <ul class="plain-list">
+      </div>
+      <div class="members" data-swarm>
+        <h3 data-swarm-step="act" data-swarm-act="type" data-swarm-by="historian">Member</h3>
+        <ul class="plain-list" data-swarm-step="act" data-swarm-act="lines" data-swarm-by="historian historian-2 planner-2">
           <li><span>International Society for Photogrammetry and Remote Sensing (ISPRS)</span><span>since 2023</span></li>
           <li><span>American Society for Photogrammetry and Remote Sensing (ASPRS)</span><span>since 2023</span></li>
           <li><span>IEEE Geoscience and Remote Sensing Society</span><span>since 2024</span></li>
@@ -397,7 +403,7 @@
 
     <!-- 06 Contact -->
     <section class="block wrap" id="contact" aria-labelledby="contact-title" data-swarm>
-      <div class="contact" data-swarm-step="frame" data-swarm-label="contact card">
+      <div class="contact">
         <h2 id="contact-title" data-swarm-step="act" data-swarm-act="edit" data-swarm-story="contact" data-swarm-by="writer editor"><span class="h-num" aria-hidden="true">06</span>Contact</h2>
         <a class="contact-mail" href="mailto:tang.1693@osu.edu" data-swarm-step="act" data-swarm-act="edit" data-swarm-story="email" data-swarm-by="writer red-team guardrail">tang.1693@osu.edu</a>
         <ul class="contact-links" data-swarm-step="act" data-swarm-act="pills" data-swarm-by="writer stylist">
