@@ -16,6 +16,7 @@
 .swarm-js [data-swarm-step~="frame"]:not(.sb-built),
 .swarm-js [data-swarm-step~="reveal"]:not(.sb-built),
 .swarm-js [data-swarm-step~="count"]:not(.sb-built) { opacity: 0; }
+.swarm-js [data-swarm-step~="act"]:not(.sb-built):not([data-swarm-keep]) { opacity: 0; }   /* tang.ninja: act steps */
 .swarm-js [data-swarm-step~="fetch"]:not(.sb-built),
 .swarm-js [data-swarm-step~="type"]:not(.sb-split):not(.sb-built),
 .swarm-js [data-swarm-step~="stream"]:not(.sb-split):not(.sb-built) { visibility: hidden; }
@@ -68,6 +69,10 @@ html.sb-building, html.sb-building body { overflow-x: clip; }   /* cursors flyin
 .sb-trace.is-in { opacity: 1; animation: sb-ln .28s var(--sb-ease-out); }
 .sb-trace.is-out { opacity: 0; }
 .sb-trace b { color: var(--c); font-weight: 600; }
+/* tang.ninja: the whole crew as dots, the one speaking lit */
+.sb-dots { display: inline-flex; gap: 3px; margin-right: 9px; vertical-align: 1px; }
+.sb-dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--c); opacity: .3; transition: opacity .2s, transform .2s; }
+.sb-dots i.on { opacity: 1; transform: scale(1.5); }
 .sb-trace__sep { opacity: .55; margin: 0 .55em; }
 @keyframes sb-ln { from { opacity: 0; transform: translate(-50%, 6px); } }
 .sb-you { position: fixed; left: 0; top: 0; z-index: 2147483001; pointer-events: none; opacity: 0; transition: opacity .25s ease-out; }

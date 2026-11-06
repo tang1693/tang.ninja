@@ -39,6 +39,9 @@
   }
 
   let px = 0, py = 0, cx = 0, cy = 0, raf = 0, covered = false, mx = -1, my = -1;
+  // While the build crew is drawing the hero (first visit of a session), the layers hold still under
+  // its boxes and no detection box comes up.
+  const drawing = () => document.documentElement.classList.contains("swarm-js") && !hero.classList.contains("swarm-done");
   const request = () => { if (!raf) raf = requestAnimationFrame(frame); };
 
   function frame() {
@@ -70,7 +73,7 @@
   window.addEventListener("resize", request);
   if (!reduce) {
     window.addEventListener("pointermove", (e) => {
-      if (e.pointerType !== "mouse" || covered) return;
+      if (e.pointerType !== "mouse" || covered || drawing()) return;
       px = e.clientX / window.innerWidth - 0.5;
       py = e.clientY / window.innerHeight - 0.5;
       mx = e.clientX;
@@ -88,6 +91,8 @@
   const hands = ["h", "m", "s"].map((k) => document.querySelector(".hero .clock-" + k));
   if (hands.every(Boolean)) {
     const tick = () => {
+      // while the build crew is setting the clock (first visit), it turns the hands itself
+      if (document.documentElement.classList.contains("cl-clock")) return;
       const d = new Date();
       const sec = d.getSeconds(), min = d.getMinutes() + sec / 60, hr = (d.getHours() % 12) + min / 60;
       hands[0].style.rotate = (hr * 30).toFixed(1) + "deg";

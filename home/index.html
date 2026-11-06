@@ -28,9 +28,16 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@400..800&amp;family=Geist:wght@400..700&amp;family=Geist+Mono:wght@500;600&amp;display=swap">
   <link rel="stylesheet" href="/swarm/swarm-build.css">
   <link rel="stylesheet" href="/home.css">
+  <link rel="stylesheet" href="/swarm/crew.css">
   <script src="/home.js" defer></script>
 </head>
 <body>
+  <!-- The build crew's boot screen: shown only when this visit builds (home/swarm/crew.js) -->
+  <div class="crew-boot" aria-hidden="true">
+    <pre class="crew-boot__log"></pre>
+    <p class="crew-boot__title"><span class="crew-boot__mark"><i></i><i></i><i></i></span>Building tang.ninja</p>
+    <p class="crew-boot__skip">Press any key to skip</p>
+  </div>
   <header class="nav" id="nav">
     <a class="brand" href="#top" aria-label="Yang Tang, back to top"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>Yang Tang</a>
     <nav aria-label="Sections">
@@ -42,13 +49,12 @@
     </nav>
   </header>
 
-  <section class="hero" id="top" aria-label="Introduction">
+  <section class="hero" id="top" aria-label="Introduction" data-swarm data-swarm-gap="0.34">
     <div class="stars" aria-hidden="true"></div>
-    <!-- SCENE: the illustration, filled in by build.mjs from home/hero/scene.html (drawn by tools/hero.py) -->
-    <div class="hero-head" data-depth="0.12" data-swarm>
+    <div class="hero-head" data-depth="0.12">
       <div class="hero-title">
-        <h1 data-swarm-step="type" data-swarm-cps="14" data-swarm-label="name">Yang Tang</h1>
-        <p class="lede" data-swarm-step="stream" data-swarm-label="tagline">Photogrammetry, remote sensing and hyperspectral imaging.</p>
+        <h1 data-swarm-step="type" data-swarm-cps="10" data-swarm-label="name">Yang Tang</h1>
+        <p class="lede" data-swarm-step="type" data-swarm-cps="24" data-swarm-label="tagline" data-swarm-attack="Photogrammetry>Photoshop" data-swarm-attack-why="tampering with the tagline">Photogrammetry, remote sensing and hyperspectral imaging.</p>
         <p class="aff" data-swarm-step="fetch" data-swarm-label="affiliation">PhD student with Rongjun Qin at The Ohio State University</p>
         <span class="swarm-origin" data-swarm-origin aria-hidden="true"></span>
       </div>
@@ -63,27 +69,32 @@
         </ol>
       </nav>
     </div>
+    <!-- The illustration (filled in by build.mjs from home/hero/scene.html, drawn by tools/hero.py). On a
+         first visit the crew rebuilds it like a photogrammetry job: the city act in home/swarm/crew.js. -->
+    <div class="scene-build" data-swarm-step="act" data-swarm-act="city" data-swarm-by="surveyor photogrammetrist" data-swarm-label="city" data-swarm-keep>
+    <!-- SCENE: the illustration, filled in by build.mjs from home/hero/scene.html (drawn by tools/hero.py) -->
+    </div>
   </section>
 
   <div class="sheet">
     <!-- 01 Research -->
     <section class="block wrap" id="research" aria-labelledby="research-title" data-swarm>
-      <h2 id="research-title" data-swarm-step="type" data-swarm-label="Research"><span class="h-num" aria-hidden="true">01</span>Research</h2>
+      <h2 id="research-title" data-swarm-step="type" data-swarm-cps="20" data-swarm-label="Research"><span class="h-num" aria-hidden="true">01</span>Research</h2>
       <div class="areas">
         <a class="area area-p" href="#papers" data-filter="p" data-swarm-step="frame" data-swarm-label="photogrammetry card">
-          <span class="area-shape" aria-hidden="true"></span>
+          <span class="area-shape" aria-hidden="true" data-swarm-step="act" data-swarm-act="shape" data-swarm-by="stylist"></span>
           <h3 data-swarm-step="type" data-swarm-label="Photogrammetry">Photogrammetry</h3>
           <p>3D models of cities and terrain from overlapping satellite and aerial images.</p>
           <span class="area-link">See the papers</span>
         </a>
         <a class="area area-r" href="#papers" data-filter="r" data-swarm-step="frame" data-swarm-label="remote sensing card">
-          <span class="area-shape" aria-hidden="true"></span>
+          <span class="area-shape" aria-hidden="true" data-swarm-step="act" data-swarm-act="shape" data-swarm-by="stylist"></span>
           <h3 data-swarm-step="type" data-swarm-label="Remote sensing">Remote sensing</h3>
           <p>Mapping land cover, buildings and objects in satellite and aerial images with deep learning.</p>
           <span class="area-link">See the papers</span>
         </a>
         <a class="area area-h" href="#papers" data-filter="h" data-swarm-step="frame" data-swarm-label="hyperspectral card">
-          <span class="area-shape" aria-hidden="true"></span>
+          <span class="area-shape" aria-hidden="true" data-swarm-step="act" data-swarm-act="shape" data-swarm-by="stylist"></span>
           <h3 data-swarm-step="type" data-swarm-label="Hyperspectral imaging">Hyperspectral imaging</h3>
           <p>Measuring light in many narrow wavelength bands, with low-cost cameras and active lighting.</p>
           <span class="area-link">See the papers</span>
@@ -91,11 +102,11 @@
       </div>
 
       <div class="impact" aria-label="Research in numbers" data-swarm>
-        <div class="impact-total">
+        <div class="impact-total" data-swarm-step="act" data-swarm-act="scholar" data-swarm-by="researcher" data-swarm-keep>
           <p class="big-number" data-swarm-step="count" data-swarm-label="citations">1,045</p>
           <p class="big-label">citations on Google Scholar</p>
         </div>
-        <figure class="bars" aria-label="Citations per year: 2023, 19; 2024, 160; 2025, 319; 2026 so far, 526">
+        <figure class="bars" data-swarm-step="act" data-swarm-act="plot" data-swarm-by="eval-2" data-swarm-keep aria-label="Citations per year: 2023, 19; 2024, 160; 2025, 319; 2026 so far, 526">
           <div class="bar" style="--v:19"><span class="bar-value">19</span><span class="bar-fill"></span><span class="bar-year">2023</span></div>
           <div class="bar" style="--v:160"><span class="bar-value">160</span><span class="bar-fill"></span><span class="bar-year">2024</span></div>
           <div class="bar" style="--v:319"><span class="bar-value">319</span><span class="bar-fill"></span><span class="bar-year">2025</span></div>
@@ -113,7 +124,7 @@
 
     <!-- 02 Honors -->
     <section class="block wrap" id="honors" aria-labelledby="honors-title" data-swarm>
-      <h2 id="honors-title" data-swarm-step="type" data-swarm-label="Honors"><span class="h-num" aria-hidden="true">02</span>Honors</h2>
+      <h2 id="honors-title" data-swarm-step="type" data-swarm-cps="20" data-swarm-label="Honors"><span class="h-num" aria-hidden="true">02</span>Honors</h2>
       <div class="awards">
         <article class="award award-y" data-swarm-step="frame" data-swarm-label="Talbert Abrams Award">
           <span class="award-shape" aria-hidden="true"></span>
@@ -125,7 +136,7 @@
         <article class="award award-r" data-swarm-step="frame" data-swarm-label="Best Paper Award">
           <span class="award-shape" aria-hidden="true"></span>
           <p class="award-year">2026</p>
-          <p class="award-stat"><b data-swarm-step="fetch" data-swarm-label="top 0.04%">Top 0.04%</b><span>2 of 4,812 papers</span></p>
+          <p class="award-stat"><b data-swarm-step="fetch" data-swarm-label="top 0.04%">Top 0.04%</b><span data-swarm-step="act" data-swarm-act="ratio" data-swarm-by="eval" data-swarm-keep>2 of 4,812 papers</span></p>
           <h3>Annual Best Paper Award, Second Prize</h3>
           <p><i>Remote Sensing</i>, for <i>Remote sensing object detection in the deep learning era: a review</i>. One of two papers chosen from the 4,812 the journal published in 2024.</p>
         </article>
@@ -144,7 +155,7 @@
           <p>ASPRS and the editorial board of <i>Photogrammetric Engineering &amp; Remote Sensing</i>, the society's journal since 1934.</p>
         </article>
       </div>
-      <div class="more-honors" data-swarm-step="reveal">
+      <div class="more-honors" data-swarm-step="act" data-swarm-act="ratios" data-swarm-by="eval-2">
         <div>
           <h3>More honors</h3>
           <ul class="plain-list">
@@ -171,7 +182,7 @@
     <!-- 03 Papers -->
     <section class="block wrap" id="papers" aria-labelledby="papers-title" data-swarm>
       <div class="papers-head">
-        <h2 id="papers-title" data-swarm-step="type" data-swarm-label="Papers"><span class="h-num" aria-hidden="true">03</span>Papers</h2>
+        <h2 id="papers-title" data-swarm-step="type" data-swarm-cps="20" data-swarm-label="Papers"><span class="h-num" aria-hidden="true">03</span>Papers</h2>
         <div class="filter" role="group" aria-label="Show papers by topic" data-swarm-step="frame" data-swarm-label="topic filter">
           <button type="button" data-filter="all" aria-pressed="true">All</button>
           <button type="button" data-filter="p" aria-pressed="false">Photogrammetry</button>
@@ -180,7 +191,7 @@
         </div>
       </div>
 
-      <div class="years" data-swarm-step="reveal">
+      <div class="years" data-swarm-step="act" data-swarm-act="sortYears" data-swarm-by="librarian">
         <div class="year-group">
           <h3 class="year">2026</h3>
           <ol class="pubs">
@@ -240,16 +251,16 @@
           </ol>
         </div>
       </div>
-      <p class="papers-note" data-swarm-step="reveal">Numbers on the right are Google Scholar citations, October 2026. <a href="https://scholar.google.com/citations?user=Eo3rkZcAAAAJ">Google Scholar profile</a></p>
+      <p class="papers-note" data-swarm-step="act" data-swarm-act="filter" data-swarm-by="researcher">Numbers on the right are Google Scholar citations, October 2026. <a href="https://scholar.google.com/citations?user=Eo3rkZcAAAAJ">Google Scholar profile</a></p>
     </section>
 
     <!-- 04 Education and experience -->
     <section class="block wrap" id="cv" aria-labelledby="cv-title" data-swarm>
-      <h2 id="cv-title" data-swarm-step="type" data-swarm-label="Education and experience"><span class="h-num" aria-hidden="true">04</span>Education and experience</h2>
+      <h2 id="cv-title" data-swarm-step="type" data-swarm-cps="22" data-swarm-label="Education and experience"><span class="h-num" aria-hidden="true">04</span>Education and experience</h2>
       <div class="cv">
         <div class="cv-col" data-swarm-step="frame" data-swarm-label="education">
-          <h3 data-swarm-step="type" data-swarm-label="Education"><span class="cv-mark cv-mark-b" aria-hidden="true"></span>Education</h3>
-          <ol class="timeline">
+          <h3 data-swarm-step="fetch" data-swarm-label="Education"><span class="cv-mark cv-mark-b" aria-hidden="true"></span>Education</h3>
+          <ol class="timeline" data-swarm-step="act" data-swarm-act="timeline" data-swarm-by="historian">
             <li><p class="t-when">2021 to present</p><p class="t-what">PhD, Civil, Environmental and Geodetic Engineering</p><p class="t-where">The Ohio State University, Columbus, Ohio</p><p class="t-note">Geospatial data analysis. Advisor: Rongjun Qin</p></li>
             <li><p class="t-when">2012 to 2013</p><p class="t-what">MSc exchange, Information Science and Technology</p><p class="t-where">The University of Tokyo, Japan</p><p class="t-note">Advisors: Tohru Asami and Yoshihiro Kawahara</p></li>
             <li><p class="t-when">2011 to 2013</p><p class="t-what">MSc, Digital Media Engineering</p><p class="t-where">Technical University of Denmark</p><p class="t-note">Advisor: Michael Kai Petersen</p></li>
@@ -257,8 +268,8 @@
           </ol>
         </div>
         <div class="cv-col" data-swarm-step="frame" data-swarm-label="experience">
-          <h3 data-swarm-step="type" data-swarm-label="Experience"><span class="cv-mark cv-mark-r" aria-hidden="true"></span>Experience</h3>
-          <ol class="timeline">
+          <h3 data-swarm-step="fetch" data-swarm-label="Experience"><span class="cv-mark cv-mark-r" aria-hidden="true"></span>Experience</h3>
+          <ol class="timeline" data-swarm-step="act" data-swarm-act="timeline" data-swarm-by="historian-2">
             <li><p class="t-when">2014 to 2020</p><p class="t-what">Data scientist</p><p class="t-where">Shenzhen Bixuange Technology Co., Ltd., Shenzhen, China</p><p class="t-note">Data visualization projects and their analysis</p></li>
             <li><p class="t-when">2013</p><p class="t-what">Intern</p><p class="t-where">MapMotion Co., Ltd., Tokyo, Japan</p></li>
             <li><p class="t-when">2010 to 2011</p><p class="t-what">Teaching assistant, Artificial Intelligence</p><p class="t-where">Wroclaw University of Technology, Poland</p><p class="t-note">Course taught by Halina Kwasnicka</p></li>
@@ -270,7 +281,7 @@
 
     <!-- 05 Service -->
     <section class="block wrap" id="service" aria-labelledby="service-title" data-swarm>
-      <h2 id="service-title" data-swarm-step="type" data-swarm-label="Service"><span class="h-num" aria-hidden="true">05</span>Service</h2>
+      <h2 id="service-title" data-swarm-step="type" data-swarm-cps="20" data-swarm-label="Service"><span class="h-num" aria-hidden="true">05</span>Service</h2>
       <div class="review-head">
         <h3>Reviewer</h3>
         <dl class="review-stats" data-swarm-step="count" data-swarm-label="review counts">
@@ -280,7 +291,7 @@
         </dl>
         <p class="service-lede" data-swarm-step="stream" data-swarm-label="journal note">Including these journals, in order of their impact factor, and two conferences.</p>
       </div>
-      <ol class="venues" data-swarm-step="frame" data-swarm-label="journals">
+      <ol class="venues" data-swarm-step="act" data-swarm-act="rank" data-swarm-by="librarian">
           <li class="venue">
             <span class="venue-if"><b>12.9</b><small>impact factor</small></span>
             <span class="venue-name">ISPRS Journal of Photogrammetry and Remote Sensing</span>
@@ -381,8 +392,8 @@
     <!-- 06 Contact -->
     <section class="block wrap" id="contact" aria-labelledby="contact-title" data-swarm>
       <div class="contact" data-swarm-step="frame" data-swarm-label="contact card">
-        <h2 id="contact-title" data-swarm-step="type" data-swarm-label="Contact"><span class="h-num" aria-hidden="true">06</span>Contact</h2>
-        <a class="contact-mail" href="mailto:tang.1693@osu.edu" data-swarm-step="type" data-swarm-cps="24" data-swarm-label="email">tang.1693@osu.edu</a>
+        <h2 id="contact-title" data-swarm-step="type" data-swarm-cps="20" data-swarm-label="Contact"><span class="h-num" aria-hidden="true">06</span>Contact</h2>
+        <a class="contact-mail" href="mailto:tang.1693@osu.edu" data-swarm-step="type" data-swarm-cps="20" data-swarm-label="email" data-swarm-attack="osu>0su" data-swarm-attack-why="look-alike domain">tang.1693@osu.edu</a>
         <ul class="contact-links" data-swarm-step="reveal">
           <li><a href="https://scholar.google.com/citations?user=Eo3rkZcAAAAJ">Google Scholar</a></li>
           <li><a href="https://orcid.org/0000-0003-0864-5842">ORCID</a></li>
@@ -394,27 +405,10 @@
     <footer class="foot">
       <div class="foot-in wrap">
         <p>&copy; {{year}} Yang Tang</p>
+        <button class="crew-replay" type="button" hidden>Watch the crew build this page again</button>
       </div>
     </footer>
   </div>
-  <script type="module">
-    // The build crew: labelled cursors frame the boxes, type the headings, stream the copy and count
-    // the numbers, once per browser session. Any key, click, tap or scroll speeds it up.
-    import { swarmBuild } from "/swarm/swarm-build.js";
-    // Leave out whatever this screen does not show (the section index on phones), so no one frames an empty spot.
-    for (const el of document.querySelectorAll("[data-swarm-step]")) {
-      if (!el.getClientRects().length) el.removeAttribute("data-swarm-step");
-    }
-    swarmBuild({
-      // Several agents share each role ("planner-2" is a planner), in the page's colours: planners yellow,
-      // writers red, retrievers white, evals blue. Each step goes to whichever of its role is free first.
-      crew: {
-        planner: "#f6be00", "planner-2": "#ffd54a", "planner-3": "#e8a900", "planner-4": "#ffe58a",
-        writer: "#e2321f", "writer-2": "#ff6f52", "writer-3": "#ffa48f",
-        retriever: "#f5f5f7", "retriever-2": "#c9cdd6",
-        eval: "#6f95e8", "eval-2": "#a9c1f5",
-      },
-    }).start();
-  </script>
+  <script type="module" src="/swarm/crew.js"></script>
 </body>
 </html>

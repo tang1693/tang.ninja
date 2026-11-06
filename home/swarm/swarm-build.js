@@ -13,8 +13,21 @@
 // Inspired by Joel Califa's Swarm (https://github.com/califa/swarm-site).
 // Written from scratch; no code from that project.
 //
-// tang.ninja change: several agents can share a role. A crew name that starts with a role and a
-// dash ('planner-2') works as that role, and each step goes to whichever of them is free first.
+// tang.ninja changes:
+// - several agents can share a role: a crew name that starts with a role and a dash ('planner-2')
+//   works as that role, and each step goes to whichever of them is free first;
+// - frame: data-swarm-box names a part of the element to box (a selector inside it); the box is
+//   measured when the planner sets off and follows its target while drawn, so moving things get
+//   boxed where they are; a target outside the view is revealed without a box;
+// - data-swarm-gap on a region (or the gap option) sets the time between steps (default 0.2 s),
+//   data-swarm-fade on a reveal step its fade time (default 0.35 s);
+// - the pace option stretches the built-in steps (frame, stream, fetch, count) without slowing the rest;
+// - act steps: data-swarm-step="act" data-swarm-act="name" data-swarm-by="agent agent…" runs
+//   options.acts[name](ctx), which schedules its own work on the region's timeline with the named
+//   agents (crew names or roles; 'historian-2' works as a historian) and returns when it is done.
+//   Act elements stay hidden until the act shows them, unless they carry data-swarm-keep;
+// - data-swarm-attack-why names what the guardrail blocked (default 'prompt injection');
+// - the trace pill can show the whole crew as dots, the one speaking lit (traceDots option).
 //
 // Markup (see references/api.md):
 //   <section data-swarm>                      a region; built when it scrolls into view
@@ -36,7 +49,8 @@ const DEFAULT_CREW = {
 };
 const ROLE = { frame: 'planner', fetch: 'retriever', type: 'writer', stream: 'writer', count: 'eval', reveal: null };
 const ROLES = ['planner', 'retriever', 'writer', 'stylist', 'eval', 'guardrail', 'red-team'];
-const roleOf = (id) => ROLES.find((r) => id === r || id.startsWith(r + '-')) || id;
+const roleOf = (id) => ROLES.find((r) => id === r || id.startsWith(r + '-')) || id.replace(/-\d+$/, '');
+const byOf = (el) => (el.dataset.swarmBy || '').split(/\s+/).filter(Boolean);
 const SCRAMBLE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/#%&*+=<>';
 const EASE = {
   linear: (p) => p,
@@ -118,6 +132,10 @@ export function swarmBuild(options = {}) {
     trace: true,
     you: true,
     rootMargin: '0px 0px -20% 0px',
+    gap: 0.2,
+    pace: 1,
+    acts: {},
+    traceDots: false,
     onRegionStart: null,
     onRegionEnd: null,
     ...options,
@@ -172,7 +190,8 @@ export function swarmBuild(options = {}) {
       document.body.appendChild(trace);
     }
     trace.style.setProperty('--c', o.crew[who] || 'currentColor');
-    trace.innerHTML = '<b>' + esc(who) + '</b><span class="sb-trace__sep">▸</span>' + esc(msg);
+    const dots = o.traceDots ? '<span class="sb-dots">' + Object.keys(o.crew).map((id) => '<i style="--c:' + o.crew[id] + '"' + (id === who ? ' class="on"' : '') + '></i>').join('') + '</span>' : '';
+    trace.innerHTML = dots + '<b>' + esc(who) + '</b><span class="sb-trace__sep">▸</span>' + esc(msg);
     trace.classList.remove('is-out', 'is-in');
     void trace.offsetWidth;
     trace.classList.add('is-in');
@@ -193,7 +212,7 @@ export function swarmBuild(options = {}) {
 
   // ---------------------------------------------------------------- one region
   function plan(region, isFirst) {
-    const tl = new Timeline();
+    const tl = new Timeline(), P = o.pace || 1;
     tl.scale = o.speed;
     region.classList.add('sb-host');
     root.classList.add('sb-building');   // off-screen agents must not widen the page (mobile zooms out)
@@ -215,6 +234,7 @@ export function swarmBuild(options = {}) {
       stepsOf(el).forEach((s) => ROLE[s] && need.add(ROLE[s]));
       if (stepsOf(el).includes('type') && $$(ACCENTS, el).length) need.add('stylist');
       if (el.dataset.swarmAttack) { need.add('red-team'); need.add('guardrail'); }
+      if (stepsOf(el).includes('act')) byOf(el).forEach((n) => need.add(roleOf(n)));
     });
     if (isFirst) Object.keys(o.crew).forEach((id) => need.add(roleOf(id)));
     const A = {}, pool = {};
@@ -252,20 +272,33 @@ export function swarmBuild(options = {}) {
     };
 
     function frame(a, el, t, d = 0.42) {
-      const b = rel(el), pad = 4, x0 = b.x - pad, y0 = b.y - pad, w = b.w + pad * 2, h = b.h + pad * 2;
+      const target = (el.dataset.swarmBox && el.querySelector(el.dataset.swarmBox)) || el, pad = 4, tr = 0.32 * P;
       const s = put('sb-sel');
       s.innerHTML = '<i></i><i></i><i></i><i></i><span class="sb-sel__wh"></span>';
-      Object.assign(s.style, { left: x0 + 'px', top: y0 + 'px', width: 0, height: 0, opacity: 0 });
+      Object.assign(s.style, { width: 0, height: 0, opacity: 0 });
       const wh = s.lastChild;
-      glyph(a, 'cross', t - 0.32);
-      go(a, x0, y0, t - 0.32, 0.32);
+      let box = null, fx = 0, fy = 0;
+      const measure = () => {
+        const r = rel(target), v = view();
+        box = { x: r.x - pad, y: r.y - pad, w: r.w + pad * 2, h: r.h + pad * 2 };
+        box.off = !r.w || !r.h || r.x + r.w < v.x0 || r.x > v.x1 || r.y + r.h < v.y0 || r.y > v.y1;
+        s.style.left = box.x + 'px'; s.style.top = box.y + 'px';
+        return box;
+      };
+      glyph(a, 'cross', t - tr);
+      tl.tween(Math.max(0, t - tr), tr, 'out', (p) => { if (!box.off) a.set(fx + (box.x - fx) * p, fy + (box.y - fy) * p); },
+        () => { measure(); fx = a.x; fy = a.y; });
       tl.tween(t, d, 'inOut2', (p) => {
-        const cw = w * p, ch = h * p;
+        const b = measure();
+        if (b.off) { s.style.opacity = 0; return; }
+        const cw = b.w * p, ch = b.h * p;
         s.style.opacity = 1; s.style.width = cw + 'px'; s.style.height = ch + 'px';
         wh.textContent = Math.round(cw) + ' × ' + Math.round(ch);
+        a.set(b.x + cw, b.y + ch);
       });
-      go(a, x0 + w, y0 + h, t, d, 'inOut2');
-      tl.tween(t + d + 0.28, 0.25, 'out', (p) => { s.style.opacity = 1 - p; });
+      const hold = 0.28 * P;
+      tl.tween(t + d, hold + 0.27, 'linear', () => { if (box && !box.off) measure(); });   // the box stays on its target until it fades
+      tl.tween(t + d + hold, 0.25, 'out', (p) => { s.style.opacity = box && box.off ? 0 : 1 - p; });
       glyph(a, 'arrow', t + d + 0.05);
       return t + d;
     }
@@ -373,8 +406,9 @@ export function swarmBuild(options = {}) {
       go(Gd, first.x - 4, first.y + first.h * 0.92, tG - 0.3, 0.3);
       tl.call(tG, fit);
       tl.tween(tG, 0.22, 'out', (p) => { guard.style.opacity = p; guard.style.transform = `scale(${1.08 - 0.08 * p})`; });
-      chip('BLOCKED · prompt injection', o.crew.guardrail, first.x - 4, first.y + first.h * 0.92 + 26, tG + 0.05, 1.25);
-      log('guardrail', 'blocked prompt injection · rolled back', tG + 0.04);
+      const why = el.dataset.swarmAttackWhy || 'prompt injection';
+      chip('BLOCKED · ' + why, o.crew.guardrail, first.x - 4, first.y + first.h * 0.92 + 26, tG + 0.05, 1.6);
+      log('guardrail', 'blocked ' + why + ' · rolled back', tG + 0.04);
       let shook = 0;
       tl.tween(tG + 0.02, 0.27, 'linear', (p) => { const off = p >= 1 ? 0 : Math.sin(p * Math.PI * 6) * 7; Rd.set(Rd.x - shook + off, Rd.y); shook = off; });
       tl.call(tG + 0.32, () => {
@@ -397,7 +431,7 @@ export function swarmBuild(options = {}) {
       const anchor = document.querySelector('[data-swarm-origin]') || list[0] || region;
       const b = rel(anchor), cx = b.x + b.w / 2, cy = b.y + b.h / 2;
       const orbiters = crew.filter((a) => a.id !== 'red-team');
-      const R = (innerWidth <= 720 ? 36 : 50) * Math.max(1, orbiters.length / 6), W = v0.x1 - v0.x0, H = v0.y1 - v0.y0;
+      const R = (innerWidth <= 720 ? 36 : 50) * Math.min(2.6, Math.max(1, orbiters.length / 6)), W = v0.x1 - v0.x0, H = v0.y1 - v0.y0;
       const seed = put('sb-seed');
       Object.assign(seed.style, { left: cx + 'px', top: cy + 'px', opacity: 0 });
       tl.tween(0, 0.35, 'out', (p) => { seed.style.opacity = p; seed.style.transform = `scale(${p})`; });
@@ -421,8 +455,34 @@ export function swarmBuild(options = {}) {
       });
     }
 
+    // tang.ninja: what an act gets to work with
+    function actCtx(el, t, who) {
+      const ctx = {
+        el, t, who, a: who[0], region, layer, shownAt: null, P,
+        agent: (n) => agentOf(n) || who[0],
+        call: (at, fn) => tl.call(Math.max(0, at), fn),
+        tween: (at, d, ease, update, init) => tl.tween(Math.max(0, at), d, ease, update, init),
+        // travel to a point given now or by a function read when the move starts
+        go: (ag, to, at, d = 0.45, ease = 'out') => {
+          let fx, fy, q;
+          tl.tween(Math.max(0, at), d, ease, (p) => { if (q) ag.set(fx + (q.x - fx) * p, fy + (q.y - fy) * p); },
+            () => { fx = ag.x; fy = ag.y; q = typeof to === 'function' ? to() : to; });
+        },
+        follow: (ag, to, at, d) => tl.tween(Math.max(0, at), d, 'linear', () => { const q = to(); if (q) ag.set(q.x, q.y); }),
+        glyph: (ag, g, at) => glyph(ag, g, at),
+        log: (who2, msg, at) => log(who2, msg, at),
+        say, put, rel, view, chip, fade, frame: (ag, node, at, d = 0.42) => frame(ag, node, at, d * P),
+        color: (n) => o.crew[n] || '#fff',
+        show: (node, at) => tl.call(Math.max(0, at), () => { node.classList.add('sb-built'); node.style.opacity = ''; }),
+        attacked: () => { attacks++; },
+        scale: () => tl.scale,
+      };
+      return ctx;
+    }
+
     // 2. the steps, in DOM order; each agent works through its own queue
-    const free = {}, shown = new Map();
+    const free = {}, shown = new Map(), gap = parseFloat(region.dataset.swarmGap) || o.gap;
+    const agentOf = (n) => A[n] || pick(roleOf(n));
     const pick = (role) => (pool[role] ? pool[role].reduce((b, x) => ((free[x.id] || 0) < (free[b.id] || 0) ? x : b)) : null);
     const waitFor = (el) => { let t = 0; shown.forEach((at, host) => { if (host !== el && host.contains(el)) t = Math.max(t, at); }); return t; };
     let cursor = start, end = start;
@@ -434,26 +494,37 @@ export function swarmBuild(options = {}) {
         let done = t;
         if (s === 'frame' && a) {
           log(a.id, 'frame ' + label(el), t);
-          done = frame(a, el, t, 0.42);
+          done = frame(a, el, t, 0.42 * P);
           fade(el, done + 0.02, 0.3);
           shown.set(el, done + 0.05);
+        } else if (s === 'act') {
+          const fn = o.acts && o.acts[el.dataset.swarmAct];
+          const who = byOf(el).map(agentOf).filter(Boolean);
+          if (!fn) { fade(el, t, 0.35); shown.set(el, t + 0.1); }
+          else {
+            t = Math.max(t, ...who.map((g) => free[g.id] || 0));
+            const ctx = actCtx(el, t, who);
+            try { done = Math.max(t, +fn(ctx) || t); } catch (err) { console.error('[swarm-build] act', err); done = t; }
+            who.forEach((g) => { free[g.id] = Math.max(free[g.id] || 0, done + 0.05); });
+            shown.set(el, ctx.shownAt == null ? done : ctx.shownAt);
+          }
         } else if (s === 'reveal') {
-          fade(el, t, 0.35);
+          fade(el, t, parseFloat(el.dataset.swarmFade) || 0.35);
           shown.set(el, t + 0.1);
         } else if (s === 'fetch' && a) {
           const b = rel(el);
           go(a, b.x + Math.min(b.w, 80) + 8, b.y + b.h * 0.5, t - 0.22, 0.22);
           log(a.id, 'fetched ' + label(el), t);
-          scramble(el, t, 0.45);
-          done = t + 0.25;
+          scramble(el, t, 0.45 * P);
+          done = t + 0.25 * P;
           shown.set(el, t);
         } else if (s === 'count' && a) {
           const b = rel(el);
           go(a, b.x + b.w * 0.6, b.y - 16, t - 0.4, 0.4);
-          count(el, t, 0.8);
-          chip('✓ verified', o.crew[a.id], b.x + b.w * 0.6 + 16, b.y + 20, t + 0.15, 1.0);
+          count(el, t, 0.8 * P);
+          chip('✓ verified', o.crew[a.id], b.x + b.w * 0.6 + 16, b.y + 20, t + 0.15, 1.0 * P);
           log(a.id, 'verified ' + label(el), t + 0.1);
-          done = t + 0.5;
+          done = t + 0.5 * P;
           shown.set(el, t);
         } else if (s === 'type' && a) {
           const chars = $$('.sb-ch', el);
@@ -473,7 +544,7 @@ export function swarmBuild(options = {}) {
         } else if (s === 'stream' && a) {
           const words = $$('.sb-wd', el);
           if (!words.length) return;
-          const b = rel(words[0]), d = Math.min(1.4, 0.018 * words.length + 0.2);
+          const b = rel(words[0]), d = Math.min(1.4, 0.018 * words.length + 0.2) * P;
           glyph(a, 'ibeam', t - 0.3);
           go(a, b.x, b.y + b.h * 0.5, t - 0.3, 0.3);
           log(a.id, 'streaming ' + label(el) + ' · ' + words.length + ' tokens', t);
@@ -487,7 +558,7 @@ export function swarmBuild(options = {}) {
           shown.set(el, t);
         }
         if (a) free[a.id] = done + 0.05;
-        cursor += 0.2;
+        cursor += gap;
         end = Math.max(end, done);
       });
     });
