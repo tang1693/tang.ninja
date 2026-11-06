@@ -8,8 +8,9 @@
   <meta name="theme-color" content="#000000">
   <meta property="og:title" content="Yang Tang">
   <meta property="og:description" content="Photogrammetry, remote sensing and hyperspectral imaging.">
-  <!-- The page builds itself on the first visit of a session (swarm-build, home/swarm/). This decides,
-       before anything paints, whether this visit builds; it is the only thing that ever hides content. -->
+  <!-- The page builds itself on the first visit of a session (swarm-build, home/swarm/), floor by floor.
+       This decides, before anything paints, whether this visit builds; it is the only thing that ever hides
+       content. A link to a part of the page (a #hash) skips the build. -->
   <script>
   (function () {
     try {
@@ -17,7 +18,9 @@
       if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
       if (localStorage.getItem(k + '-off') === '1') return;
       if (sessionStorage.getItem(k) === '1') return;
+      if (location.hash.length > 1) return;
       d.classList.add('swarm-js');
+      if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
       setTimeout(function () { if (!window.__swarmBuild) d.classList.remove('swarm-js'); }, 6000);
     } catch (e) {}
   })();
@@ -34,8 +37,12 @@
 <body>
   <!-- The build crew's boot screen: shown only when this visit builds (home/swarm/crew.js) -->
   <div class="crew-boot" aria-hidden="true">
-    <pre class="crew-boot__log"></pre>
-    <p class="crew-boot__title"><span class="crew-boot__mark"><i></i><i></i><i></i></span>Building tang.ninja</p>
+    <div class="crew-boot__bg"></div>
+    <div class="crew-boot__in">
+      <pre class="crew-boot__log"></pre>
+      <div class="crew-boot__roster"></div>
+      <p class="crew-boot__title"><span class="crew-boot__mark"><i></i><i></i><i></i></span>Building tang.ninja</p>
+    </div>
     <p class="crew-boot__skip">Press any key to skip</p>
   </div>
   <header class="nav" id="nav">
@@ -53,12 +60,11 @@
     <div class="stars" aria-hidden="true"></div>
     <div class="hero-head" data-depth="0.12">
       <div class="hero-title">
-        <h1 data-swarm-step="type" data-swarm-cps="10" data-swarm-label="name">Yang Tang</h1>
-        <p class="lede" data-swarm-step="type" data-swarm-cps="24" data-swarm-label="tagline" data-swarm-attack="Photogrammetry>Photoshop" data-swarm-attack-why="tampering with the tagline">Photogrammetry, remote sensing and hyperspectral imaging.</p>
-        <p class="aff" data-swarm-step="fetch" data-swarm-label="affiliation">PhD student with Rongjun Qin at The Ohio State University</p>
-        <span class="swarm-origin" data-swarm-origin aria-hidden="true"></span>
+        <h1 data-swarm-step="act" data-swarm-act="edit" data-swarm-story="name" data-swarm-by="writer eval">Yang Tang</h1>
+        <p class="lede" data-swarm-step="act" data-swarm-act="edit" data-swarm-story="tagline" data-swarm-by="writer-2 editor red-team guardrail">Photogrammetry, remote sensing and hyperspectral imaging.</p>
+        <p class="aff" data-swarm-step="act" data-swarm-act="edit" data-swarm-story="aff" data-swarm-by="retriever eval">PhD student with Rongjun Qin at The Ohio State University</p>
       </div>
-      <nav class="hero-index" aria-label="On this page" data-swarm-step="frame" data-swarm-label="section index">
+      <nav class="hero-index" aria-label="On this page" data-swarm-step="act" data-swarm-act="index" data-swarm-by="planner writer-3">
         <ol>
           <li><a href="#research"><span>01</span>Research</a></li>
           <li><a href="#honors"><span>02</span>Honors</a></li>
@@ -79,23 +85,23 @@
   <div class="sheet">
     <!-- 01 Research -->
     <section class="block wrap" id="research" aria-labelledby="research-title" data-swarm>
-      <h2 id="research-title" data-swarm-step="type" data-swarm-cps="20" data-swarm-label="Research"><span class="h-num" aria-hidden="true">01</span>Research</h2>
-      <div class="areas">
-        <a class="area area-p" href="#papers" data-filter="p" data-swarm-step="frame" data-swarm-label="photogrammetry card">
-          <span class="area-shape" aria-hidden="true" data-swarm-step="act" data-swarm-act="shape" data-swarm-by="stylist"></span>
-          <h3 data-swarm-step="type" data-swarm-label="Photogrammetry">Photogrammetry</h3>
+      <h2 id="research-title" data-swarm-step="act" data-swarm-act="edit" data-swarm-story="research" data-swarm-by="writer editor"><span class="h-num" aria-hidden="true">01</span>Research</h2>
+      <div class="areas" data-swarm-step="act" data-swarm-act="cards" data-swarm-by="planner writer-2 writer-3 stylist stylist-2 retriever eval red-team">
+        <a class="area area-p" href="#papers" data-filter="p">
+          <span class="area-shape" aria-hidden="true"></span>
+          <h3>Photogrammetry</h3>
           <p>3D models of cities and terrain from overlapping satellite and aerial images.</p>
           <span class="area-link">See the papers</span>
         </a>
-        <a class="area area-r" href="#papers" data-filter="r" data-swarm-step="frame" data-swarm-label="remote sensing card">
-          <span class="area-shape" aria-hidden="true" data-swarm-step="act" data-swarm-act="shape" data-swarm-by="stylist"></span>
-          <h3 data-swarm-step="type" data-swarm-label="Remote sensing">Remote sensing</h3>
+        <a class="area area-r" href="#papers" data-filter="r">
+          <span class="area-shape" aria-hidden="true"></span>
+          <h3>Remote sensing</h3>
           <p>Mapping land cover, buildings and objects in satellite and aerial images with deep learning.</p>
           <span class="area-link">See the papers</span>
         </a>
-        <a class="area area-h" href="#papers" data-filter="h" data-swarm-step="frame" data-swarm-label="hyperspectral card">
-          <span class="area-shape" aria-hidden="true" data-swarm-step="act" data-swarm-act="shape" data-swarm-by="stylist"></span>
-          <h3 data-swarm-step="type" data-swarm-label="Hyperspectral imaging">Hyperspectral imaging</h3>
+        <a class="area area-h" href="#papers" data-filter="h">
+          <span class="area-shape" aria-hidden="true"></span>
+          <h3>Hyperspectral imaging</h3>
           <p>Measuring light in many narrow wavelength bands, with low-cost cameras and active lighting.</p>
           <span class="area-link">See the papers</span>
         </a>
@@ -104,16 +110,16 @@
       <div class="impact" aria-label="Research in numbers" data-swarm>
         <div class="impact-total" data-swarm-step="act" data-swarm-act="scholar" data-swarm-by="researcher" data-swarm-keep>
           <p class="big-number" data-swarm-step="count" data-swarm-label="citations">1,045</p>
-          <p class="big-label">citations on Google Scholar</p>
+          <p class="big-label" data-swarm-step="act" data-swarm-act="stream" data-swarm-by="researcher">citations on Google Scholar</p>
         </div>
-        <figure class="bars" data-swarm-step="act" data-swarm-act="plot" data-swarm-by="eval-2" data-swarm-keep aria-label="Citations per year: 2023, 19; 2024, 160; 2025, 319; 2026 so far, 526">
+        <figure class="bars" data-swarm-step="act" data-swarm-act="plot" data-swarm-by="eval-2" aria-label="Citations per year: 2023, 19; 2024, 160; 2025, 319; 2026 so far, 526">
           <div class="bar" style="--v:19"><span class="bar-value">19</span><span class="bar-fill"></span><span class="bar-year">2023</span></div>
           <div class="bar" style="--v:160"><span class="bar-value">160</span><span class="bar-fill"></span><span class="bar-year">2024</span></div>
           <div class="bar" style="--v:319"><span class="bar-value">319</span><span class="bar-fill"></span><span class="bar-year">2025</span></div>
           <div class="bar bar-now" style="--v:526"><span class="bar-value">526</span><span class="bar-fill"></span><span class="bar-year">2026 so far</span></div>
           <figcaption>Citations per year. Google Scholar, October 2026.</figcaption>
         </figure>
-        <dl class="stats" data-swarm-step="count" data-swarm-label="h-index and reviews">
+        <dl class="stats" data-swarm-step="act" data-swarm-act="stats" data-swarm-by="eval researcher">
           <div><dt>h-index</dt><dd>12</dd></div>
           <div><dt>papers in the top 1% of their field (Web of Science)</dt><dd>3</dd></div>
           <div><dt>peer reviews of 71 manuscripts</dt><dd>103</dd></div>
@@ -124,38 +130,38 @@
 
     <!-- 02 Honors -->
     <section class="block wrap" id="honors" aria-labelledby="honors-title" data-swarm>
-      <h2 id="honors-title" data-swarm-step="type" data-swarm-cps="20" data-swarm-label="Honors"><span class="h-num" aria-hidden="true">02</span>Honors</h2>
-      <div class="awards">
-        <article class="award award-y" data-swarm-step="frame" data-swarm-label="Talbert Abrams Award">
+      <h2 id="honors-title" data-swarm-step="act" data-swarm-act="edit" data-swarm-story="honors" data-swarm-by="writer editor"><span class="h-num" aria-hidden="true">02</span>Honors</h2>
+      <div class="awards" data-swarm-step="act" data-swarm-act="awards" data-swarm-by="planner planner-2 writer-2 writer-3 retriever eval stylist stylist-2">
+        <article class="award award-y">
           <span class="award-shape" aria-hidden="true"></span>
           <p class="award-year">2025</p>
-          <p class="award-stat"><b data-swarm-step="fetch" data-swarm-label="No. 2">No. 2</b><span>of the year's papers in <i>PE&amp;RS</i></span></p>
+          <p class="award-stat"><b>No. 2</b><span>of the year's papers in <i>PE&amp;RS</i></span></p>
           <h3>Talbert Abrams Award, First Honorable Mention</h3>
           <p>The highest scientific paper award of the American Society for Photogrammetry and Remote Sensing (ASPRS): second place among all papers published in its journal that year, for <i>On the transferability of semantic segmentation for very-high-resolution remote sensing data of multi-city environments</i>.</p>
         </article>
-        <article class="award award-r" data-swarm-step="frame" data-swarm-label="Best Paper Award">
-          <span class="award-shape" aria-hidden="true"></span>
+        <article class="award award-r">
+          <span class="award-shape" aria-hidden="true" data-swarm-step="act" data-swarm-act="tilt" data-swarm-by="red-team stylist" data-swarm-keep></span>
           <p class="award-year">2026</p>
-          <p class="award-stat"><b data-swarm-step="fetch" data-swarm-label="top 0.04%">Top 0.04%</b><span data-swarm-step="act" data-swarm-act="ratio" data-swarm-by="eval" data-swarm-keep>2 of 4,812 papers</span></p>
+          <p class="award-stat"><b>Top 0.04%</b><span>2 of 4,812 papers</span></p>
           <h3>Annual Best Paper Award, Second Prize</h3>
           <p><i>Remote Sensing</i>, for <i>Remote sensing object detection in the deep learning era: a review</i>. One of two papers chosen from the 4,812 the journal published in 2024.</p>
         </article>
-        <article class="award award-b" data-swarm-step="frame" data-swarm-label="highly cited papers">
+        <article class="award award-b">
           <span class="award-shape" aria-hidden="true"></span>
           <p class="award-year">2023 to 2025</p>
-          <p class="award-stat"><b data-swarm-step="fetch" data-swarm-label="top 1%">Top 1%</b><span>of the field, three times</span></p>
+          <p class="award-stat"><b>Top 1%</b><span>of the field, three times</span></p>
           <h3>Three highly cited papers</h3>
           <p>Each in the top 1% of its field on Web of Science: the object detection review, the image fusion overview and the low-cost hyperspectral imaging paper.</p>
         </article>
-        <article class="award award-k" data-swarm-step="frame" data-swarm-label="Best Reviewer">
+        <article class="award award-k">
           <span class="award-shape" aria-hidden="true"><i></i><i></i><i></i></span>
           <p class="award-year">2025</p>
-          <p class="award-stat"><b data-swarm-step="fetch" data-swarm-label="since 1934">Since 1934</b><span>ASPRS's flagship journal</span></p>
+          <p class="award-stat"><b>Since 1934</b><span>ASPRS's flagship journal</span></p>
           <h3>Best Reviewer</h3>
           <p>ASPRS and the editorial board of <i>Photogrammetric Engineering &amp; Remote Sensing</i>, the society's journal since 1934.</p>
         </article>
       </div>
-      <div class="more-honors" data-swarm-step="act" data-swarm-act="ratios" data-swarm-by="eval-2">
+      <div class="more-honors" data-swarm-step="act" data-swarm-act="honorsList" data-swarm-by="writer writer-2 writer-3 retriever eval-2">
         <div>
           <h3>More honors</h3>
           <ul class="plain-list">
@@ -182,8 +188,8 @@
     <!-- 03 Papers -->
     <section class="block wrap" id="papers" aria-labelledby="papers-title" data-swarm>
       <div class="papers-head">
-        <h2 id="papers-title" data-swarm-step="type" data-swarm-cps="20" data-swarm-label="Papers"><span class="h-num" aria-hidden="true">03</span>Papers</h2>
-        <div class="filter" role="group" aria-label="Show papers by topic" data-swarm-step="frame" data-swarm-label="topic filter">
+        <h2 id="papers-title" data-swarm-step="act" data-swarm-act="edit" data-swarm-story="papers" data-swarm-by="writer editor"><span class="h-num" aria-hidden="true">03</span>Papers</h2>
+        <div class="filter" role="group" aria-label="Show papers by topic" data-swarm-step="act" data-swarm-act="pills" data-swarm-by="planner writer stylist-2">
           <button type="button" data-filter="all" aria-pressed="true">All</button>
           <button type="button" data-filter="p" aria-pressed="false">Photogrammetry</button>
           <button type="button" data-filter="r" aria-pressed="false">Remote sensing</button>
@@ -191,7 +197,7 @@
         </div>
       </div>
 
-      <div class="years" data-swarm-step="act" data-swarm-act="sortYears" data-swarm-by="librarian">
+      <div class="years" data-swarm-step="act" data-swarm-act="papers" data-swarm-by="librarian writer-2 writer-3 retriever researcher eval eval-2 stylist red-team">
         <div class="year-group">
           <h3 class="year">2026</h3>
           <ol class="pubs">
@@ -251,25 +257,25 @@
           </ol>
         </div>
       </div>
-      <p class="papers-note" data-swarm-step="act" data-swarm-act="filter" data-swarm-by="researcher">Numbers on the right are Google Scholar citations, October 2026. <a href="https://scholar.google.com/citations?user=Eo3rkZcAAAAJ">Google Scholar profile</a></p>
+      <p class="papers-note" data-swarm-step="act" data-swarm-act="filter" data-swarm-by="researcher librarian">Numbers on the right are Google Scholar citations, October 2026. <a href="https://scholar.google.com/citations?user=Eo3rkZcAAAAJ">Google Scholar profile</a></p>
     </section>
 
     <!-- 04 Education and experience -->
     <section class="block wrap" id="cv" aria-labelledby="cv-title" data-swarm>
-      <h2 id="cv-title" data-swarm-step="type" data-swarm-cps="22" data-swarm-label="Education and experience"><span class="h-num" aria-hidden="true">04</span>Education and experience</h2>
-      <div class="cv">
-        <div class="cv-col" data-swarm-step="frame" data-swarm-label="education">
-          <h3 data-swarm-step="fetch" data-swarm-label="Education"><span class="cv-mark cv-mark-b" aria-hidden="true"></span>Education</h3>
-          <ol class="timeline" data-swarm-step="act" data-swarm-act="timeline" data-swarm-by="historian">
+      <h2 id="cv-title" data-swarm-step="act" data-swarm-act="edit" data-swarm-story="cv" data-swarm-by="writer editor"><span class="h-num" aria-hidden="true">04</span>Education and experience</h2>
+      <div class="cv" data-swarm-step="act" data-swarm-act="cv" data-swarm-by="planner historian historian-2 red-team">
+        <div class="cv-col">
+          <h3><span class="cv-mark cv-mark-b" aria-hidden="true"></span>Education</h3>
+          <ol class="timeline">
             <li><p class="t-when">2021 to present</p><p class="t-what">PhD, Civil, Environmental and Geodetic Engineering</p><p class="t-where">The Ohio State University, Columbus, Ohio</p><p class="t-note">Geospatial data analysis. Advisor: Rongjun Qin</p></li>
             <li><p class="t-when">2012 to 2013</p><p class="t-what">MSc exchange, Information Science and Technology</p><p class="t-where">The University of Tokyo, Japan</p><p class="t-note">Advisors: Tohru Asami and Yoshihiro Kawahara</p></li>
             <li><p class="t-when">2011 to 2013</p><p class="t-what">MSc, Digital Media Engineering</p><p class="t-where">Technical University of Denmark</p><p class="t-note">Advisor: Michael Kai Petersen</p></li>
             <li><p class="t-when">2008 to 2011</p><p class="t-what">BSc, Computer Science</p><p class="t-where">Wroclaw University of Technology, Poland</p><p class="t-note">Graduated half a year early</p></li>
           </ol>
         </div>
-        <div class="cv-col" data-swarm-step="frame" data-swarm-label="experience">
-          <h3 data-swarm-step="fetch" data-swarm-label="Experience"><span class="cv-mark cv-mark-r" aria-hidden="true"></span>Experience</h3>
-          <ol class="timeline" data-swarm-step="act" data-swarm-act="timeline" data-swarm-by="historian-2">
+        <div class="cv-col">
+          <h3><span class="cv-mark cv-mark-r" aria-hidden="true"></span>Experience</h3>
+          <ol class="timeline">
             <li><p class="t-when">2014 to 2020</p><p class="t-what">Data scientist</p><p class="t-where">Shenzhen Bixuange Technology Co., Ltd., Shenzhen, China</p><p class="t-note">Data visualization projects and their analysis</p></li>
             <li><p class="t-when">2013</p><p class="t-what">Intern</p><p class="t-where">MapMotion Co., Ltd., Tokyo, Japan</p></li>
             <li><p class="t-when">2010 to 2011</p><p class="t-what">Teaching assistant, Artificial Intelligence</p><p class="t-where">Wroclaw University of Technology, Poland</p><p class="t-note">Course taught by Halina Kwasnicka</p></li>
@@ -281,17 +287,17 @@
 
     <!-- 05 Service -->
     <section class="block wrap" id="service" aria-labelledby="service-title" data-swarm>
-      <h2 id="service-title" data-swarm-step="type" data-swarm-cps="20" data-swarm-label="Service"><span class="h-num" aria-hidden="true">05</span>Service</h2>
+      <h2 id="service-title" data-swarm-step="act" data-swarm-act="edit" data-swarm-story="service" data-swarm-by="writer editor"><span class="h-num" aria-hidden="true">05</span>Service</h2>
       <div class="review-head">
-        <h3>Reviewer</h3>
-        <dl class="review-stats" data-swarm-step="count" data-swarm-label="review counts">
+        <h3 data-swarm-step="act" data-swarm-act="type" data-swarm-by="writer-3">Reviewer</h3>
+        <dl class="review-stats" data-swarm-step="act" data-swarm-act="stats" data-swarm-by="eval writer-3">
           <div><dd>103</dd><dt>reviews</dt></div>
           <div><dd>71</dd><dt>manuscripts</dt></div>
           <div><dd>25</dd><dt>journals and conferences</dt></div>
         </dl>
-        <p class="service-lede" data-swarm-step="stream" data-swarm-label="journal note">Including these journals, in order of their impact factor, and two conferences.</p>
+        <p class="service-lede" data-swarm-step="act" data-swarm-act="edit" data-swarm-story="serviceLede" data-swarm-by="writer-2 editor">Including these journals, in order of their impact factor, and two conferences.</p>
       </div>
-      <ol class="venues" data-swarm-step="act" data-swarm-act="rank" data-swarm-by="librarian">
+      <ol class="venues" data-swarm-step="act" data-swarm-act="rank" data-swarm-by="librarian writer writer-3 retriever researcher eval eval-2 red-team">
           <li class="venue">
             <span class="venue-if"><b>12.9</b><small>impact factor</small></span>
             <span class="venue-name">ISPRS Journal of Photogrammetry and Remote Sensing</span>
@@ -375,8 +381,8 @@
             <span class="venue-pub">IEEE International Geoscience and Remote Sensing Symposium</span>
           </li>
       </ol>
-      <p class="venues-note" data-swarm-step="reveal">Impact factors from Clarivate's Journal Citation Reports 2025 (released June 2026). The two conferences have no impact factor; CVPR's place is Google Scholar's ranking of every publication by h5-index.</p>
-      <div class="members" data-swarm-step="reveal">
+      <p class="venues-note" data-swarm-step="act" data-swarm-act="stream" data-swarm-by="writer-3 librarian">Impact factors from Clarivate's Journal Citation Reports 2025 (released June 2026). The two conferences have no impact factor; CVPR's place is Google Scholar's ranking of every publication by h5-index.</p>
+      <div class="members" data-swarm-step="act" data-swarm-act="lines" data-swarm-by="writer writer-2 retriever">
         <h3>Member</h3>
         <ul class="plain-list">
           <li><span>International Society for Photogrammetry and Remote Sensing (ISPRS)</span><span>since 2023</span></li>
@@ -392,9 +398,9 @@
     <!-- 06 Contact -->
     <section class="block wrap" id="contact" aria-labelledby="contact-title" data-swarm>
       <div class="contact" data-swarm-step="frame" data-swarm-label="contact card">
-        <h2 id="contact-title" data-swarm-step="type" data-swarm-cps="20" data-swarm-label="Contact"><span class="h-num" aria-hidden="true">06</span>Contact</h2>
-        <a class="contact-mail" href="mailto:tang.1693@osu.edu" data-swarm-step="type" data-swarm-cps="20" data-swarm-label="email" data-swarm-attack="osu>0su" data-swarm-attack-why="look-alike domain">tang.1693@osu.edu</a>
-        <ul class="contact-links" data-swarm-step="reveal">
+        <h2 id="contact-title" data-swarm-step="act" data-swarm-act="edit" data-swarm-story="contact" data-swarm-by="writer editor"><span class="h-num" aria-hidden="true">06</span>Contact</h2>
+        <a class="contact-mail" href="mailto:tang.1693@osu.edu" data-swarm-step="act" data-swarm-act="edit" data-swarm-story="email" data-swarm-by="writer red-team guardrail">tang.1693@osu.edu</a>
+        <ul class="contact-links" data-swarm-step="act" data-swarm-act="pills" data-swarm-by="writer stylist">
           <li><a href="https://scholar.google.com/citations?user=Eo3rkZcAAAAJ">Google Scholar</a></li>
           <li><a href="https://orcid.org/0000-0003-0864-5842">ORCID</a></li>
           <li><a href="https://github.com/tang1693">GitHub</a></li>

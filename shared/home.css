@@ -785,9 +785,6 @@ a { color: inherit; }
 .hero { --sb-select: var(--yellow); }
 .hero .sb-sel__wh { color: #000; }
 /* How the scene looks while the crew rebuilds it, and the crew's own tools: home/swarm/crew.css */
-/* The crew gathers in the sky below the title, so the ones with nothing to build there wait clear of the text */
-.swarm-origin { display: block; height: 0; }
-.swarm-js .swarm-origin { margin-top: clamp(48px, 9vh, 96px); }
 /* The crew builds the title and the index in place of their fade-up */
 .swarm-js .hero-title, .swarm-js .hero-index { animation: none; }
 

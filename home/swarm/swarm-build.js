@@ -27,7 +27,12 @@
 //   agents (crew names or roles; 'historian-2' works as a historian) and returns when it is done.
 //   Act elements stay hidden until the act shows them, unless they carry data-swarm-keep;
 // - data-swarm-attack-why names what the guardrail blocked (default 'prompt injection');
-// - the trace pill can show the whole crew as dots, the one speaking lit (traceDots option).
+// - the trace pill can show the whole crew as dots, the one speaking lit (traceDots option);
+// - the entrance option replaces the opening orbit: entrance(ctx) brings the crew on and returns
+//   when the first region's steps may start; ffEvents chooses what fast-forwards a build;
+//   ctx.box(rect) turns a viewport rect into the crew layer's coordinates;
+// - the arrival option replaces how the crew comes on in the other regions: arrival(ctx, first);
+// - stop() ends the build for good: the region being built is finished, every other one shown.
 //
 // Markup (see references/api.md):
 //   <section data-swarm>                      a region; built when it scrolls into view
@@ -136,6 +141,9 @@ export function swarmBuild(options = {}) {
     pace: 1,
     acts: {},
     traceDots: false,
+    entrance: null,
+    arrival: null,
+    ffEvents: ['keydown', 'pointerdown', 'wheel', 'touchstart'],
     onRegionStart: null,
     onRegionEnd: null,
     ...options,
@@ -149,7 +157,7 @@ export function swarmBuild(options = {}) {
   const queue = [];
   const agentsUsed = new Set();
   let io = null;
-  let current = null, trace = null, traceTimer = 0, you = null, firstClaimed = false, started = false, attacks = 0;
+  let current = null, trace = null, traceTimer = 0, you = null, firstClaimed = false, started = false, stopped = false, attacks = 0;
   window.__swarmBuild = VERSION;
 
   // ---------------------------------------------------------------- text helpers
@@ -424,10 +432,16 @@ export function swarmBuild(options = {}) {
       return tG + 0.55;
     }
 
+    // who is free when, and who does what (tang.ninja: shared roles, acts)
+    const free = {}, shown = new Map(), gap = parseFloat(region.dataset.swarmGap) || o.gap;
+    const agentOf = (n) => A[n] || pick(roleOf(n));
+    const pick = (role) => (pool[role] ? pool[role].reduce((b, x) => ((free[x.id] || 0) < (free[b.id] || 0) ? x : b)) : null);
     // 1. arrival: the first region opens with the crew orbiting the origin
     let start = 0.35;
     const v0 = view();
-    if (isFirst) {
+    if (isFirst && o.entrance) {
+      start = +o.entrance(actCtx(region, 0, crew)) || 1.45;
+    } else if (isFirst) {
       const anchor = document.querySelector('[data-swarm-origin]') || list[0] || region;
       const b = rel(anchor), cx = b.x + b.w / 2, cy = b.y + b.h / 2;
       const orbiters = crew.filter((a) => a.id !== 'red-team');
@@ -447,6 +461,8 @@ export function swarmBuild(options = {}) {
       });
       tl.tween(1.4, 0.2, 'out', (p) => { seed.style.opacity = 1 - p; });
       start = 1.45;
+    } else if (o.arrival) {
+      o.arrival(actCtx(region, 0, crew), list[0] || region);
     } else {
       const first = list[0] ? rel(list[0]) : { x: 0, y: 0, w: 0, h: 0 };
       crew.forEach((a, i) => {
@@ -472,6 +488,8 @@ export function swarmBuild(options = {}) {
         glyph: (ag, g, at) => glyph(ag, g, at),
         log: (who2, msg, at) => log(who2, msg, at),
         say, put, rel, view, chip, fade, frame: (ag, node, at, d = 0.42) => frame(ag, node, at, d * P),
+        box: (r) => { const g = origin(); return { x: r.left - g.left, y: r.top - g.top, w: r.width, h: r.height }; },
+        crew,
         color: (n) => o.crew[n] || '#fff',
         show: (node, at) => tl.call(Math.max(0, at), () => { node.classList.add('sb-built'); node.style.opacity = ''; }),
         attacked: () => { attacks++; },
@@ -481,9 +499,6 @@ export function swarmBuild(options = {}) {
     }
 
     // 2. the steps, in DOM order; each agent works through its own queue
-    const free = {}, shown = new Map(), gap = parseFloat(region.dataset.swarmGap) || o.gap;
-    const agentOf = (n) => A[n] || pick(roleOf(n));
-    const pick = (role) => (pool[role] ? pool[role].reduce((b, x) => ((free[x.id] || 0) < (free[b.id] || 0) ? x : b)) : null);
     const waitFor = (el) => { let t = 0; shown.forEach((at, host) => { if (host !== el && host.contains(el)) t = Math.max(t, at); }); return t; };
     let cursor = start, end = start;
     list.forEach((el) => {
@@ -618,7 +633,7 @@ export function swarmBuild(options = {}) {
     youOn(true);
     if (o.onRegionStart) o.onRegionStart(region);
     const ff = () => { job.tl.scale = Math.max(job.tl.scale, 5); };
-    const evs = ['keydown', 'pointerdown', 'wheel', 'touchstart'];
+    const evs = o.ffEvents;
     evs.forEach((e) => addEventListener(e, ff, { passive: true }));
     const away = new IntersectionObserver(([e]) => { if (!e.isIntersecting && job.tl.active) job.tl.finish(); });
     away.observe(region);
@@ -634,7 +649,7 @@ export function swarmBuild(options = {}) {
     job.tl.play();
   }
   function enqueue(region, isFirst) {
-    if (region.classList.contains('swarm-done') || region.dataset.sbQueued) return;
+    if (stopped || region.classList.contains('swarm-done') || region.dataset.sbQueued) return;
     region.dataset.sbQueued = '1';
     queue.push({ region, isFirst });
     runNext();
@@ -672,6 +687,18 @@ export function swarmBuild(options = {}) {
     },
     /** Finish whatever is building right now. */
     skip() { if (current) current.tl.finish(); },
+    /** Stop building (tang.ninja): finish the region being built and show all the others as they are. */
+    stop() {
+      if (stopped) return;
+      stopped = true;
+      if (!started && active && o.once === 'session') session.set(o.key, '1');
+      started = true;
+      queue.length = 0;
+      if (io) io.disconnect();
+      if (current) current.tl.finish();
+      $$('[data-swarm]').forEach((r, i) => { if (!r.classList.contains('swarm-done')) release(r, i === 0); });
+    },
+    get stopped() { return stopped; },
     /** Build again from the top: clears the once-per-session flag and reloads. */
     replay() { session.set(o.key, '0'); local.set(o.key + '-off', '0'); scrollTo(0, 0); location.reload(); },
     /** Persistently turn the effect on or off for this visitor. */
