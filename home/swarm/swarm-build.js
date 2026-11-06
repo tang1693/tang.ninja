@@ -31,8 +31,14 @@
 // - the entrance option replaces the opening orbit: entrance(ctx) brings the crew on and returns
 //   when the first region's steps may start; ffEvents chooses what fast-forwards a build;
 //   ctx.box(rect) turns a viewport rect into the crew layer's coordinates;
-// - the arrival option replaces how the crew comes on in the other regions: arrival(ctx, first);
-// - stop() ends the build for good: the region being built is finished, every other one shown.
+// - the arrival option replaces how the crew comes on in the other regions: arrival(ctx, first, late);
+// - stop() ends the build for good: the regions being built are finished, every other one shown;
+// - floors overlap: regions build in order, each one starting the next before it is over (the handoff
+//   option: a share of its run, and once the next region's first step has its people), or at its end at
+//   the latest; an agent still busy above
+//   joins later (late[id], seconds), and ctx.takeOver(id) hands its cursor down from the region above;
+//   a region is no longer finished when it scrolls out of view; skip() finishes every region building;
+// - the planned option is told about each region once it is planned: planned(ctx, { end }).
 //
 // Markup (see references/api.md):
 //   <section data-swarm>                      a region; built when it scrolls into view
@@ -143,6 +149,9 @@ export function swarmBuild(options = {}) {
     traceDots: false,
     entrance: null,
     arrival: null,
+    planned: null,
+    handoff: null,
+    useOf: null,
     ffEvents: ['keydown', 'pointerdown', 'wheel', 'touchstart'],
     onRegionStart: null,
     onRegionEnd: null,
@@ -154,10 +163,10 @@ export function swarmBuild(options = {}) {
   const seen = () => o.once === 'session' && session.get(o.key) === '1';
   const active = !reduce && enabled() && !seen() && (root.classList.contains('swarm-js') || o.force === true);
   const originals = new Map();
-  const queue = [];
   const agentsUsed = new Set();
   let io = null;
-  let current = null, trace = null, traceTimer = 0, you = null, firstClaimed = false, started = false, stopped = false, attacks = 0;
+  let trace = null, traceTimer = 0, you = null, started = false, stopped = false, attacks = 0;
+  const live = new Set();   // the regions being built: { region, agents, tl }
   window.__swarmBuild = VERSION;
 
   // ---------------------------------------------------------------- text helpers
@@ -219,7 +228,7 @@ export function swarmBuild(options = {}) {
   }
 
   // ---------------------------------------------------------------- one region
-  function plan(region, isFirst) {
+  function plan(region, isFirst, late = {}) {
     const tl = new Timeline(), P = o.pace || 1;
     tl.scale = o.speed;
     region.classList.add('sb-host');
@@ -261,6 +270,7 @@ export function swarmBuild(options = {}) {
       agentsUsed.add(id);
     });
     const crew = Object.values(A);
+    const used = {};
 
     // primitives
     const go = (a, x, y, t, d = 0.45, ease = 'out') => {
@@ -462,7 +472,8 @@ export function swarmBuild(options = {}) {
       tl.tween(1.4, 0.2, 'out', (p) => { seed.style.opacity = 1 - p; });
       start = 1.45;
     } else if (o.arrival) {
-      o.arrival(actCtx(region, 0, crew), list[0] || region);
+      Object.keys(late).forEach((id) => { if (A[id] && late[id] > 0) free[id] = Math.max(free[id] || 0, late[id] + 0.7); });
+      o.arrival(actCtx(region, 0, crew), list[0] || region, late);
     } else {
       const first = list[0] ? rel(list[0]) : { x: 0, y: 0, w: 0, h: 0 };
       crew.forEach((a, i) => {
@@ -494,6 +505,8 @@ export function swarmBuild(options = {}) {
         show: (node, at) => tl.call(Math.max(0, at), () => { node.classList.add('sb-built'); node.style.opacity = ''; }),
         attacked: () => { attacks++; },
         scale: () => tl.scale,
+        now: () => tl.t,
+        takeOver: (id, me) => takeOver(id, region, me),
       };
       return ctx;
     }
@@ -572,11 +585,33 @@ export function swarmBuild(options = {}) {
           done = t + d;
           shown.set(el, t);
         }
-        if (a) free[a.id] = done + 0.05;
+        if (a) { free[a.id] = done + 0.05; used[a.id] = Math.max(used[a.id] || 0, done); }
         cursor += gap;
         end = Math.max(end, done);
       });
     });
+
+    // tang.ninja: the next region starts before this one is over: once this region is `handoff` of the way
+    // through and whoever does the next region's first step is free here (at the end at the latest);
+    // anyone still busy here joins it as soon as they are free
+    const lastUse = (a) => Math.max(used[a.id] || 0, o.useOf ? +o.useOf(a) || 0 : 0);
+    const share = typeof o.handoff === 'function' ? o.handoff(region, isFirst) : o.handoff;
+    let hand = null;
+    if (share > 0) {
+      const rs = $$('[data-swarm]'), nextR = rs[rs.indexOf(region) + 1];
+      const first = nextR && $$('[data-swarm-step]', nextR).find((el) => el.closest('[data-swarm]') === nextR);
+      const needs = first ? stepsOf(first).flatMap((st) => (st === 'act' ? byOf(first) : ROLE[st] ? [ROLE[st]] : [])) : [];
+      const H = Math.max(start + 2.5, share * end, ...needs.map((id) => (A[id] ? lastUse(A[id]) : 0)));
+      if (nextR && H < end - 2) hand = H;
+    }
+    if (hand != null) {
+      tl.call(hand, () => {
+        const busyFor = {};
+        crew.forEach((a) => { const r = lastUse(a) - hand; if (r > 0) busyFor[a.id] = (r / tl.scale) * (o.speed || 1); });   // in the next region's time
+        handOn(region, busyFor);
+      });
+    }
+    if (o.planned) o.planned(actCtx(region, 0, crew), { end, hand });
 
     // 3. leave, sign, restore
     const tX = end + 0.45;
@@ -584,6 +619,7 @@ export function swarmBuild(options = {}) {
       const v = view();
       crew.forEach((a, i) => {
         a.caret.style.display = 'none';
+        if (a.gone) return;
         const tx = a.x - v.x0 < (v.x1 - v.x0) / 2 ? v.x0 - 90 : v.x1 + 90, ty = a.y + (Math.random() * 60 - 30);
         const fx = a.x, fy = a.y, t0 = performance.now() + i * 40;
         const fly = (now) => {
@@ -612,7 +648,7 @@ export function swarmBuild(options = {}) {
       region.classList.remove('sb-host', 'sb-rel');
       setTimeout(() => { layer.remove(); if (!document.querySelector('.sb-layer')) root.classList.remove('sb-building'); }, 900);
     };
-    return { tl, region, finishUp };
+    return { tl, region, finishUp, agents: A };
   }
 
   // ---------------------------------------------------------------- running
@@ -622,37 +658,65 @@ export function swarmBuild(options = {}) {
     $$('[data-swarm-credit]').forEach((c) => { if (withOrphans) c.hidden = true; });
     region.classList.add('swarm-done');
   }
-  function runNext() {
-    if (current || !queue.length) return;
-    const { region, isFirst } = queue.shift();
-    const box = region.getBoundingClientRect();
-    if (!isFirst && io && (box.top > innerHeight * 0.85 || box.bottom < 0)) { delete region.dataset.sbQueued; io.observe(region); runNext(); return; }
+  // tang.ninja: an agent's cursor coming down from a region still being built: where it is now (viewport),
+  // or null if no other region has it on screen. Its old cursor then moves with the new one (`me`) for a
+  // moment, each clipped by its own region, so the two read as one crossing over, and is put away.
+  function takeOver(id, except, me) {
+    for (const job of [...live].reverse()) {
+      if (job.region === except) continue;
+      const a = job.agents[id];
+      if (!a || a.gone) continue;
+      a.gone = true;
+      a.caret.style.display = 'none';
+      const g = job.region.getBoundingClientRect(), p = { x: g.left + a.x, y: g.top + a.y };
+      if (Math.abs(p.x) > 5000 || Math.abs(p.y) > 5000 || !me) { a.el.style.opacity = '0'; return null; }
+      const t0 = performance.now();
+      const step = (now) => {
+        if (!a.el.isConnected) return;
+        const gb = except.getBoundingClientRect(), ga = job.region.getBoundingClientRect();
+        a.set(gb.left + me.x - ga.left, gb.top + me.y - ga.top);
+        if (now - t0 < 1500) requestAnimationFrame(step); else a.el.style.opacity = '0';
+      };
+      requestAnimationFrame(step);
+      return p;
+    }
+    return null;
+  }
+  const regionsAll = () => $$('[data-swarm]');
+  const begun = (r) => r.dataset.sbBegun === '1' || r.classList.contains('swarm-done');
+  // the region after this one starts now (if it has not), with whoever is still busy here arriving late
+  function handOn(region, late) {
+    const rs = regionsAll(), next = rs[rs.indexOf(region) + 1];
+    if (next && !begun(next)) launch(next, false, late);
+  }
+  function launch(region, isFirst, late) {
+    if (stopped || begun(region)) return;
+    region.dataset.sbBegun = '1';
+    if (io) io.unobserve(region);
     let job;
-    try { job = plan(region, isFirst); } catch (err) { console.error('[swarm-build]', err); release(region, isFirst); runNext(); return; }
-    current = job;
+    try { job = plan(region, isFirst, late); } catch (err) { console.error('[swarm-build]', err); release(region, isFirst); handOn(region); return; }
+    live.add(job);
     youOn(true);
     if (o.onRegionStart) o.onRegionStart(region);
     const ff = () => { job.tl.scale = Math.max(job.tl.scale, 5); };
     const evs = o.ffEvents;
     evs.forEach((e) => addEventListener(e, ff, { passive: true }));
-    const away = new IntersectionObserver(([e]) => { if (!e.isIntersecting && job.tl.active) job.tl.finish(); });
-    away.observe(region);
     job.tl.onDone = () => {
       evs.forEach((e) => removeEventListener(e, ff));
-      away.disconnect();
       try { job.finishUp(); } catch (err) { console.error('[swarm-build]', err); release(region, isFirst); }
-      current = null;
-      youOn(false);
+      live.delete(job);
+      if (!live.size) youOn(false);
       if (o.onRegionEnd) o.onRegionEnd(region);
-      runNext();
+      if (!stopped) handOn(region);
     };
     job.tl.play();
   }
-  function enqueue(region, isFirst) {
-    if (stopped || region.classList.contains('swarm-done') || region.dataset.sbQueued) return;
-    region.dataset.sbQueued = '1';
-    queue.push({ region, isFirst });
-    runNext();
+  // a region scrolled into view starts if it is the first, or once every region above it has started
+  function enqueue(region) {
+    if (stopped || begun(region)) return;
+    const rs = regionsAll(), i = rs.indexOf(region);
+    if (i > 0 && !rs.slice(0, i).every(begun)) return;
+    launch(region, i === 0);
   }
 
   return {
@@ -673,29 +737,22 @@ export function swarmBuild(options = {}) {
         });
       });
       io = new IntersectionObserver((entries) => {
-        entries.forEach((e) => {
-          if (!e.isIntersecting) return;
-          io.unobserve(e.target);
-          const isFirst = e.target === regions[0] && !firstClaimed;
-          if (isFirst) firstClaimed = true;
-          enqueue(e.target, isFirst);
-        });
+        entries.forEach((e) => { if (e.isIntersecting) enqueue(e.target); });
       }, { rootMargin: o.rootMargin, threshold: 0.05 });
       const fonts = document.fonts && document.fonts.ready ? Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 1500))]) : Promise.resolve();
       fonts.then(() => requestAnimationFrame(() => regions.forEach((r) => io.observe(r))));
       return this;
     },
     /** Finish whatever is building right now. */
-    skip() { if (current) current.tl.finish(); },
+    skip() { [...live].forEach((job) => job.tl.finish()); },
     /** Stop building (tang.ninja): finish the region being built and show all the others as they are. */
     stop() {
       if (stopped) return;
       stopped = true;
       if (!started && active && o.once === 'session') session.set(o.key, '1');
       started = true;
-      queue.length = 0;
       if (io) io.disconnect();
-      if (current) current.tl.finish();
+      [...live].forEach((job) => job.tl.finish());
       $$('[data-swarm]').forEach((r, i) => { if (!r.classList.contains('swarm-done')) release(r, i === 0); });
     },
     get stopped() { return stopped; },

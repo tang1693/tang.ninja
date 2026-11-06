@@ -4,7 +4,8 @@
 // points, aligned cameras, a point cloud, a mesh, textures, lights) and its characters are brought to
 // life through menus. Text is typed, reviewed, revised and typed again; cards arrive in a heap and are
 // laid out; a red-team agent keeps trying to break things and someone always puts them right. The page
-// is built floor by floor, like a house: nothing below the floor being built can be scrolled to.
+// is built floor by floor, like a house: nothing below the floor being built can be scrolled to. Floors
+// overlap, the crew moving down as it frees up, and nobody stands about with nothing to do.
 //
 // The engine is swarm-build (MIT, ./swarm-build.js, with our changes listed at its top). Everything
 // specific to this page is here; the markup is data-swarm-step / data-swarm-act / data-swarm-by /
@@ -185,6 +186,7 @@ function bubble(c, t, { at, who, text, life = 1.6 }) {
 // What an agent is thinking, in a small bubble that rides along with it.
 function think(c, ag, t, text, life = 1.8) {
   if (!ag) return;
+  use(ag, t + life);
   const n = node(c, 'cl-think', esc(text));
   n.style.setProperty('--c', c.color(ag.id));
   n.style.opacity = 0;
@@ -195,7 +197,7 @@ function think(c, ag, t, text, life = 1.8) {
     n.classList.toggle('is-left', flip);
     n.style.left = (flip ? ag.x - 10 - w : ag.x + 16) + 'px';
     n.style.top = Math.max(v.y0 + 6, ag.y - 36) + 'px';
-    n.style.opacity = String(Math.max(0, Math.min(1, (k * life) / 0.15, ((1 - k) * life) / 0.25)));
+    n.style.opacity = ag.gone ? '0' : String(Math.max(0, Math.min(1, (k * life) / 0.15, ((1 - k) * life) / 0.25)));
   });
 }
 
@@ -358,6 +360,7 @@ function scrambleIn(c, ag, el, t, d = 0.6) {
     for (let j = k; j < f.length; j++) s += /\s/.test(f[j]) ? f[j] : GLYPHS[(Math.random() * GLYPHS.length) | 0];
     n.data = p >= 1 ? f : s;
   }));
+  use(ag, t + d);
   return t + d;
 }
 
@@ -376,9 +379,13 @@ function countIn(c, el, t, d = 0.9) {
   return t + d;
 }
 
-// When each agent is next free, across the acts of its region (agents are the region's own objects).
-const BUSY = new WeakMap();
+// When each agent is next free, across the acts of its region (agents are the region's own objects);
+// when it is last needed at all (USE: the next floor gets everyone who is done here); and the spans in
+// which a story keeps its people together, so they do not wander off mid-conversation (HOLD).
+const BUSY = new WeakMap(), USE = new WeakMap(), HOLD = new WeakMap();
 const busy = (ag, t) => { if (ag) BUSY.set(ag, Math.max(BUSY.get(ag) || 0, t)); };
+const use = (ag, t) => { if (ag) USE.set(ag, Math.max(USE.get(ag) || 0, t)); };
+const hold = (ag, t0, t1) => { if (ag) { if (!HOLD.has(ag)) HOLD.set(ag, []); HOLD.get(ag).push([t0, t1]); use(ag, t1); } };
 // Each agent works through its own jobs in order: q(agent, wanted start, job) runs the job when the
 // agent is next free and returns when it ends; q.pick(agents, t) is whichever of them is free first.
 function queue() {
@@ -388,6 +395,7 @@ function queue() {
     const s = Math.max(t, when(ag)), e = job(ag, s);
     free.set(ag, e + 0.08);
     busy(ag, e + 0.08);
+    use(ag, e);
     return e;
   };
   q.pick = (list, t = 0) => list.filter(Boolean).reduce((a, b) => (Math.max(t, when(b)) < Math.max(t, when(a)) ? b : a));
@@ -470,6 +478,7 @@ function Editor(c, el, which = 'last') {
       });
       planned = base.slice(0, pos) + s + base.slice(pos);
       c.call(tt + 0.18, () => { caret.style.opacity = 0; });
+      use(ag, tt + 0.18);
       return tt + 0.18;
     },
     // turn the text into `next`: the caret goes to the end of the part that changes, selects back over
@@ -508,6 +517,7 @@ function Editor(c, el, which = 'last') {
       });
       planned = next;
       c.call(tt + 0.18, () => { caret.style.opacity = 0; });
+      use(ag, tt + 0.18);
       return tt + 0.18;
     },
     // red-team rewrites `from` into `to`; the guardrail boxes it, blocks it and puts it back
@@ -550,6 +560,7 @@ function Editor(c, el, which = 'last') {
       c.go(rt, () => ({ x: c.view().x1 + 90, y: rt.y - 60 }), tg + 0.45, 0.45, 'in');
       think(c, gr, tg + 0.4, 'not on my watch.', 1.4);
       c.tween(tg + 1.2, 0.3, 'out', (p) => { guard.style.opacity = 1 - p; });
+      use(rt, tg + 0.9);
       return tg + 1.0;
     },
     done(t) { c.call(t, () => { set(original); caret.style.opacity = 0; unselect(); }); return t; },
@@ -1021,7 +1032,9 @@ ACTS.edit = (c) => {
   c.call(c.t, () => show(c.el));
   ed.clear(c.t);
   const t = ed.done((story ? story(c, ed, c.t + 0.1) : ed.type(c.a, c.t + 0.1, ed.original)) + 0.05);
-  aside(c, c.who.filter((g) => g.id !== 'red-team'), ed.el, t + 0.1);
+  const crew = c.who.filter((g) => g.id !== 'red-team');
+  crew.forEach((g) => hold(g, c.t, t + 0.6));
+  aside(c, crew, ed.el, t + 0.1);
   return t + 0.3;
 };
 // the crew of a finished line steps clear of its words, to just past their end
@@ -1070,7 +1083,7 @@ ACTS.index = (c) => {
 // the writers fill them in, and the red-team turns the triangle upside down until a stylist turns it back.
 ACTS.cards = (c) => {
   const box = c.el, cards = $$('.area', box), q = queue(), A = agentIn(c), t0 = c.t;
-  const P = A('planner'), Ws = [A('writer-2'), A('writer-3'), A('writer')], Ss = [A('stylist'), A('stylist-2')], R = A('retriever'), E = A('eval'), RT = A('red-team');
+  const P = A('planner'), Ws = [A('writer-2'), A('writer-3'), A('writer')], Ss = [A('stylist'), A('stylist-2')], R = A('retriever'), E = A('editor');
   const shapes = cards.map((k) => $('.area-shape', k));
   const restore = blank(c, t0, box, '.area');
   const off = scatter(c, cards, t0, (i, rs) => ({ x: rs[0].left - rs[i].left + i * 18, y: rs[0].top - rs[i].top + i * 14, r: [-6, 4, -2][i] || 0, s: 0.92 }));
@@ -1114,9 +1127,15 @@ ACTS.cards = (c) => {
     const tl2 = q(R, tp - 0.3, (Rr, ts) => writeIn(c, Rr, link, ts, { mode: 'type', cps: 24 }));
     end = Math.max(end, tp, tl2);
   });
-  const tri = shapes[cards.findIndex((k) => k.classList.contains('area-p'))];
+  restore(end + 0.05);
+  return end + 0.1;
+};
+// The red-team turns the yellow triangle upside down; a stylist turns it back.
+ACTS.flip = (c) => {
+  const tri = c.el, A = agentIn(c), RT = A('red-team'), S = A('stylist');
+  let end = c.t;
   if (tri && RT) {
-    const ta = end + 0.3, S = Ss[0];
+    const ta = c.t + 0.1;
     c.call(ta - 0.01, () => { const v = c.view(); RT.set(v.x1 + 60, c.rel(tri).y + 40); });
     c.go(RT, center(c, tri, 0.5, 0.55), ta, 0.6);
     think(c, RT, ta + 0.6, 'what if it points down?', 1.6);
@@ -1128,9 +1147,9 @@ ACTS.cards = (c) => {
     c.log(S.id, 'triangle turned back up', ta + 2.5);
     c.tween(ta + 2.6, 0.6, 'inOut2', (p) => { tri.style.rotate = 180 * (1 - p) + 'deg'; });
     c.call(ta + 3.25, () => { tri.style.rotate = ''; });
+    use(RT, ta + 2.3); use(S, ta + 3.3);
     end = ta + 3.3;
   }
-  restore(end + 0.05);
   return end + 0.1;
 };
 
@@ -1175,6 +1194,7 @@ ACTS.plot = (c) => {
     });
   });
   t += 0.45 + bars.length * 0.75 + 0.1;
+  use(ag, t);
   think(c, ag, t - 0.4, 'up and to the right.', 1.4);
   c.call(t, () => bars.forEach((b) => { const f = $('.bar-fill', b), v = $('.bar-value', b); f.style.transition = ''; f.style.height = ''; v.textContent = v.dataset.v; }));
   c.glyph(ag, 'arrow', t);
@@ -1284,6 +1304,7 @@ ACTS.tilt = (c) => {
     c.go(RT, center(c, sq, 0.96, 0.96), ta, 0.6);
     think(c, RT, ta + 0.6, 'a little tilt. nobody will notice.', 1.9);
     c.log(RT.id, 'rotating the yellow square · 12° → 47°', ta + 0.7);
+    use(RT, ta + 2.5);
     c.tween(ta + 0.8, 0.9, 'inOut2', (p) => {
       sq.style.rotate = 35 * p + 'deg';
       sq.style.translate = `${38 * p}px ${-22 * p}px`;
@@ -1308,7 +1329,7 @@ ACTS.tilt = (c) => {
 // the lists under the cards: the writers type the lines, the retriever the years, the eval-2 does the sums
 ACTS.honorsList = (c) => {
   const box = c.el, q = queue(), A = agentIn(c), t0 = c.t;
-  const Ws = [A('writer'), A('writer-2'), A('writer-3')], R = A('retriever'), Ev = A('eval-2');
+  const Ws = [A('writer-2'), A('writer-3')], R = A('retriever'), Ev = A('eval-2');
   const restore = blank(c, t0, box, 'h3, li');
   c.call(t0, () => show(box));
   let end = t0;
@@ -1336,7 +1357,7 @@ ACTS.honorsList = (c) => {
 // librarian puts it back.
 ACTS.papers = (c) => {
   const box = c.el, groups = $$('.year-group', box), pubs = $$('.pub', box), q = queue(), A = agentIn(c), t0 = c.t;
-  const L = A('librarian'), Ws = [A('writer-2'), A('writer-3')], Rs = [A('retriever'), A('researcher')], Es = [A('eval'), A('eval-2')], S = A('stylist'), RT = A('red-team');
+  const L = A('librarian'), Ws = [A('writer-2'), A('writer-3')], Rs = [A('retriever'), A('researcher')], Es = [A('eval'), A('eval-2')], S = A('stylist');
   const restore = blank(c, t0, box, '.year-group, .pub');
   const badges = $$('.badge', box);
   const order = groups.map((_, i) => i), r = rng(groups.length * 31 + 7);
@@ -1376,9 +1397,16 @@ ACTS.papers = (c) => {
   c.log(L.id, 'sorting by year, newest first', end + 0.2);
   think(c, L, end + 0.2, 'newest first. always.', 1.6);
   end = settle(c, L, groups, off, end + 0.2, { hop: 0.28, dur: 0.5 });
-  const last = groups[groups.length - 1], first = groups[0];
-  if (RT && last && first && last !== first) {
-    const ta = end + 0.3, yr = $('.year', last) || last, grab = () => { const b = c.rel(yr); return { x: b.x + 10, y: b.y + 14 }; };
+  restore(end + 0.05);
+  c.call(end + 0.05, () => badges.forEach((b) => { b.style.opacity = ''; b.style.scale = ''; }));
+  return end + 0.1;
+};
+// The red-team drags the oldest year to the top; the librarian puts it back at the bottom.
+ACTS.drag = (c) => {
+  const last = c.el, first = last.parentElement.firstElementChild, A = agentIn(c), RT = A('red-team'), L = A('librarian');
+  let end = c.t;
+  if (RT && first && last !== first) {
+    const ta = c.t + 0.1, yr = $('.year', last) || last, grab = () => { const b = c.rel(yr); return { x: b.x + 10, y: b.y + 14 }; };
     let dy = 0;
     c.call(ta - 0.01, () => { const v = c.view(); RT.set(v.x1 + 60, c.rel(last).y); dy = first.getBoundingClientRect().top - last.getBoundingClientRect().top; });
     c.go(RT, grab, ta, 0.6);
@@ -1391,10 +1419,9 @@ ACTS.papers = (c) => {
     c.log(L.id, `put ${yr.textContent.trim()} back at the bottom`, ta + 2.4);
     c.tween(ta + 2.4, 0.8, 'inOut2', (p) => { last.style.transform = `translateY(${dy * (1 - p)}px)`; const g = grab(); L.set(g.x, g.y); });
     c.call(ta + 3.25, () => { last.style.transform = ''; last.style.zIndex = ''; });
+    use(RT, ta + 2.3); use(L, ta + 3.3);
     end = ta + 3.3;
   }
-  restore(end + 0.05);
-  c.call(end + 0.05, () => badges.forEach((b) => { b.style.opacity = ''; b.style.scale = ''; }));
   return end + 0.1;
 };
 
@@ -1452,7 +1479,7 @@ ACTS.pills = (c) => {
 // entry, newest first; the red-team squeezes the columns together and the planner opens the gap again.
 ACTS.cv = (c) => {
   const box = c.el, cols = $$('.cv-col', box), q = queue(), A = agentIn(c), t0 = c.t;
-  const P = A('planner'), H = [A('historian'), A('historian-2')], RT = A('red-team');
+  const P = A('planner'), H = [A('historian'), A('historian-2')];
   const lis = cols.map((col) => $$('.timeline li', col));
   const restore = blank(c, t0, box, '.cv-col, .timeline li');
   const off = scatter(c, cols, t0, (i, rs) => { const j = cols.length - 1 - i; return { x: rs[j].left - rs[i].left, y: rs[j].top - rs[i].top, r: i ? 2 : -2 }; });
@@ -1482,8 +1509,16 @@ ACTS.cv = (c) => {
     end = Math.max(end, tc);
   });
   think(c, H[0], t + 0.6, 'newest first, like the papers.', 1.6);
+  c.call(end, () => lis.flat().forEach((li) => { li.style.opacity = ''; }));
+  restore(end + 0.05);
+  return end + 0.1;
+};
+// The red-team squeezes the two columns together; the planner opens the gap again.
+ACTS.squeeze = (c) => {
+  const right2 = c.el, cols = $$('.cv-col', right2.parentElement), A = agentIn(c), RT = A('red-team'), P = A('planner');
+  let end = c.t;
   if (RT && cols.length > 1) {
-    const ta = end + 0.3, right2 = cols[1];
+    const ta = c.t + 0.1;
     let dx = 0, dy = 0;
     c.call(ta - 0.01, () => {
       const v = c.view(), a = cols[0].getBoundingClientRect(), b = right2.getBoundingClientRect();
@@ -1502,10 +1537,9 @@ ACTS.cv = (c) => {
     c.tween(ta + 2.4, 0.7, 'inOut2', (p) => { right2.style.transform = `translate(${dx * (1 - p)}px, ${dy * (1 - p)}px)`; const g = at2(); P.set(g.x, g.y); });
     c.call(ta + 3.15, () => { right2.style.transform = ''; });
     guides(c, ta + 3.15, cols, 1.2);
+    use(RT, ta + 2.2); use(P, ta + 3.15);
     end = ta + 3.4;
   }
-  c.call(end, () => lis.flat().forEach((li) => { li.style.opacity = ''; }));
-  restore(end + 0.05);
   return end + 0.1;
 };
 
@@ -1514,7 +1548,7 @@ ACTS.cv = (c) => {
 // ranks them; the red-team flips the ranking upside down and the librarian flips it back; the bars grow.
 ACTS.rank = (c) => {
   const box = c.el, items = $$('.venue', box), fills = $$('.venue-bar i', box), q = queue(), A = agentIn(c), t0 = c.t;
-  const L = A('librarian'), Ws = [A('writer'), A('writer-3')], Rs = [A('retriever'), A('researcher')], Es = [A('eval'), A('eval-2')], RT = A('red-team');
+  const L = A('librarian'), Ws = [A('writer'), A('writer-3')], Rs = [A('retriever'), A('researcher')], Es = [A('eval'), A('eval-2')];
   const restore = blank(c, t0, box, '.venue');
   const order = items.map((_, i) => i), r = rng(items.length * 31 + 7);
   for (let i = order.length - 1; i > 0; i--) { const j = (r() * (i + 1)) | 0; [order[i], order[j]] = [order[j], order[i]]; }
@@ -1532,8 +1566,18 @@ ACTS.rank = (c) => {
   c.log(L.id, `ranking ${items.length} venues by impact factor · JCR 2025`, end + 0.2);
   think(c, L, end + 0.2, 'highest impact first.', 1.5);
   end = settle(c, L, items, off, end + 0.2, { hop: 0.16, dur: 0.42 });
-  if (RT) {
-    const ta = end + 0.3, rev = [];
+  fills.forEach((f, i) => c.tween(end + i * 0.07, 0.4, 'out', (p) => { f.style.width = num(f.dataset.w) * p + '%'; }));
+  end += fills.length * 0.07 + 0.4;
+  c.call(end, () => fills.forEach((f) => { f.style.width = f.dataset.w; }));
+  restore(end + 0.05);
+  return end + 0.1;
+};
+// The red-team turns the ranking upside down; the librarian turns it back.
+ACTS.reverse = (c) => {
+  const items = $$('.venue', c.el.parentElement), A = agentIn(c), RT = A('red-team'), L = A('librarian');
+  let end = c.t;
+  if (RT && items.length > 1) {
+    const ta = c.t + 0.1, rev = [];
     c.call(ta + 0.75, () => { const rs = items.map((n) => n.getBoundingClientRect()); items.forEach((n, i) => { const j = items.length - 1 - i; rev[i] = { x: rs[j].left - rs[i].left, y: rs[j].top - rs[i].top }; }); });
     c.call(ta - 0.01, () => { const v = c.view(); RT.set(v.x1 + 60, c.rel(items[0]).y); });
     c.go(RT, center(c, items[0], 0.3, 0.3), ta, 0.6);
@@ -1546,18 +1590,15 @@ ACTS.rank = (c) => {
     c.log(L.id, 'ranking restored', ta + 2.5);
     c.tween(ta + 2.5, 0.8, 'inOut2', (p) => items.forEach((n, i) => { const o = rev[i]; if (o) n.style.transform = `translate(${o.x * (1 - p)}px, ${o.y * (1 - p)}px)`; }));
     c.call(ta + 3.35, () => items.forEach((n) => { n.style.transform = ''; }));
+    use(RT, ta + 2.3); use(L, ta + 3.35);
     end = ta + 3.4;
   }
-  fills.forEach((f, i) => c.tween(end + i * 0.07, 0.4, 'out', (p) => { f.style.width = num(f.dataset.w) * p + '%'; }));
-  end += fills.length * 0.07 + 0.4;
-  c.call(end, () => fills.forEach((f) => { f.style.width = f.dataset.w; }));
-  restore(end + 0.05);
   return end + 0.1;
 };
 
 // a list written in: the heading typed, each line typed, the years looked up
 ACTS.lines = (c) => {
-  const box = c.el, q = queue(), A = agentIn(c), t0 = c.t, W = A('writer'), W2 = A('writer-2'), R = A('retriever');
+  const box = c.el, q = queue(), A = agentIn(c), t0 = c.t, W = A('writer-3'), W2 = A('writer-3'), R = A('retriever');
   const restore = blank(c, t0, box, 'h3, li');
   c.call(t0, () => show(box));
   let end = t0;
@@ -1578,7 +1619,7 @@ const BOOT = $('.crew-boot');
 const ORDER = ['writer', 'writer-2', 'retriever', 'eval', 'editor', 'planner', 'writer-3', 'red-team', 'guardrail', 'surveyor', 'photogrammetrist',
   'planner-2', 'painter', 'pilot', 'mechanic', 'electrician', 'skipper', 'researcher', 'eval-2', 'stylist', 'stylist-2', 'librarian', 'historian', 'historian-2'];
 let skipBoot = false;
-const sleep = (ms) => new Promise((res) => setTimeout(res, skipBoot ? 0 : ms));
+const sleep = (ms) => new Promise((res) => setTimeout(res, skipBoot ? 0 : ms / 1.2));
 async function boot() {
   if (!BOOT) return;
   const log = $('.crew-boot__log', BOOT), roster = $('.crew-boot__roster', BOOT), title = $('.crew-boot__title', BOOT);
@@ -1687,29 +1728,174 @@ function entrance(c) {
   return 1.35;
 }
 
-// The crew arriving at a section: they come in from both sides and wait in the space above its first
-// line, the red-team out of sight; the one who knows the section best says what it thinks of it.
+// The crew arriving at a floor: whoever was on the floor above comes down from there (its cursor taken
+// over), the others come in from the sides; all wait in the space above the floor's first line, the
+// red-team out of sight. Anyone still busy upstairs comes down as soon as it is free (late, seconds).
 const HELLO = {
   research: ['writer', 'section one. no pressure.'], honors: ['planner', 'careful. these are awards.'],
   papers: ['librarian', () => `${$$('#papers .pub').length} papers. I have a system.`], cv: ['historian', 'let’s start at the start.'],
   service: ['librarian', 'impact factors. my favourite.'], contact: ['writer', 'top floor! well, bottom.'],
 };
-function arrival(c, first) {
+function arrival(c, first, late = {}) {
   const v = c.view(), b = c.rel(first), mates = c.crew.filter((a) => a.id !== 'red-team');
   const per = Math.max(3, Math.floor((v.x1 - v.x0 - 80) / 54)), cols = Math.min(per, mates.length);
   const x0 = Math.max(v.x0 + 24, Math.min(b.x + 12, v.x1 - cols * 54 - 24));
   mates.forEach((a, i) => {
-    const row = Math.floor(i / per), col = i % per;
-    a.set(i % 2 ? v.x1 + 60 : v.x0 - 60, b.y - 40 - row * 26 + col * 5);
-    c.go(a, { x: x0 + col * 54, y: b.y - 46 - row * 30 - (col % 2) * 9 }, 0.02 + i * 0.06, 0.55);
+    const row = Math.floor(i / per), col = i % per, lateBy = late[a.id] || 0, at = lateBy ? lateBy : 0.02 + i * 0.05;
+    if (lateBy) busy(a, lateBy + 0.7);
+    c.call(at, () => {
+      const p = c.takeOver(a.id, a), g = c.region.getBoundingClientRect(), vv = c.view();
+      if (p) a.set(p.x - g.left, p.y - g.top);
+      else a.set(i % 2 ? vv.x1 + 60 : vv.x0 - 60, b.y - 40 - row * 26 + col * 5);
+    });
+    c.go(a, { x: x0 + col * 54, y: b.y - 46 - row * 30 - (col % 2) * 9 }, at + 0.02, lateBy ? 0.75 : 0.6);
   });
   const rt = c.crew.find((a) => a.id === 'red-team');
-  if (rt) rt.set(v.x1 + 90, b.y);
+  if (rt) {
+    rt.set(v.x1 + 90, b.y);
+    c.call(late['red-team'] || 0.02, () => c.takeOver('red-team'));
+  }
   const key = c.region.id || (c.region.classList.contains('impact') ? 'impact' : '');
   const hi = key === 'impact' ? ['researcher', 'numbers time.'] : HELLO[key];
   const ag = hi && c.crew.find((a) => a.id === hi[0]);
-  if (ag) think(c, ag, 0.8, typeof hi[1] === 'function' ? hi[1]() : hi[1], 1.6);
+  if (ag) think(c, ag, Math.max(0.8, (late[ag.id] || 0) + 0.8), typeof hi[1] === 'function' ? hi[1]() : hi[1], 1.6);
 }
+
+// ---------------------------------------------------------------- nobody stands about
+// While a floor is being built, an agent the script has left alone for a moment finds something to do: it
+// looks over a finished line or card (now and then saying what it thinks of it), keeps a busy colleague
+// company, or wanders a little. The moment the script needs it again it drops whatever it was doing.
+// None of this changes the page, so it runs outside the timeline.
+const MUSE = {
+  copy: ['reads well.', 'typo? no.', 'comma… fine.', 'nice line.', 'spelled right.', 'short and clear.'],
+  layout: ['2 px off? no.', 'on the grid ✓', 'nice gap.', 'aligned ✓', 'kerning ok.', 'that yellow ✓'],
+  check: ['checks out.', 'source ✓', 'date ok.', 'numbers ✓', 'double-checking…', 'cross-ref ✓'],
+  city: ['looks solid.', 'nice texture.', 'lights ✓', 'still standing.', 'good overlap.', 'clear skies.'],
+  watch: ['lgtm.', 'nice.', 'need a hand?', 'go on…', 'neat.', 'next?'],
+};
+const KIND = { writer: 'copy', editor: 'copy', planner: 'layout', stylist: 'layout', painter: 'city', mechanic: 'city', electrician: 'city', pilot: 'city', skipper: 'city', surveyor: 'city', photogrammetrist: 'city' };
+const SEE = 'h1, h2, h3, .lede, .aff, .hero-index li, .area, .award, .pub, .venue, .bar, .timeline li, .stats > div, .review-stats > div, .filter button, .contact-links li, .contact-mail, .big-number, .plain-list li, .papers-note, .service-lede, .venues-note';
+const seen = (el) => (el.checkVisibility ? el.checkVisibility({ opacityProperty: true, visibilityProperty: true }) : !!el.getClientRects().length);
+const held = (ag, t) => (HOLD.get(ag) || []).some(([a, b]) => t >= a && t <= b);
+const ease2 = (k) => (k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2);
+// legs of a walk: { to (point or function), d (ms), hold (ms), then (called when it gets there) }
+function walk(from, legs, t0) {
+  let start = t0, fx = from.x, fy = from.y, i = 0;
+  return {
+    at(now) {
+      while (i < legs.length) {
+        const L = legs[i];
+        if (!L.q) L.q = typeof L.to === 'function' ? L.to() : L.to;
+        if (!L.q) return null;
+        const k = (now - start) / L.d;
+        if (k < 1) return { x: fx + (L.q.x - fx) * ease2(Math.max(0, k)), y: fy + (L.q.y - fy) * ease2(Math.max(0, k)) };
+        if (L.then) { L.then(); L.then = null; }
+        if (now - start < L.d + (L.hold || 0)) return L.q;
+        start += L.d + (L.hold || 0); fx = L.q.x; fy = L.q.y; i++;
+      }
+      return null;
+    },
+  };
+}
+const Idle = {
+  runs: new Map(), raf: 0,
+  start(c) {
+    const run = { c, r: rng(($$('[data-swarm]').indexOf(c.region) + 3) * 97), st: new Map(), said: 0 };
+    this.runs.set(c.region, run);
+    if (!this.raf) this.raf = requestAnimationFrame((t) => this.tick(t));
+  },
+  stop(region) {
+    const run = this.runs.get(region);
+    if (!run) return;
+    run.st.forEach((s) => { if (s.bubble) s.bubble.n.remove(); });
+    this.runs.delete(region);
+  },
+  tick(now) {
+    this.raf = 0;
+    this.runs.forEach((run) => { try { this.step(run, now); } catch (err) { this.runs.delete(run.c.region); } });
+    if (this.runs.size) this.raf = requestAnimationFrame((t) => this.tick(t));
+  },
+  say(run, a, s, text, now) {
+    if (now - run.said < 1800 || run.r() > 0.45) return;
+    run.said = now;
+    if (s.bubble) s.bubble.n.remove();
+    const n = run.c.put('cl-think');
+    n.style.setProperty('--c', CREW[a.id]);
+    n.textContent = text;
+    s.bubble = { n, t0: now, w: 0 };
+  },
+  step(run, now) {
+    const { c } = run, v = c.view(), t = c.now();
+    if (!c.region.classList.contains('sb-host')) return;
+    const mates = c.crew.filter((a) => a.id !== 'red-team' && !a.gone);
+    for (const a of mates) {
+      let s = run.st.get(a);
+      if (!s) { s = { lx: a.x, ly: a.y, still: now, beh: null, sx: NaN, sy: NaN, bubble: null, wait: 1150 + run.r() * 700 }; run.st.set(a, s); }
+      if ((a.x !== s.lx || a.y !== s.ly) && !(s.beh && a.x === s.sx && a.y === s.sy)) { s.beh = null; s.still = now; }   // the script moved it
+      s.lx = a.x; s.ly = a.y;
+      if (s.bubble) {   // its thought rides along with it
+        const b = s.bubble, age = now - b.t0;
+        if (age > 1500 || a.gone) { b.n.remove(); s.bubble = null; }
+        else {
+          if (!b.w) b.w = b.n.offsetWidth || 100;
+          const flip = a.x + 16 + b.w > v.x1 - 8;
+          b.n.classList.toggle('is-left', flip);
+          b.n.style.left = (flip ? a.x - 10 - b.w : a.x + 16) + 'px';
+          b.n.style.top = Math.max(v.y0 + 6, a.y - 36) + 'px';
+          b.n.style.opacity = String(Math.min(1, age / 150, (1500 - age) / 250));
+        }
+      }
+      if (!s.beh) {
+        const on = a.x > v.x0 + 6 && a.x < v.x1 - 6 && a.y > v.y0 + 6 && a.y < v.y1 - 6;
+        if (!on || now - s.still < s.wait || held(a, t)) continue;
+        s.beh = this.pick(run, a, s, v, now, mates);
+        if (!s.beh) { s.still = now; continue; }
+      }
+      const p = s.beh.at(now);
+      if (!p) { s.beh = null; s.still = now - s.wait + 350 + run.r() * 900; continue; }
+      a.set(p.x, p.y);
+      s.sx = a.x; s.sy = a.y; s.lx = a.x; s.ly = a.y;
+    }
+  },
+  pick(run, a, s, v, now, mates) {
+    const { c, r } = run, kind = KIND[a.id.replace(/-\d+$/, '')] || 'check', inView = (b) => b.x > v.x0 && b.x < v.x1 && b.y > v.y0 && b.y < v.y1;
+    const busyOnes = mates.filter((b) => b !== a && inView(b) && run.st.get(b) && !run.st.get(b).beh && now - run.st.get(b).still < 250);
+    const roll = r();
+    if (busyOnes.length && roll < 0.42) {   // keep a busy colleague company
+      const b = busyOnes[(r() * busyOnes.length) | 0], ang = (a.id.length * 1.7 + r()) % (Math.PI * 2), d = 1500 + r() * 900;
+      const ox = Math.cos(ang) * 52, oy = -30 - Math.abs(Math.sin(ang)) * 16, cur = { x: a.x, y: a.y };
+      let said = false;
+      return { at: (n) => {
+        if (n - now > d || b.gone) return null;
+        if (!said && n - now > 500) { said = true; this.say(run, a, s, MUSE.watch[(r() * MUSE.watch.length) | 0], n); }
+        cur.x += (b.x + ox - cur.x) * 0.1; cur.y += (b.y + oy - cur.y) * 0.1;
+        return { x: cur.x, y: cur.y };
+      } };
+    }
+    if (roll < 0.85) {   // look over something finished nearby
+      const g = c.region.getBoundingClientRect();
+      const near = $$(SEE, c.region).map((el) => {
+        const q = el.getBoundingClientRect(), x = q.left - g.left, y = q.top - g.top;
+        return { el, x, y, w: q.width, h: q.height, d: Math.hypot(x + q.width / 2 - a.x, y - a.y) };
+      }).filter((e) => e.w > 12 && e.h > 8 && e.x + e.w > v.x0 + 20 && e.x < v.x1 - 20 && e.y > v.y0 + 30 && e.y < v.y1 - 30 && e.d < 700)
+        .sort((p, q) => p.d - q.d).slice(0, 7).filter((e) => e.el.textContent.trim() && seen(e.el));
+      if (near.length) {
+        const e = near[(r() * near.length) | 0], fx = 0.15 + r() * 0.5, sweep = Math.min(90, e.w * 0.3) * (r() < 0.5 ? -1 : 1);
+        const at = () => { const q = e.el.getBoundingClientRect(), gg = c.region.getBoundingClientRect(); return { x: q.left - gg.left + q.width * fx, y: q.top - gg.top - 24 }; };
+        return walk({ x: a.x, y: a.y }, [
+          { to: at, d: 650 + r() * 300, hold: 250 },
+          { to: () => { const q = at(); return { x: q.x + sweep, y: q.y }; }, d: 700, hold: 350 + r() * 400, then: () => this.say(run, a, s, MUSE[kind][(r() * MUSE[kind].length) | 0], performance.now()) },
+        ], now);
+      }
+    }
+    // or just wander a little
+    const clampX = (x) => Math.max(v.x0 + 30, Math.min(v.x1 - 60, x)), clampY = (y) => Math.max(v.y0 + 40, Math.min(v.y1 - 40, y));
+    return walk({ x: a.x, y: a.y }, [
+      { to: { x: clampX(a.x + (r() - 0.5) * 110), y: clampY(a.y + (r() - 0.5) * 60) }, d: 900 + r() * 400, hold: 300 + r() * 500 },
+      { to: { x: clampX(a.x + (r() - 0.5) * 70), y: clampY(a.y + (r() - 0.5) * 40) }, d: 800 + r() * 400, hold: 200 },
+    ], now);
+  },
+};
 
 // ---------------------------------------------------------------- the house rule: one floor at a time
 // While the page is being built, the sheet ends just below the floor the crew is on, so no one scrolls
@@ -1737,17 +1923,22 @@ const Gate = {
   },
   update() {
     if (!this.on) return;
-    const next = this.regions.find((r) => !r.classList.contains('swarm-done'));
-    if (!next || swarm.stopped) { this.open(); return; }
+    const rs = this.regions, done = (r) => r.classList.contains('swarm-done'), building = (r) => r.classList.contains('sb-host');
+    if (rs.every(done) || swarm.stopped) { this.open(); return; }
+    // down to the lowest floor started; if that one is finished and nothing is being built, the next too
+    let k = -1;
+    rs.forEach((r, i) => { if (done(r) || building(r)) k = i; });
+    let low = rs[k] || rs[0];
+    if (done(low) && !rs.some(building) && rs[k + 1]) low = rs[k + 1];
     let h = 0;
-    if (this.sheet.contains(next)) {
+    if (this.sheet.contains(low)) {
       const top = this.sheet.getBoundingClientRect().top;
-      const upto = this.regions.slice(0, this.regions.indexOf(next) + 1).filter((r) => this.sheet.contains(r));
+      const upto = rs.slice(0, rs.indexOf(low) + 1).filter((r) => this.sheet.contains(r));
       h = Math.ceil(Math.max(...upto.map((r) => r.getBoundingClientRect().bottom)) - top) + TAPE;
     }
     if (h !== this.h) { this.h = h; root.style.setProperty('--crew-gate', h + 'px'); }
-    const working = next.classList.contains('sb-host'), n = working ? $$(':scope > .sb-layer > .sb-ag', next).length : 0;
-    const text = ` · ${this.names.get(next)}` + (working ? ` · ${n} agents at work · click to speed up` : ' · next floor, scroll on');
+    const working = building(low), n = working ? $$(':scope > .sb-layer > .sb-ag', low).filter((e) => e.style.opacity !== '0').length : 0;
+    const text = ` · ${this.names.get(low)}` + (working ? ` · ${n} agents at work · click to speed up` : ' · next floor, scroll on');
     if (this.label && this.label.textContent !== text) this.label.textContent = text;
   },
   open() {
@@ -1763,22 +1954,28 @@ const Gate = {
 };
 
 // ---------------------------------------------------------------- running it, Skip and replay
-let heroBuilding = false, heroStarted = false;
+let heroStarted = false;
 const swarm = swarmBuild({
   crew: CREW, acts: Object.fromEntries(Object.entries(ACTS).map(([k, f]) => [k, (c) => {
     c.t = Math.max(c.t, ...c.who.map((g) => BUSY.get(g) || 0));
+    instrument(c);
     const e = f(c);
     c.who.forEach((g) => busy(g, +e || 0));
     return e;
   }])),
-  entrance, arrival, speed: 1, pace: 1.6, gap: 0.3, traceDots: true,
+  entrance, arrival, speed: 1.2, pace: 1.6, gap: 0.3, traceDots: true,
+  // the next floor starts once this one is 60% of the way through and its first step has its people
+  handoff: 0.6,
+  useOf: (ag) => USE.get(ag) || 0,
+  planned: (c) => Idle.start(c),
   ffEvents: ['keydown', 'click'],
   onRegionStart: (region) => {
-    if (region.matches('.hero')) { heroBuilding = true; heroStarted = true; } else dropBoot();
+    if (region.matches('.hero')) heroStarted = true; else if (!heroStarted) dropBoot();
     Gate.update();
   },
   onRegionEnd: (region) => {
-    if (region.matches('.hero')) { heroBuilding = false; finishScene(); dropBoot(true); }
+    Idle.stop(region);
+    if (region.matches('.hero')) { finishScene(); dropBoot(true); }
     for (let i = RESTORE.length - 1; i >= 0; i--) if (RESTORE[i].region === region) { RESTORE[i].put(); RESTORE.splice(i, 1); }
     Gate.update();
     if ($$('[data-swarm]').every((r) => r.classList.contains('swarm-done'))) { skipButton(false); Gate.open(); }
@@ -1794,6 +1991,15 @@ function finishScene() {
   }
   Cloud.unmount();
   root.classList.remove('cl-clock');
+}
+
+// every move an act makes marks its agent as needed until then
+function instrument(c) {
+  const { go, follow, frame, glyph } = c;
+  c.go = (ag, to, at, d = 0.45, ease) => { use(ag, at + d); go(ag, to, at, d, ease); };
+  c.follow = (ag, to, at, d) => { use(ag, at + d); follow(ag, to, at, d); };
+  c.frame = (ag, n, at, d = 0.42) => { use(ag, at + d * c.P + 0.6); return frame(ag, n, at, d); };
+  c.glyph = (ag, g, at) => { use(ag, at); glyph(ag, g, at); };
 }
 
 // stop the build for good and show the page as it is
@@ -1840,8 +2046,6 @@ function skipButton(on) {
       const to = a && document.getElementById(decodeURIComponent(a.getAttribute('href').slice(1)));
       if (to && !to.closest('.hero')) stopAll();
     }, true);
-    // past the hero while it is still being built (short screens): finish it
-    addEventListener('scroll', () => { if (heroBuilding && scrollY > innerHeight * 0.5) swarm.skip(); }, { passive: true });
     const clouds = Promise.race([Cloud.load(), new Promise((res) => setTimeout(res, 2500))]);
     await boot();
     await clouds;
