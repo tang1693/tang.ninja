@@ -772,6 +772,24 @@ a { color: inherit; }
 .foot-in { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 28px 32px; }
 .foot p { margin: 0; color: var(--muted); font-size: 0.875rem; }
 
+/* ---------- The build crew (swarm-build, home/swarm/): on the first visit of a session, labelled
+   cursors build the hero and each section. Its boxes are yellow over the night scene, like the
+   detection boxes, and blue on the white sheet. ---------- */
+:root {
+  --sb-select: var(--blue);
+  --sb-glass: rgba(0, 0, 0, 0.8);
+  --sb-glass-ink: var(--light);
+  --sb-glass-line: rgba(245, 245, 247, 0.16);
+  --sb-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.hero-head { --sb-select: var(--yellow); }
+.hero-head .sb-sel__wh { color: #000; }
+/* The crew gathers in the sky below the title, so the ones with nothing to build there wait clear of the text */
+.swarm-origin { display: block; height: 0; }
+.swarm-js .swarm-origin { margin-top: clamp(48px, 9vh, 96px); }
+/* The crew builds the title and the index in place of their fade-up */
+.swarm-js .hero-title, .swarm-js .hero-index { animation: none; }
+
 /* ---------- Smaller screens ---------- */
 
 @media (max-width: 1000px) {
