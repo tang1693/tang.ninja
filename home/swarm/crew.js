@@ -177,6 +177,7 @@ function note(c, t, { at, lines, color, life = 2, step = 0.45 }) {
 
 // A comment from one agent, like a review note; text may be a function read when it appears.
 function bubble(c, t, { at, who, text, life = 1.6 }) {
+  span(c.crew.find((a) => a.id === who), t, t + life);
   const n = node(c, 'cl-bubble', `<b style="--c:${c.color(who)}">${esc(who)}</b><p></p>`);
   n.style.opacity = 0;
   c.call(t, () => { $('p', n).textContent = typeof text === 'function' ? text() : text; const q = at(); place(c, n, q.x, q.y); });
@@ -189,6 +190,7 @@ function bubble(c, t, { at, who, text, life = 1.6 }) {
 function think(c, ag, t, text, life = 1.8) {
   if (!ag) return;
   use(ag, t + life);
+  span(ag, t, t + life);
   const n = node(c, 'cl-think', esc(text));
   n.style.setProperty('--c', c.color(ag.id));
   n.style.opacity = 0;
@@ -296,6 +298,7 @@ function settle(c, ag, items, off, t, { hop = 0.26, dur = 0.55, order } = {}) {
     });
   });
   const end = t + 0.3 + seq.length * hop + dur;
+  span(ag, t, end);
   c.call(end, () => items.forEach((n) => { n.style.transform = ''; }));
   c.call(end + 0.05, () => items.forEach((n) => { n.style.transition = ''; }));
   return end;
@@ -346,7 +349,7 @@ function writeIn(c, ag, el, t, { mode = 'stream', cps = 34, wps = 11 } = {}) {
     });
   });
   c.call(tt + 0.02, () => ns.forEach((n, i) => { n.data = orig[i]; }));
-  if (ag) c.glyph(ag, 'arrow', tt + 0.1);
+  if (ag) { c.glyph(ag, 'arrow', tt + 0.1); span(ag, t - 0.3, tt + 0.1, () => { const b = c.rel(el); return { x: b.x + 4, y: b.y + Math.min(b.h, 26) * 0.55 }; }); }
   return tt;
 }
 
@@ -364,6 +367,7 @@ function scrambleIn(c, ag, el, t, d = 0.6) {
     n.data = p >= 1 ? f : s;
   }));
   use(ag, t + d);
+  span(ag, t - 0.25, t + d);
   return t + d;
 }
 
@@ -386,6 +390,11 @@ function countIn(c, el, t, d = 0.9) {
 // when it is last needed at all (USE: the next floor gets everyone who is done here); and the spans in
 // which a story keeps its people together, so they do not wander off mid-conversation (HOLD).
 const BUSY = new WeakMap(), USE = new WeakMap(), HOLD = new WeakMap(), LATE = new WeakMap();   // LATE: when it gets here from another floor
+// SPANS: each stretch of the script in which an agent is at work (region time) and where it is headed,
+// so an agent left with nothing to do can tell how soon it is needed again, and where (Idle)
+const SPANS = new WeakMap();
+const span = (ag, t0, t1, to) => { if (!ag) return; if (!SPANS.has(ag)) SPANS.set(ag, []); SPANS.get(ag).push({ t0, t1: Math.max(t0, t1), to }); SPANS.get(ag).sorted = false; };
+const spansOf = (ag) => { const l = SPANS.get(ag) || []; if (!l.sorted) { l.sort((a, b) => a.t0 - b.t0); l.sorted = true; } return l; };
 const busy = (ag, t) => { if (ag) BUSY.set(ag, Math.max(BUSY.get(ag) || 0, t)); };
 const use = (ag, t) => { if (ag) USE.set(ag, Math.max(USE.get(ag) || 0, t)); };
 const hold = (ag, t0, t1) => { if (ag) { if (!HOLD.has(ag)) HOLD.set(ag, []); HOLD.get(ag).push([t0, t1]); use(ag, t1); } };
@@ -482,6 +491,7 @@ function Editor(c, el, which = 'last') {
       planned = base.slice(0, pos) + s + base.slice(pos);
       c.call(tt + 0.18, () => { caret.style.opacity = 0; });
       use(ag, tt + 0.18);
+      span(ag, t - 0.32, tt + 0.18);
       return tt + 0.18;
     },
     // turn the text into `next`: the caret goes to the end of the part that changes, selects back over
@@ -521,6 +531,7 @@ function Editor(c, el, which = 'last') {
       planned = next;
       c.call(tt + 0.18, () => { caret.style.opacity = 0; });
       use(ag, tt + 0.18);
+      span(ag, t - 0.36, tt + 0.18);
       return tt + 0.18;
     },
     // red-team rewrites `from` into `to`; the guardrail boxes it, blocks it and puts it back
@@ -1181,6 +1192,7 @@ ACTS.plot = (c) => {
     if (years[i]) writeIn(c, null, years[i], tt - 0.3, { mode: 'type', cps: 40 });
     c.glyph(ag, 'cross', tt - 0.32);
     c.go(ag, () => { const r = c.rel(f); return { x: r.x + r.w / 2, y: r.y }; }, tt - 0.32, 0.3);
+    span(ag, tt - 0.32, tt + 0.6);
     c.tween(tt, 0.6, 'inOut2', (p) => {
       f.style.height = 4 + (H[i] - 4) * p + 'px';
       v.textContent = fmt(Math.round(V[i] * p));
@@ -1891,6 +1903,7 @@ function drawBox(c, sk, A, el, s, opts) {
   c.tween(s + d + 0.35, 0.35, 'inOut2', (k) => { b.dash = 1 - k; });   // inked a moment later
   c.glyph(A, 'arrow', s + d + 0.02);
   use(A, s + d);
+  span(A, s - 0.34, s + d + 0.05, () => { const r = Sketch.rect(sk, b); return { x: r.x - 6, y: r.y }; });
   b.drawn = s + d;
   return b;
 }
@@ -1899,6 +1912,7 @@ function fillBox(c, sk, A, b, s) {
   c.go(A, () => { const r = Sketch.rect(sk, b); return { x: r.x + 4, y: r.y + r.h * 0.5 }; }, s - 0.3, 0.3);
   c.tween(s, 0.5, 'inOut2', (k) => { b.fp = k; const r = Sketch.rect(sk, b); A.set(r.x + r.w * k, r.y + r.h * 0.5); });
   use(A, s + 0.5);
+  span(A, s - 0.3, s + 0.5, () => { const r = Sketch.rect(sk, b); return { x: r.x + 4, y: r.y + r.h * 0.5 }; });
   return s + 0.5;
 }
 // One agent lays the grey bars of an element's text, line by line.
@@ -1916,6 +1930,7 @@ function drawBars(c, sk, A, el, s, light) {
   });
   c.glyph(A, 'arrow', s + d + 0.02);
   use(A, s + d);
+  span(A, s - 0.3, s + d, () => { const r = c.rel(el); return { x: r.x, y: r.y + Math.min(r.h, lh) * 0.5 }; });
   return s + d;
 }
 
@@ -2058,6 +2073,7 @@ function finale(c, end) {
     c.call(t + 0.57, () => sk.loose.forEach(({ el }) => { el.style.translate = ''; }));
     guides(c, t + 0.55, els, 1.1);
     use(P, t + 0.6);
+    span(P, t - 0.35, t + 0.6);
     t += 0.7;
   }
   const boxes = [...sk.boxes].sort((a, b) => Sketch.rect(sk, a).y - Sketch.rect(sk, b).y || Sketch.rect(sk, a).x - Sketch.rect(sk, b).x);
@@ -2069,11 +2085,13 @@ function finale(c, end) {
     if (!run.length) return;
     c.glyph(E, 'cross', ti - hop);
     if (i === 0) { c.log(E.id, `erasing the wireframe · ${boxes.length} box${boxes.length > 1 ? 'es' : ''}`, ti); think(c, E, ti, 'clean up.', 1.1); }
+    const t0e = ti - hop;
     run.forEach((b) => {
       ti += hop;
       c.go(E, () => { const r = Sketch.rect(sk, b); return { x: r.x + r.w * 0.5, y: r.y }; }, ti - hop, hop);
       c.tween(ti, 0.3, 'out', (p) => { b.op = 1 - p; });
     });
+    span(E, t0e, ti + 0.3, () => { const r = Sketch.rect(sk, run[0]); return { x: r.x + r.w * 0.5, y: r.y }; });
     c.glyph(E, 'arrow', ti + 0.3);
     use(E, ti + 0.3);
     te = Math.max(te, ti + 0.3);
@@ -2085,7 +2103,7 @@ function finale(c, end) {
 // Where a floor may start: the hero first; then where the visitor is: the first floor once the page has
 // been scrolled to it, the others once their top is on the screen and within 1.3 screens of the top of
 // the highest floor still being built, so what is on the screen builds at once and the rest waits for
-// the floors above. A floor the visitor has scrolled right past is finished at once (catchUp).
+// the floors above. Scrolling never changes the pace: nothing is finished early, nothing waits longer.
 function ownBox(r) {
   const mine = $$('[data-swarm-step]', r).filter((el) => el.closest('[data-swarm]') === r && el.getClientRects().length);
   if (!mine.length) { const g = r.getBoundingClientRect(); return { top: g.top, bottom: g.bottom }; }
@@ -2100,27 +2118,8 @@ function canStart(r, building) {
   const up = building.filter((x) => x !== rs[0]);
   return !up.length || b.top - Math.min(...up.map((x) => ownBox(x).top)) < vh * 1.3;
 }
-const BUILDING = new Set();
-function catchUp() {
-  for (let i = 0; i < 60 && !swarm.stopped; i++) {
-    swarm.poke();
-    const past = [...BUILDING].filter((r) => !r.matches('.hero') && ownBox(r).bottom < 0);
-    if (!past.length) return;
-    past.forEach((r) => swarm.finish(r));
-  }
-}
 
-const MUSE = {
-  copy: ['reads well.', 'typo? no.', 'comma… fine.', 'nice line.', 'spelled right.', 'short and clear.'],
-  layout: ['2 px off? no.', 'on the grid ✓', 'nice gap.', 'aligned ✓', 'kerning ok.', 'that yellow ✓'],
-  check: ['checks out.', 'source ✓', 'date ok.', 'numbers ✓', 'double-checking…', 'cross-ref ✓'],
-  city: ['looks solid.', 'nice texture.', 'lights ✓', 'still standing.', 'good overlap.', 'clear skies.'],
-  watch: ['lgtm.', 'nice.', 'need a hand?', 'go on…', 'neat.', 'next?'],
-};
-const KIND = { writer: 'copy', editor: 'copy', planner: 'layout', stylist: 'layout', painter: 'city', mechanic: 'city', electrician: 'city', pilot: 'city', skipper: 'city', surveyor: 'city', photogrammetrist: 'city' };
-const SEE = 'h1, h2, h3, .lede, .aff, .hero-index li, .area, .award, .pub, .venue, .bar, .timeline li, .stats > div, .review-stats > div, .filter button, .contact-links li, .contact-mail, .big-number, .plain-list li, .papers-note, .service-lede, .venues-note';
 const seen = (el) => (el.checkVisibility ? el.checkVisibility({ opacityProperty: true, visibilityProperty: true }) : !!el.getClientRects().length);
-const held = (ag, t) => (HOLD.get(ag) || []).some(([a, b]) => t >= a && t <= b);
 const ease2 = (k) => (k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2);
 // legs of a walk: { to (point or function), d (ms), hold (ms), then (called when it gets there) }
 function walk(from, legs, t0) {
@@ -2141,105 +2140,58 @@ function walk(from, legs, t0) {
     },
   };
 }
+// Nobody waits where the visitor can see it (the user's rule): an agent the script has left alone for a
+// moment heads for its next job if that comes within a few seconds, and otherwise leaves the screen by
+// the nearest side, to fly back in when the script next needs it. Runs outside the timeline, since it
+// changes nothing on the page; the script's next move starts from wherever the agent is.
 const Idle = {
   runs: new Map(), raf: 0,
   start(c) {
-    const run = { c, r: rng(($$('[data-swarm]').indexOf(c.region) + 3) * 97), st: new Map(), said: 0 };
-    this.runs.set(c.region, run);
+    this.runs.set(c.region, { c, st: new Map() });
     if (!this.raf) this.raf = requestAnimationFrame((t) => this.tick(t));
   },
-  stop(region) {
-    const run = this.runs.get(region);
-    if (!run) return;
-    run.st.forEach((s) => { if (s.bubble) s.bubble.n.remove(); });
-    this.runs.delete(region);
-  },
+  stop(region) { this.runs.delete(region); },
   tick(now) {
     this.raf = 0;
     this.runs.forEach((run) => { try { this.step(run, now); } catch (err) { this.runs.delete(run.c.region); } });
     if (this.runs.size) this.raf = requestAnimationFrame((t) => this.tick(t));
   },
-  say(run, a, s, text, now) {
-    if (now - run.said < 1800 || run.r() > 0.45) return;
-    run.said = now;
-    if (s.bubble) s.bubble.n.remove();
-    const n = run.c.put('cl-think');
-    n.style.setProperty('--c', CREW[a.id]);
-    n.textContent = text;
-    s.bubble = { n, t0: now, w: 0 };
-  },
   step(run, now) {
-    const { c } = run, v = c.view(), t = c.now();
+    const { c } = run;
     if (!c.region.classList.contains('sb-host')) return;
-    const mates = c.crew.filter((a) => a.id !== 'red-team' && !a.gone);
-    for (const a of mates) {
+    const v = c.view(), t = c.now(), k = Math.max(0.1, c.scale());
+    for (const a of c.crew) {
+      if (a.id === 'red-team' || a.gone) continue;   // the red-team keeps out of sight on its own
       let s = run.st.get(a);
-      if (!s) { s = { lx: a.x, ly: a.y, still: now, beh: null, sx: NaN, sy: NaN, bubble: null, wait: 1150 + run.r() * 700 }; run.st.set(a, s); }
+      if (!s) { s = { lx: a.x, ly: a.y, still: now, beh: null, sx: NaN, sy: NaN }; run.st.set(a, s); }
       if ((a.x !== s.lx || a.y !== s.ly) && !(s.beh && a.x === s.sx && a.y === s.sy)) { s.beh = null; s.still = now; }   // the script moved it
       s.lx = a.x; s.ly = a.y;
-      if (s.bubble) {   // its thought rides along with it
-        const b = s.bubble, age = now - b.t0;
-        if (age > 1500 || a.gone) { b.n.remove(); s.bubble = null; }
-        else {
-          if (!b.w) b.w = b.n.offsetWidth || 100;
-          const flip = a.x + 16 + b.w > v.x1 - 8;
-          b.n.classList.toggle('is-left', flip);
-          b.n.style.left = (flip ? a.x - 10 - b.w : a.x + 16) + 'px';
-          b.n.style.top = Math.max(v.y0 + 6, a.y - 36) + 'px';
-          b.n.style.opacity = String(Math.min(1, age / 150, (1500 - age) / 250));
+      if (!s.beh) {
+        const on = a.x > v.x0 - 12 && a.x < v.x1 + 12 && a.y > v.y0 - 12 && a.y < v.y1 + 12;
+        if (!on || now - s.still < 350) continue;
+        const sp = spansOf(a);
+        if (sp.some((x) => t >= x.t0 - 0.05 && t <= x.t1 + 0.3)) continue;   // at work, or just between two moves
+        const next = sp.find((x) => x.t0 > t), wait = next ? (next.t0 - t) / k : Infinity;
+        if (wait <= 0.9) continue;   // about to start
+        if (wait <= 3) {
+          // its next job is near: head for the place it moves to next and be ready (a word or a look comes where it is)
+          const nx = sp.find((x) => x.t0 > t && x.to && (x.t0 - t) / k <= 3);
+          let to = null;
+          if (nx) { try { to = typeof nx.to === 'function' ? nx.to() : nx.to; } catch (err) { to = null; } }
+          if (!to || (Math.abs(to.x - a.x) < 30 && Math.abs(to.y - a.y) < 30)) { s.still = now; continue; }
+          const d = Math.max(350, Math.min(1100, ((nx.t0 - t) / k - 0.35) * 1000));
+          s.beh = walk({ x: a.x, y: a.y }, [{ to: { x: to.x - 18, y: to.y - 14 }, d, hold: 60000 }], now);
+        } else {
+          // nothing for a while: off the screen by the nearest side
+          const left = a.x - v.x0 < (v.x1 - v.x0) / 2, dest = { x: left ? v.x0 - 160 : v.x1 + 50, y: Math.max(v.y0 + 20, Math.min(v.y1 - 20, a.y)) };
+          s.beh = walk({ x: a.x, y: a.y }, [{ to: dest, d: 650 + Math.abs(dest.x - a.x) * 0.25 }], now);
         }
       }
-      if (!s.beh) {
-        const on = a.x > v.x0 + 6 && a.x < v.x1 - 6 && a.y > v.y0 + 6 && a.y < v.y1 - 6;
-        if (!on || now - s.still < s.wait || held(a, t)) continue;
-        s.beh = this.pick(run, a, s, v, now, mates);
-        if (!s.beh) { s.still = now; continue; }
-      }
       const p = s.beh.at(now);
-      if (!p) { s.beh = null; s.still = now - s.wait + 350 + run.r() * 900; continue; }
+      if (!p) { s.beh = null; s.still = now; continue; }
       a.set(p.x, p.y);
       s.sx = a.x; s.sy = a.y; s.lx = a.x; s.ly = a.y;
     }
-  },
-  pick(run, a, s, v, now, mates) {
-    const { c, r } = run, kind = KIND[a.id.replace(/-\d+$/, '')] || 'check', inView = (b) => b.x > v.x0 && b.x < v.x1 && b.y > v.y0 && b.y < v.y1;
-    const busyOnes = mates.filter((b) => b !== a && inView(b) && run.st.get(b) && !run.st.get(b).beh && now - run.st.get(b).still < 250
-      && !mates.some((o) => o !== a && o !== b && Math.hypot(o.x - b.x, o.y - b.y) < 110));
-    const roll = kind === 'city' && c.region.matches('.hero') ? 0.9 : r();   // the city crew stays in the city
-    if (busyOnes.length && roll < 0.16) {   // keep a busy colleague company (one who has no one else about)
-      const b = busyOnes[(r() * busyOnes.length) | 0], ang = (a.id.length * 1.7 + r()) % (Math.PI * 2), d = 1500 + r() * 900;
-      const ox = Math.cos(ang) * 52, oy = -30 - Math.abs(Math.sin(ang)) * 16, cur = { x: a.x, y: a.y };
-      let said = false;
-      return { at: (n) => {
-        if (n - now > d || b.gone) return null;
-        if (!said && n - now > 500) { said = true; this.say(run, a, s, MUSE.watch[(r() * MUSE.watch.length) | 0], n); }
-        cur.x += (b.x + ox - cur.x) * 0.1; cur.y += (b.y + oy - cur.y) * 0.1;
-        return { x: cur.x, y: cur.y };
-      } };
-    }
-    if (roll < 0.85) {   // look over something finished nearby
-      const g = c.region.getBoundingClientRect();
-      const near = $$(SEE, c.region).map((el) => {
-        const q = el.getBoundingClientRect(), x = q.left - g.left, y = q.top - g.top;
-        return { el, x, y, w: q.width, h: q.height, d: Math.hypot(x + q.width / 2 - a.x, y - a.y) };
-      }).filter((e) => e.w > 12 && e.h > 8 && e.x + e.w > v.x0 + 20 && e.x < v.x1 - 20 && e.y > v.y0 + 30 && e.y < v.y1 - 30 && e.d < 700)
-        .map((e) => ({ ...e, d: e.d + 260 * mates.filter((o) => o !== a && Math.hypot(o.x - (e.x + e.w / 2), o.y - e.y) < 160).length }))   // somewhere with no one else about
-        .sort((p, q) => p.d - q.d).slice(0, 6).filter((e) => e.el.textContent.trim() && seen(e.el));
-      if (near.length) {
-        const e = near[(r() * near.length) | 0], fx = 0.15 + r() * 0.5, sweep = Math.min(90, e.w * 0.3) * (r() < 0.5 ? -1 : 1);
-        const at = () => { const q = e.el.getBoundingClientRect(), gg = c.region.getBoundingClientRect(); return { x: q.left - gg.left + q.width * fx, y: q.top - gg.top - 24 }; };
-        return walk({ x: a.x, y: a.y }, [
-          { to: at, d: 650 + r() * 300, hold: 250 },
-          { to: () => { const q = at(); return { x: q.x + sweep, y: q.y }; }, d: 700, hold: 350 + r() * 400, then: () => this.say(run, a, s, MUSE[kind][(r() * MUSE[kind].length) | 0], performance.now()) },
-        ], now);
-      }
-    }
-    // or just wander a little
-    const clampX = (x) => Math.max(v.x0 + 30, Math.min(v.x1 - 60, x)), clampY = (y) => Math.max(v.y0 + 40, Math.min(v.y1 - 40, y));
-    return walk({ x: a.x, y: a.y }, [
-      { to: { x: clampX(a.x + (r() - 0.5) * 110), y: clampY(a.y + (r() - 0.5) * 60) }, d: 900 + r() * 400, hold: 300 + r() * 500 },
-      { to: { x: clampX(a.x + (r() - 0.5) * 70), y: clampY(a.y + (r() - 0.5) * 40) }, d: 800 + r() * 400, hold: 200 },
-    ], now);
   },
 };
 
@@ -2258,11 +2210,9 @@ const swarm = swarmBuild({
   planned: (c, { end }) => { Idle.start(c); return finale(c, end); },
   ffEvents: ['keydown', 'click'],
   onRegionStart: (region) => {
-    BUILDING.add(region);
     if (region.matches('.hero')) heroStarted = true; else if (!heroStarted) dropBoot();
   },
   onRegionEnd: (region) => {
-    BUILDING.delete(region);
     Idle.stop(region);
     Sketch.drop(region);
     if (region.matches('.hero')) { finishScene(); dropBoot(true); }
@@ -2283,13 +2233,13 @@ function finishScene() {
   root.classList.remove('cl-clock');
 }
 
-// every move an act makes marks its agent as needed until then
+// every move an act makes marks its agent as needed until then, and as at work while it makes it
 function instrument(c) {
   const { go, follow, frame, glyph } = c;
-  c.go = (ag, to, at, d = 0.45, ease) => { use(ag, at + d); go(ag, to, at, d, ease); };
-  c.follow = (ag, to, at, d) => { use(ag, at + d); follow(ag, to, at, d); };
-  c.frame = (ag, n, at, d = 0.42) => { use(ag, at + d * c.P + 0.6); return frame(ag, n, at, d); };
-  c.glyph = (ag, g, at) => { use(ag, at); glyph(ag, g, at); };
+  c.go = (ag, to, at, d = 0.45, ease) => { use(ag, at + d); span(ag, at, at + d, to); go(ag, to, at, d, ease); };
+  c.follow = (ag, to, at, d) => { use(ag, at + d); span(ag, at, at + d, to); follow(ag, to, at, d); };
+  c.frame = (ag, n, at, d = 0.42) => { use(ag, at + d * c.P + 0.6); span(ag, at - 0.35, at + d * c.P + 0.3, () => { const r = c.rel(n); return { x: r.x, y: r.y }; }); return frame(ag, n, at, d); };
+  c.glyph = (ag, g, at) => { use(ag, at); span(ag, at, at); glyph(ag, g, at); };
 }
 
 // stop the build for good and show the page as it is
@@ -2337,12 +2287,8 @@ function skipButton(on) {
     }, true);
     // the floors start where the visitor is: ask again as they scroll (and now and then, as things move)
     let ask = 0;
-    addEventListener('scroll', () => {
-      const hero = $('.hero');
-      if (hero && hero.classList.contains('sb-host') && scrollY > innerHeight * 0.5) swarm.finish(hero);   // scrolled past the hero: finish it
-      if (!ask) ask = requestAnimationFrame(() => { ask = 0; catchUp(); });
-    }, { passive: true });
-    const tick = setInterval(() => { if (swarm.stopped || !skipEl) clearInterval(tick); else catchUp(); }, 500);
+    addEventListener('scroll', () => { if (!ask) ask = requestAnimationFrame(() => { ask = 0; swarm.poke(); }); }, { passive: true });
+    const tick = setInterval(() => { if (swarm.stopped || !skipEl) clearInterval(tick); else swarm.poke(); }, 500);
     const clouds = Promise.race([Cloud.load(), new Promise((res) => setTimeout(res, 2500))]);
     await boot();
     await clouds;
