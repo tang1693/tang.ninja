@@ -68,6 +68,15 @@
 .crew-boot__skip { position: absolute; right: 24px; bottom: 22px; margin: 0; color: rgba(245, 245, 247, 0.45); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; }
 @keyframes crew-blink { 50% { opacity: 0; } }
 
+/* ---------- The page holds still while the boot and the hero are built (crew.js lock) ---------- */
+/* Skip stays on the screen the whole time; the gutter keeps the page from shifting when the scrollbar comes back */
+.swarm-js { scrollbar-gutter: stable; }
+.swarm-js.cl-lock { overflow: hidden; overscroll-behavior: none; }
+/* While the page is being built, text grows and shrinks as it is typed: the browser must not move the page
+   to make up for it (scroll anchoring fought the visitor's own scrolling), and cursors parked off to the
+   right never widen it (clipped for the whole build, not switched on and off as floors start and end) */
+.swarm-js, .swarm-js body { overflow-anchor: none; overflow-x: clip; }
+
 /* ---------- Skip and replay ---------- */
 .crew-skip {
   position: fixed;

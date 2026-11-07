@@ -56,8 +56,17 @@ const JOBS = {
   stylist: 'shapes', 'stylist-2': 'shapes', electrician: 'lights', pilot: 'drones', skipper: 'boats', guardrail: 'safety',
   'red-team': '???',
 };
-// the region's own agent of that name, or the act's first one
-const agentIn = (c) => (n) => c.crew.find((a) => a.id === n) || c.a;
+// the region's own agent of that name, or the act's first one; if that agent is busy when the act starts,
+// a helper of its trade stands in for it for the whole act (helperFor, below)
+const agentIn = (c) => (n) => {
+  if (c.sub && c.sub.has(n)) return c.sub.get(n);
+  const ag = c.crew.find((a) => a.id === n) || c.a;
+  if (ag && ag.id === n && c.t != null && busyAt(ag, c.t)) {
+    const h = helperFor(c, ag, c.t);
+    if (h) { (c.sub = c.sub || new Map()).set(n, h); return h; }
+  }
+  return ag;
+};
 
 // ---------------------------------------------------------------- the crew's tools
 // Everything below draws into the region's agent layer (ctx.put) at positions in its coordinates.
@@ -177,7 +186,9 @@ function note(c, t, { at, lines, color, life = 2, step = 0.45 }) {
 
 // A comment from one agent, like a review note; text may be a function read when it appears.
 function bubble(c, t, { at, who, text, life = 1.6 }) {
-  span(c.crew.find((a) => a.id === who), t, t + life);
+  const by = (c.sub && c.sub.get(who)) || c.crew.find((a) => a.id === who);
+  if (by) who = by.id;
+  span(by, t, t + life);
   const n = node(c, 'cl-bubble', `<b style="--c:${c.color(who)}">${esc(who)}</b><p></p>`);
   n.style.opacity = 0;
   c.call(t, () => { $('p', n).textContent = typeof text === 'function' ? text() : text; const q = at(); place(c, n, q.x, q.y); });
@@ -398,12 +409,45 @@ const spansOf = (ag) => { const l = SPANS.get(ag) || []; if (!l.sorted) { l.sort
 const busy = (ag, t) => { if (ag) BUSY.set(ag, Math.max(BUSY.get(ag) || 0, t)); };
 const use = (ag, t) => { if (ag) USE.set(ag, Math.max(USE.get(ag) || 0, t)); };
 const hold = (ag, t0, t1) => { if (ag) { if (!HOLD.has(ag)) HOLD.set(ag, []); HOLD.get(ag).push([t0, t1]); use(ag, t1); } };
+// ---------------------------------------------------------------- more hands
+// The crew grows with the work (the user's rule): a job whose agent is still busy, or not on this floor
+// yet, goes to a helper of the same trade spawned on the spot (writer-4, eval-3 …) instead of waiting, so
+// nothing that is ready stands still. Helpers belong to their floor (their names are free again once it
+// is built), come in from the side for their first job and leave the screen like everyone else. Never
+// the red-team or the guardrail, never on the hero, and only so many at once.
+const TOL = 0.4;   // a wait this short is not worth a new hand
+const NOHELP = /^(red-team|guardrail)$/;
+const HELPERS = new Map();   // helper name → its floor
+const tradeOf = (id) => id.replace(/-\d+$/, '');
+const busyAt = (ag, t) => Math.max(BUSY.get(ag) || 0, LATE.get(ag) || 0) > t + TOL || spansOf(ag).some((x) => x.t0 < t + 0.5 && x.t1 > t - 0.05);
+function tint(hex, k) {   // a helper's colour: its trade's, a little lighter or darker
+  const n = parseInt(hex.slice(1), 16), f = [0.22, -0.2, 0.4, -0.32][k % 4];
+  return '#' + [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => Math.round(f > 0 ? v + (255 - v) * f : v * (1 + f)).toString(16).padStart(2, '0')).join('');
+}
+function helperFor(c, ag, t, skip = []) {
+  if (!ag || !c.spawn || NOHELP.test(ag.id) || c.region.matches('.hero')) return null;
+  const trade = tradeOf(ag.id), mine = c.crew.filter((h) => h.helper && !h.gone);
+  const ready = mine.find((h) => tradeOf(h.id) === trade && !skip.includes(h) && !busyAt(h, t));
+  if (ready) return ready;
+  if (mine.length >= 6 || mine.filter((h) => tradeOf(h.id) === trade).length >= 3 || HELPERS.size >= 14) return null;
+  let k = Object.keys(CREW).filter((id) => tradeOf(id) === trade).length + 1;
+  while (HELPERS.has(`${trade}-${k}`) || CREW[`${trade}-${k}`]) k++;
+  const id = `${trade}-${k}`;
+  HELPERS.set(id, c.region);
+  const h = c.spawn(id, tint(CREW[trade] || CREW[ag.id] || '#f5f5f7', k)), v = c.view();
+  h.set(v.x1 + 50, (v.y0 + v.y1) / 2);   // out of sight until its first job brings it in
+  c.log('orchestrator', `${ag.id} is busy · spawned ${id}`, Math.max(0, t - 0.3));
+  return h;
+}
+
 // Each agent works through its own jobs in order: q(agent, wanted start, job) runs the job when the
-// agent is next free and returns when it ends; q.pick(agents, t) is whichever of them is free first.
-function queue() {
+// agent is next free and returns when it ends, or hands it to a helper if the agent is busy (helperFor);
+// q.pick(agents, t) is whichever of them is free first.
+function queue(c) {
   const free = new Map(), when = (ag) => Math.max(free.get(ag) || 0, BUSY.get(ag) || 0, LATE.get(ag) || 0);
   const q = (ag, t, job) => {
     if (!ag) return t;
+    if (c && (when(ag) > t + TOL || busyAt(ag, t))) { const h = helperFor(c, ag, t); if (h && when(h) <= t + TOL) ag = h; }
     const s = Math.max(t, when(ag)), e = job(ag, s);
     free.set(ag, e + 0.08);
     busy(ag, e + 0.08);
@@ -1096,7 +1140,7 @@ ACTS.index = (c) => {
 // The three cards are in the wireframe already, painted; the stylists insert their shapes, the writers
 // fill them in, and the red-team turns the triangle upside down until a stylist turns it back.
 ACTS.cards = (c) => {
-  const box = c.el, cards = $$('.area', box), q = queue(), A = agentIn(c), t0 = c.t;
+  const box = c.el, cards = $$('.area', box), q = queue(c), A = agentIn(c), t0 = c.t;
   const Ws = [A('writer-2'), A('writer-3'), A('writer')], Ss = [A('stylist'), A('stylist-2')], R = A('retriever'), E = A('editor');
   const shapes = cards.map((k) => $('.area-shape', k));
   const restore = blank(c, t0, box, '.area');
@@ -1212,7 +1256,7 @@ ACTS.plot = (c) => {
 
 // rows of numbers with labels: each number counted and checked, each label written in
 ACTS.stats = (c) => {
-  const box = c.el, q = queue(), A = agentIn(c), t0 = c.t, rows = $$(':scope > div', box);
+  const box = c.el, q = queue(c), A = agentIn(c), t0 = c.t, rows = $$(':scope > div', box);
   const E = A('eval'), W = c.who.find((g) => g !== E) || E;
   const restore = blank(c, t0, box, ':scope > div');
   c.call(t0, () => show(box));
@@ -1237,7 +1281,7 @@ ACTS.stats = (c) => {
 // Four cards, drawn and painted in the wireframe; every word typed in; the eval checks the Best Paper sum;
 // the red-team tilts the yellow square and pushes it off; the stylist puts it back from the Transform panel.
 ACTS.awards = (c) => {
-  const box = c.el, cards = $$('.award', box), q = queue(), A = agentIn(c), t0 = c.t;
+  const box = c.el, cards = $$('.award', box), q = queue(c), A = agentIn(c), t0 = c.t;
   const Ws = [A('writer-2'), A('writer-3'), A('writer')], R = A('retriever'), Ev = A('eval'), Ed = A('editor'), Ss = [A('stylist'), A('stylist-2')];
   const shapes = cards.map((k) => $('.award-shape', k));
   const restore = blank(c, t0, box, '.award');
@@ -1328,7 +1372,7 @@ ACTS.tilt = (c) => {
 // a list under the cards (the two run side by side): a writer types the lines, a researcher the years,
 // an eval does the sums
 ACTS.honorsList = (c) => {
-  const box = c.el, q = queue(), t0 = c.t, by = (re) => c.who.find((g) => re.test(g.id));
+  const box = c.el, q = queue(c), t0 = c.t, by = (re) => c.who.find((g) => re.test(g.id));
   const W = by(/^writer/) || c.a, R = by(/^retriever|^researcher/) || W, Ev = by(/^eval/);
   const restore = blank(c, t0, box, 'h3, li');
   c.call(t0, () => show(box));
@@ -1358,7 +1402,7 @@ ACTS.honorsList = (c) => {
 const TYPO = { 'Olbedo: An': ['outdoor environments', 'outdoor enviroments'], 'Remote sensing object': ['deep learning era', 'deep learnign era'],
   'Active and low-cost': ['low-light environment', 'low-ligth environment'], 'An evaluation of PlanetScope': ['change detection', 'change detetcion'] };
 ACTS.pubs = (c) => {
-  const box = c.el, pubs = $$('.pub', box), q = queue(), t0 = c.t, of = (re) => c.who.filter((g) => re.test(g.id));
+  const box = c.el, pubs = $$('.pub', box), q = queue(c), t0 = c.t, of = (re) => c.who.filter((g) => re.test(g.id));
   const Ws = of(/^writer/), Rs = of(/^retriever|^researcher/), Es = of(/^eval/), S = of(/^stylist/)[0], Rb = of(/^researcher/)[0] || Rs[0];
   const restore = blank(c, t0, box, '.pub');
   const badges = $$('.badge', box), names = $$('.pub-authors b', box);
@@ -1504,7 +1548,7 @@ ACTS.pills = (c) => {
 // The two columns, drawn and painted in the wireframe: the historians add each entry, newest first, one
 // column each; the red-team squeezes the columns together and the planner opens the gap again.
 ACTS.cv = (c) => {
-  const box = c.el, cols = $$('.cv-col', box), q = queue(), A = agentIn(c), t0 = c.t;
+  const box = c.el, cols = $$('.cv-col', box), q = queue(c), A = agentIn(c), t0 = c.t;
   const H = [A('historian'), A('historian-2')];
   const lis = cols.map((col) => $$('.timeline li', col));
   const restore = blank(c, t0, box, '.cv-col, .timeline li');
@@ -1568,7 +1612,7 @@ ACTS.squeeze = (c) => {
 // The venues arrive shuffled; names typed, publishers looked up, impact factors counted; the librarian
 // ranks them; the red-team flips the ranking upside down and the librarian flips it back; the bars grow.
 ACTS.rank = (c) => {
-  const box = c.el, items = $$('.venue', box), fills = $$('.venue-bar i', box), q = queue(), A = agentIn(c), t0 = c.t;
+  const box = c.el, items = $$('.venue', box), fills = $$('.venue-bar i', box), q = queue(c), A = agentIn(c), t0 = c.t;
   const L = A('librarian'), Ws = [A('writer'), A('writer-3')], Rs = [A('retriever'), A('researcher')], Es = [A('eval'), A('eval-2')];
   const restore = blank(c, t0, box, '.venue');
   const order = items.map((_, i) => i), r = rng(items.length * 31 + 7);
@@ -1620,7 +1664,7 @@ ACTS.reverse = (c) => {
 // a list written in: the heading typed, each line typed (the first two agents taking turns), the years
 // looked up by the last
 ACTS.lines = (c) => {
-  const box = c.el, q = queue(), t0 = c.t, ws = c.who.length > 2 ? c.who.slice(0, -1) : c.who.slice(0, 1);
+  const box = c.el, q = queue(c), t0 = c.t, ws = c.who.length > 2 ? c.who.slice(0, -1) : c.who.slice(0, 1);
   const W = ws[0], W2 = ws[1] || W, R = c.who[c.who.length - 1];
   const restore = blank(c, t0, box, 'h3, li');
   c.call(t0, () => show(box));
@@ -1963,8 +2007,14 @@ function sketchPass(c, mates, late = {}, { t0 = 0.08, only = null } = {}) {
   sk.loose = (sk.loose || []).concat(loose.map((el, i) => ({ el, o: offs[i] })));
   // the crew: whoever is here now first, those still busy upstairs take the later runs
   const now = mates.filter((a) => !late[a.id]), later = mates.filter((a) => late[a.id]).sort((a, b) => late[a.id] - late[b.id]);
-  const n = outer.length + inner.length, crew = [...now, ...later].slice(0, Math.max(1, Math.min(mates.length, Math.ceil(n / 2.2))));   // two or three things each
-  const q = queue(), doneAt = new Map(), boxes = new Map(), startOf = (A, k) => Math.max(t0 + k * 0.07, late[A.id] ? late[A.id] + 0.25 : 0);
+  const n = outer.length + inner.length, want = Math.max(1, Math.min(10, Math.ceil(n / 2.2)));   // two or three things each
+  const crew = now.slice(0, want), trades = [...new Set(mates.map((a) => tradeOf(a.id)))].filter((tr) => !NOHELP.test(tr));
+  for (let i = 0; crew.length < want && trades.length && i < want * 2; i++) {   // short of hands: call in helpers
+    const base = mates.find((a) => tradeOf(a.id) === trades[i % trades.length]), h = helperFor(c, base, 0, crew);
+    if (h && !crew.includes(h)) crew.push(h);
+  }
+  later.forEach((a) => { if (crew.length < want) crew.push(a); });   // still short: those still busy upstairs, when free
+  const q = queue(c), doneAt = new Map(), boxes = new Map(), startOf = (A, k) => Math.max(t0 + k * 0.07, late[A.id] ? late[A.id] + 0.25 : 0);
   const job = (it, after = 0) => (Ag, s) => {
     s = Math.max(s, after);
     if (!it.box) { const e = drawBars(c, sk, Ag, it.el, s, lightOn(it.el)); doneAt.set(it.el, e); return e; }
@@ -2031,6 +2081,8 @@ const HELLO = {
 };
 function arrival(c, first, late = {}) {
   const v = c.view(), mates = c.crew.filter((a) => a.id !== 'red-team');
+  // the floor keeps its finished height while its words are emptied and typed back, so nothing below moves
+  c.region.style.minHeight = c.region.getBoundingClientRect().height + 'px';
   c.crew.forEach((a) => { if (late[a.id]) LATE.set(a, late[a.id] + 0.3); });
   const b0 = c.rel(first), mid = Math.max(v.y0 + 60, Math.min(v.y1 - 60, b0.y + 40));
   mates.forEach((a, i) => a.set(i % 2 ? v.x1 + 50 : v.x0 - 160, mid + (i % 5) * 26));   // out of sight, name tag and all
@@ -2198,7 +2250,15 @@ const Idle = {
 // ---------------------------------------------------------------- running it, Skip and replay
 let heroStarted = false;
 const swarm = swarmBuild({
-  crew: CREW, acts: Object.fromEntries(Object.entries(ACTS).map(([k, f]) => [k, (c) => {
+  crew: CREW, waitForCrew: false, acts: Object.fromEntries(Object.entries(ACTS).map(([k, f]) => [k, (c) => {
+    c.who = c.who.map((g) => {
+      if (!busyAt(g, c.t)) return g;
+      const h = helperFor(c, g, c.t);
+      if (!h) return g;
+      (c.sub = c.sub || new Map()).set(g.id, h);
+      return h;
+    });
+    c.a = c.who[0] || c.a;
     c.t = Math.max(c.t, ...c.who.map((g) => Math.max(BUSY.get(g) || 0, LATE.get(g) || 0)));
     instrument(c);
     const e = f(c);
@@ -2213,9 +2273,11 @@ const swarm = swarmBuild({
     if (region.matches('.hero')) heroStarted = true; else if (!heroStarted) dropBoot();
   },
   onRegionEnd: (region) => {
+    HELPERS.forEach((r, id) => { if (r === region) HELPERS.delete(id); });
+    region.style.minHeight = '';
     Idle.stop(region);
     Sketch.drop(region);
-    if (region.matches('.hero')) { finishScene(); dropBoot(true); }
+    if (region.matches('.hero')) { finishScene(); dropBoot(true); lock(false); }   // the city is done: scroll on
     for (let i = RESTORE.length - 1; i >= 0; i--) if (RESTORE[i].region === region) { RESTORE[i].put(); RESTORE.splice(i, 1); }
     $$(SK_FILL, region).concat(region.matches(SK_FILL) ? [region] : []).forEach((el) => el.classList.add('cl-fill'));
     if ($$('[data-swarm]').every((r) => r.classList.contains('swarm-done'))) skipButton(false);
@@ -2235,17 +2297,31 @@ function finishScene() {
 
 // every move an act makes marks its agent as needed until then, and as at work while it makes it
 function instrument(c) {
-  const { go, follow, frame, glyph } = c;
+  const { go, follow, frame, glyph, log } = c;
+  c.log = (who, msg, at) => log((c.sub && c.sub.get(who) && c.sub.get(who).id) || who, msg, at);
   c.go = (ag, to, at, d = 0.45, ease) => { use(ag, at + d); span(ag, at, at + d, to); go(ag, to, at, d, ease); };
   c.follow = (ag, to, at, d) => { use(ag, at + d); span(ag, at, at + d, to); follow(ag, to, at, d); };
   c.frame = (ag, n, at, d = 0.42) => { use(ag, at + d * c.P + 0.6); span(ag, at - 0.35, at + d * c.P + 0.3, () => { const r = c.rel(n); return { x: r.x, y: r.y }; }); return frame(ag, n, at, d); };
   c.glyph = (ag, g, at) => { use(ag, at); span(ag, at, at); glyph(ag, g, at); };
 }
 
+// The page holds still while the boot and the hero are being built (the user's rule): no wheel, trackpad,
+// keys or touch scrolling until the hero is done, the visitor skips, or something goes wrong. The class is
+// set in the page's head before anything paints; on phones touch scrolling is stopped here as well.
+const holdStill = (e) => { if (e.cancelable) e.preventDefault(); };
+function lock(on) {
+  root.classList.toggle('cl-lock', on);
+  if (on) addEventListener('touchmove', holdStill, { passive: false });
+  else removeEventListener('touchmove', holdStill, { passive: false });
+}
+
 // stop the build for good and show the page as it is
 function stopAll() {
   skipBoot = true;
+  lock(false);
   swarm.stop();
+  $$('[data-swarm]').forEach((r) => { r.style.minHeight = ''; });
+  HELPERS.clear();
   finishScene();
   dropBoot(true);
   $$(SK_FILL).forEach((el) => el.classList.add('cl-fill'));
@@ -2276,7 +2352,9 @@ function skipButton(on) {
     for (const el of $$('[data-swarm-step]')) if (!el.getClientRects().length) el.removeAttribute('data-swarm-step');
     const again = $('.crew-replay');
     if (again) { again.hidden = false; again.addEventListener('click', () => swarm.replay()); }
-    if (!swarm.active) { dropBoot(true); swarm.start(); return; }
+    if (!swarm.active) { lock(false); dropBoot(true); swarm.start(); return; }
+    lock(true);
+    scrollTo(0, 0);   // always from the top
     skipButton(true);
     // a link to a part of the page that is not built yet: stop building and go there
     addEventListener('click', (e) => {
@@ -2297,6 +2375,8 @@ function skipButton(on) {
     setTimeout(() => { if (!heroStarted) dropBoot(); }, 4000);   // the hero is not in view (it always is, but still)
   } catch (err) {
     console.error('[crew]', err);
+    lock(false);
+    $$('[data-swarm]').forEach((r) => { r.style.minHeight = ''; });
     try { swarm.stop(); } catch (e) { /* nothing left to stop */ }
     dropBoot(true);
     $$(SK_FILL).forEach((el) => el.classList.add('cl-fill'));

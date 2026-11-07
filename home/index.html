@@ -10,8 +10,9 @@
   <meta property="og:description" content="Photogrammetry, remote sensing and hyperspectral imaging.">
   <!-- The page builds itself on the first visit of a session (swarm-build, home/swarm/): the hero first, then
        each part of the page as the visitor reaches it. This decides, before anything paints, whether this
-       visit builds; it is the only thing that ever hides content. A link to a part of the page (a #hash)
-       skips the build. -->
+       visit builds; it is the only thing that ever hides content. While the hero is being built the page
+       does not scroll (cl-lock; crew.js lifts it when the hero is done, on Skip, or on an error, and this
+       fallback lifts it if the crew never loads). A link to a part of the page (a #hash) skips the build. -->
   <script>
   (function () {
     try {
@@ -20,9 +21,9 @@
       if (localStorage.getItem(k + '-off') === '1') return;
       if (sessionStorage.getItem(k) === '1') return;
       if (location.hash.length > 1) return;
-      d.classList.add('swarm-js');
+      d.classList.add('swarm-js', 'cl-lock');
       if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
-      setTimeout(function () { if (!window.__swarmBuild) d.classList.remove('swarm-js'); }, 6000);
+      setTimeout(function () { if (!window.__swarmBuild) d.classList.remove('swarm-js', 'cl-lock'); }, 6000);
     } catch (e) {}
   })();
   </script>

@@ -39,7 +39,10 @@
 //   a region being built joins later (late[id], seconds), and ctx.takeOver(id) carries its cursor over;
 //   a region is no longer finished when it scrolls out of view; skip() finishes every region building;
 // - the planned option is told about each region once it is planned, planned(ctx, { end }), and may
-//   return a later end; ctx.wait(el, t) holds the steps in and of el until t.
+//   return a later end; ctx.wait(el, t) holds the steps in and of el until t;
+// - ctx.spawn(id, color) adds an agent to the region's crew while it is planned (a helper the page calls
+//   in when the crew is busy), and the waitForCrew option (default true) set to false lets the page decide
+//   when an act may start instead of waiting for every agent it names.
 //
 // Markup (see references/api.md):
 //   <section data-swarm>                      a region; built when it scrolls into view
@@ -153,6 +156,7 @@ export function swarmBuild(options = {}) {
     planned: null,
     canStart: null,
     useOf: null,
+    waitForCrew: true,
     ffEvents: ['keydown', 'pointerdown', 'wheel', 'touchstart'],
     onRegionStart: null,
     onRegionEnd: null,
@@ -168,6 +172,7 @@ export function swarmBuild(options = {}) {
   let io = null;
   let trace = null, traceTimer = 0, you = null, started = false, stopped = false, attacks = 0;
   const live = new Set();   // the regions being built: { region, agents, tl, seq }
+  const extra = {};         // colours of the helpers the page spawns
   let launched = 0;
   window.__swarmBuild = VERSION;
 
@@ -208,7 +213,7 @@ export function swarmBuild(options = {}) {
       trace.setAttribute('aria-hidden', 'true');
       document.body.appendChild(trace);
     }
-    trace.style.setProperty('--c', o.crew[who] || 'currentColor');
+    trace.style.setProperty('--c', o.crew[who] || extra[who] || 'currentColor');
     const dots = o.traceDots ? '<span class="sb-dots">' + Object.keys(o.crew).map((id) => '<i style="--c:' + o.crew[id] + '"' + (id === who ? ' class="on"' : '') + '></i>').join('') + '</span>' : '';
     trace.innerHTML = dots + '<b>' + esc(who) + '</b><span class="sb-trace__sep">▸</span>' + esc(msg);
     trace.classList.remove('is-out', 'is-in');
@@ -258,21 +263,30 @@ export function swarmBuild(options = {}) {
     byOf(region).forEach((n) => need.add(roleOf(n)));
     if (isFirst) Object.keys(o.crew).forEach((id) => need.add(roleOf(id)));
     const A = {}, pool = {};
-    Object.keys(o.crew).filter((id) => need.has(roleOf(id))).forEach((id, i) => {
+    const make = (id, color, i) => {
       const el = put('sb-ag');
       el.dataset.g = 'arrow';
-      el.style.setProperty('--c', o.crew[id]);
+      el.style.setProperty('--c', color);
       el.innerHTML = '<div class="sb-ag__in" style="animation-delay:' + (-i * 0.37).toFixed(2) + 's">' + GLYPHS + '<span class="sb-ag__tag">' + esc(id) + '</span></div>';
       const caret = put('sb-caret');
-      caret.style.background = o.crew[id];
+      caret.style.background = color;
       const a = { id, el, caret, x: -999, y: -999 };
       a.set = (x, y) => { a.x = x; a.y = y; el.style.transform = `translate3d(${x}px,${y}px,0)`; };
       a.set(-9999, -9999);
       A[id] = a;
       (pool[roleOf(id)] = pool[roleOf(id)] || []).push(a);
-      agentsUsed.add(id);
-    });
+      return a;
+    };
+    Object.keys(o.crew).filter((id) => need.has(roleOf(id))).forEach((id, i) => { make(id, o.crew[id], i); agentsUsed.add(id); });
     const crew = Object.values(A);
+    const spawn = (id, color) => {
+      if (A[id]) return A[id];
+      extra[id] = color;
+      const a = make(id, color, crew.length);
+      a.helper = true;
+      crew.push(a);
+      return a;
+    };
     const used = {};
 
     // primitives
@@ -504,7 +518,8 @@ export function swarmBuild(options = {}) {
         say, put, rel, view, chip, fade, frame: (ag, node, at, d = 0.42) => frame(ag, node, at, d * P),
         box: (r) => { const g = origin(); return { x: r.left - g.left, y: r.top - g.top, w: r.width, h: r.height }; },
         crew,
-        color: (n) => o.crew[n] || '#fff',
+        color: (n) => o.crew[n] || extra[n] || '#fff',
+        spawn,
         show: (node, at) => tl.call(Math.max(0, at), () => { node.classList.add('sb-built'); node.style.opacity = ''; }),
         attacked: () => { attacks++; },
         scale: () => tl.scale,
@@ -534,7 +549,7 @@ export function swarmBuild(options = {}) {
           const who = byOf(el).map(agentOf).filter(Boolean);
           if (!fn) { fade(el, t, 0.35); shown.set(el, t + 0.1); }
           else {
-            t = Math.max(t, ...who.map((g) => free[g.id] || 0));
+            if (o.waitForCrew !== false) t = Math.max(t, ...who.map((g) => free[g.id] || 0));
             const ctx = actCtx(el, t, who);
             try { done = Math.max(t, +fn(ctx) || t); } catch (err) { console.error('[swarm-build] act', err); done = t; }
             who.forEach((g) => { free[g.id] = Math.max(free[g.id] || 0, done + 0.05); });
