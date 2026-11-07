@@ -35,7 +35,8 @@
 // - the arrival option replaces how the crew comes on in the other regions: arrival(ctx, first, late);
 // - stop() ends the build for good: the regions being built are finished, every other one shown;
 // - regions build in order, and several at once: the next one starts whenever the canStart option says
-//   so (asked again on poke(), when a region ends and when one scrolls into view); an agent still busy in
+//   so, canStart(next, building, left), where left(region) is how many seconds that region still has to
+//   run (asked again on poke(), when a region ends and when one scrolls into view); an agent still busy in
 //   a region being built joins later (late[id], seconds), and ctx.takeOver(id) carries its cursor over;
 //   a region is no longer finished when it scrolls out of view; skip() finishes every region building;
 // - the planned option is told about each region once it is planned, planned(ctx, { end }), and may
@@ -684,13 +685,18 @@ export function swarmBuild(options = {}) {
   }
   const regionsAll = () => $$('[data-swarm]');
   const begun = (r) => r.dataset.sbBegun === '1' || r.classList.contains('swarm-done');
+  // seconds a region being built still has to run, at its current speed
+  const leftOf = (r) => {
+    const job = [...live].find((j) => j.region === r);
+    return job ? Math.max(0, job.tl.dur - job.tl.t) / Math.max(1e-3, job.tl.scale) : 0;
+  };
   // the next region in order starts if it is the first, or when the page says it may
   function tryNext() {
     if (stopped || !started) return;
     const rs = regionsAll(), next = rs.find((r) => !begun(r));
     if (!next) return;
     const first = next === rs[0];
-    if (first ? !next.dataset.sbSeen : o.canStart && !o.canStart(next, [...live].map((j) => j.region))) return;
+    if (first ? !next.dataset.sbSeen : o.canStart && !o.canStart(next, [...live].map((j) => j.region), leftOf)) return;
     launch(next, first);
   }
   function launch(region, isFirst) {

@@ -91,9 +91,10 @@ a { color: inherit; }
 
 /* ---------- Hero: an illustrated scene, each layer moving at its own rate ---------- */
 
+/* The hero scrolls away with the page and the sheet starts right under it: nothing slides over
+   the picture (the user's choice, after seeing the two fight while both were moving). */
 .hero {
-  position: sticky;
-  top: 0;
+  position: relative;
   height: 100vh;
   height: 100svh;
   min-height: 560px;
@@ -411,14 +412,13 @@ a { color: inherit; }
   .lede { margin-top: 16px; font-size: clamp(1.0625rem, 1.5vw, 1.375rem); }
 }
 
-/* ---------- The page slides up over the hero as one rounded sheet ---------- */
+/* ---------- The page: one rounded sheet right under the hero ---------- */
 
 .sheet {
   position: relative;
   z-index: 2;
   background: var(--paper);
   border-radius: 32px 32px 0 0;
-  box-shadow: 0 -24px 60px rgba(0, 0, 0, 0.45);
 }
 .block { padding-top: clamp(80px, 11vw, 136px); }
 .block h2 {

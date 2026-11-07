@@ -1,5 +1,7 @@
-// tang.ninja home: the hero's layers move at different rates (depth), the nav slides in
-// once the page covers the hero, the paper filter, and the citation bars growing into view.
+// tang.ninja home: the hero's layers follow the pointer at different rates (depth), the nav slides in
+// once the page reaches the top, the paper filter, and the citation bars growing into view.
+// The hero scrolls away with the page (the sheet sits under it, nothing slides over the picture),
+// so scrolling moves no layer.
 (() => {
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   // On phones the layers stay put: the scene is small there, and eight moving layers cost a lot of memory.
@@ -48,7 +50,7 @@
     raf = 0;
     const top = sheet ? sheet.getBoundingClientRect().top : Infinity;
     if (nav) nav.classList.toggle("is-shown", top <= 52);
-    // Once the page fully covers the hero, stop drawing it.
+    // Once the hero has scrolled out of view, stop drawing it.
     const nowCovered = top < -40;
     if (nowCovered !== covered) {
       covered = nowCovered;
@@ -56,13 +58,11 @@
     }
     if (covered || reduce || still.matches) return;
 
-    const sy = Math.max(0, window.scrollY);
     cx += (px - cx) * 0.08;
     cy += (py - cy) * 0.08;
-    for (const { el, d } of layers) {
-      const x = -cx * d * 40;
-      const y = -cy * d * 26 - sy * d * 0.85;
-      el.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`;
+    for (const l of layers) {
+      const t = `translate3d(${(-cx * l.d * 40).toFixed(1)}px, ${(-cy * l.d * 26).toFixed(1)}px, 0)`;
+      if (t !== l.t) l.el.style.transform = l.t = t;
     }
     pick();
     // while an object is under the pointer keep following it, since most of them move

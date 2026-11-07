@@ -2153,21 +2153,28 @@ function finale(c, end) {
 }
 
 // Where a floor may start: the hero first; then where the visitor is: the first floor once the page has
-// been scrolled to it, the others once their top is on the screen and within 1.3 screens of the top of
-// the highest floor still being built, so what is on the screen builds at once and the rest waits for
-// the floors above. Scrolling never changes the pace: nothing is finished early, nothing waits longer.
+// been scrolled to it, the others once their top is on the screen, or, the next one down, before it is
+// on the screen while the floors still being built are in their last LEAD seconds and it is less than
+// half a screen below the bottom edge (the user's rule: Service does not wait for the CV to be finished,
+// the next floor is under way when the visitor gets there). Either way within 1.3 screens of the top of
+// the highest floor still being built. Scrolling never changes the pace: nothing is finished early,
+// nothing waits longer.
+const LEAD = 8;
 function ownBox(r) {
   const mine = $$('[data-swarm-step]', r).filter((el) => el.closest('[data-swarm]') === r && el.getClientRects().length);
   if (!mine.length) { const g = r.getBoundingClientRect(); return { top: g.top, bottom: g.bottom }; }
   const rs = mine.map((el) => el.getBoundingClientRect());
   return { top: Math.min(...rs.map((q) => q.top)), bottom: Math.max(...rs.map((q) => q.bottom)) };
 }
-function canStart(r, building) {
+function canStart(r, building, left) {
   const rs = $$('[data-swarm]');
   if (!rs[0].classList.contains('swarm-done')) return false;
   const vh = innerHeight, b = ownBox(r);
-  if (b.top > vh * (r === rs[1] ? 0.6 : 0.92)) return false;   // not reached yet
   const up = building.filter((x) => x !== rs[0]);
+  if (r === rs[1] ? b.top > vh * 0.6 : b.top > vh * 0.92) {   // not reached yet
+    const nearlyDone = up.length && left && up.every((x) => left(x) <= LEAD);
+    if (r === rs[1] || !nearlyDone || b.top > vh * 1.5) return false;
+  }
   return !up.length || b.top - Math.min(...up.map((x) => ownBox(x).top)) < vh * 1.3;
 }
 
