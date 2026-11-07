@@ -13,7 +13,7 @@
 // specific to this page is here; the markup is data-swarm-step / data-swarm-act / data-swarm-by /
 // data-swarm-story in home/index.html, the styles are in ./crew.css. Every change the crew makes runs on
 // the engine's timeline, so a skipped or fast-forwarded build always lands on the finished page.
-import { swarmBuild } from '/swarm/swarm-build.js';
+import { swarmBuild, swim } from '/swarm/swarm-build.js';
 
 const root = document.documentElement;
 const $ = (s, el = document) => el.querySelector(s);
@@ -429,13 +429,15 @@ function helperFor(c, ag, t, skip = []) {
   const trade = tradeOf(ag.id), mine = c.crew.filter((h) => h.helper && !h.gone);
   const ready = mine.find((h) => tradeOf(h.id) === trade && !skip.includes(h) && !busyAt(h, t));
   if (ready) return ready;
-  if (mine.length >= 6 || mine.filter((h) => tradeOf(h.id) === trade).length >= 3 || HELPERS.size >= 14) return null;
+  if (mine.length >= 8 || mine.filter((h) => tradeOf(h.id) === trade).length >= 3 || HELPERS.size >= 18) return null;
   let k = Object.keys(CREW).filter((id) => tradeOf(id) === trade).length + 1;
   while (HELPERS.has(`${trade}-${k}`) || CREW[`${trade}-${k}`]) k++;
   const id = `${trade}-${k}`;
   HELPERS.set(id, c.region);
-  const h = c.spawn(id, tint(CREW[trade] || CREW[ag.id] || '#f5f5f7', k)), v = c.view();
-  h.set(v.x1 + 50, (v.y0 + v.y1) / 2);   // out of sight until its first job brings it in
+  const h = c.spawn(id, tint(CREW[trade] || CREW[ag.id] || '#f5f5f7', k)), v = c.view(), sch = c.school;
+  // out of sight until its first job brings it in: with the floor's school if it has one
+  if (sch) h.set(sch.x + (sch.right ? 1 : -1) * 30, sch.y + ((k * 29) % 90) - 45);
+  else h.set(v.x1 + 50, (v.y0 + v.y1) / 2);
   c.log('orchestrator', `${ag.id} is busy · spawned ${id}`, Math.max(0, t - 0.3));
   return h;
 }
@@ -1731,8 +1733,10 @@ function dropBoot(now) {
 }
 
 // The crew takes the stage: the terminal's black panel lifts like a shutter, and each chip of the roll call
-// turns into its cursor and flies off to where it will work first; the ones bound for the sections fly on
-// down the page. Replaces the engine's opening orbit.
+// turns into its cursor and swims into a school milling round the middle of the sky, two rings turning
+// against each other (the user loved this in a swarm-build demo: the cursors like a school of fish). Then
+// they break away one after another, tails streaming, each to where it will work first; the ones bound for
+// the sections dive on down the page. Replaces the engine's opening orbit.
 function entrance(c) {
   const box = $('.crew-boot'), A = agentIn(c), v0 = c.view();
   const h1 = $('.hero h1'), lede = $('.hero .lede'), aff = $('.hero .aff'), idx = $('.hero-index');
@@ -1752,47 +1756,65 @@ function entrance(c) {
     c.tween(0.05, 0.95, 'inOut2', (p) => { if (bg) bg.style.transform = `translateY(${-101 * p}%)`; });
   }
   c.log('orchestrator', `${c.crew.length} agents deployed · goal: build tang.ninja`, 0.1);
-  const T = (id) => 0.32 + ORDER.indexOf(id) * 0.07, D = 0.8;
+  // the school: in from the chips (IN, JOIN), round and round, out one after another (OUT) to the station (FLY)
+  const W = v0.x1 - v0.x0, H = v0.y1 - v0.y0, K = Math.max(0.5, Math.min(1.15, W / 1100));
+  const C = { x: v0.x0 + W * 0.5, y: v0.y0 + H * 0.52 };
+  const IN = (i) => 0.3 + i * 0.03, JOIN = 0.6, OUT = (i) => 2.2 + i * 0.025, FLY = 0.8;
+  const ARR = (id) => OUT(Math.max(0, ORDER.indexOf(id))) + FLY;
   ORDER.forEach((id, i) => {
     const ag = c.crew.find((a) => a.id === id);
     if (!ag) return;
-    const chip = box && $(`.crew-chip[data-id="${id}"]`, box), t = T(id);
-    let from = null, to = null, ctrl = null;
-    c.call(t, () => {
+    const chip = box && $(`.crew-chip[data-id="${id}"]`, box), inner = i % 2 === 0;
+    const r0 = (inner ? 80 + ((i * 13) % 40) : 160 + ((i * 17) % 70)) * K, w = inner ? 2.5 : -1.9, ph = i * 2.39996, wob = 1.7 + (i % 5) * 0.23;
+    const ring = (t) => { const a = ph + w * t, r = r0 + 10 * K * Math.sin(wob * t + i); return { x: C.x + Math.cos(a) * r, y: C.y + Math.sin(a) * r * 0.62 }; };
+    const t0 = IN(i), t1 = t0 + JOIN, t2 = OUT(i), t3 = t2 + FLY;
+    let from = null, to = null, p0, p1, p2;
+    const begin = () => {
+      if (from) return;
       const b = chip ? c.box(chip.getBoundingClientRect()) : { x: v0.x0 + 40, y: v0.y1 - 40, w: 0, h: 0 };
       from = { x: b.x + 9, y: b.y + b.h / 2 };
       if (chip) chip.classList.add('gone');
+      ag.el.classList.add('cl-fish');   // small, like a fish, while it swims in the school
       ag.set(from.x, from.y);
-      to = STATION[id] ? STATION[id]() : { x: from.x + (i % 2 ? 40 : -40), y: c.view().y1 + 90 };
-      const mx = (from.x + to.x) / 2, my = (from.y + to.y) / 2, dx = to.x - from.x, dy = to.y - from.y, len = Math.hypot(dx, dy) || 1;
-      const bend = (i % 2 ? 1 : -1) * Math.min(150, len * 0.3);
-      ctrl = { x: mx - (dy / len) * bend, y: my + (dx / len) * bend };
+    };
+    const breakAway = () => {   // off the ring the way it was turning, then on to its station
+      if (to) return;
+      ag.el.classList.remove('cl-fish');
+      p0 = ring(t2);
+      to = STATION[id] ? STATION[id]() : { x: p0.x + (i % 2 ? 60 : -60), y: c.view().y1 + 90 };
+      const q = ring(t2 + 0.05), dx = q.x - p0.x, dy = q.y - p0.y, l = Math.hypot(dx, dy) || 1;
+      p1 = { x: p0.x + (dx / l) * 130 * K, y: p0.y + (dy / l) * 130 * K };
+      p2 = { x: to.x + (p1.x - to.x) * 0.3, y: to.y + (p1.y - to.y) * 0.3 };
+    };
+    c.call(t0, begin);
+    c.call(t2, breakAway);
+    c.tween(t0, t3 - t0, 'linear', () => {
+      begin();
+      const t = Math.min(t3, Math.max(t0, c.now()));
+      if (t < t1) { const q = ring(t), s = swim(ag, from.x, from.y, q.x, q.y, ease2((t - t0) / JOIN)); ag.set(s.x, s.y); return; }
+      if (t < t2) { const q = ring(t); ag.set(q.x, q.y); return; }
+      breakAway();
+      const k = ease2((t - t2) / FLY), u = 1 - k;
+      ag.set(u * u * u * p0.x + 3 * u * u * k * p1.x + 3 * u * k * k * p2.x + k * k * k * to.x,
+        u * u * u * p0.y + 3 * u * u * k * p1.y + 3 * u * k * k * p2.y + k * k * k * to.y);
     });
-    c.tween(t, D, 'inOut2', (p) => {
-      if (!from) return;
-      const u = 1 - p;
-      ag.set(u * u * from.x + 2 * u * p * ctrl.x + p * p * to.x, u * u * from.y + 2 * u * p * ctrl.y + p * p * to.y);
-    });
-    for (let k = 1; k <= 5; k++) {   // a trail of dots behind it
-      const dot = node(c, 'cl-trail'), tk = t + (k / 6) * D;
-      dot.style.setProperty('--c', CREW[id]);
-      dot.style.opacity = 0;
-      c.call(tk, () => { dot.style.left = ag.x + 'px'; dot.style.top = ag.y + 'px'; });
-      c.tween(tk, 0.5, 'out', (p) => { dot.style.opacity = String(0.85 * (1 - p)); dot.style.transform = `translate(-50%, -50%) scale(${1 - 0.6 * p})`; });
-    }
+    busy(ag, t3);
+    use(ag, t3);
+    span(ag, t0, t3, () => to || ring(c.now()));
   });
   // first words
-  think(c, A('writer'), T('writer') + D, 'a blank page. my favourite.', 1.6);
-  think(c, A('surveyor'), T('surveyor') + D, 'boots on the quay.', 1.3);
-  think(c, A('photogrammetrist'), T('photogrammetrist') + D + 0.2, '2,481 photos. let’s go.', 1.5);
-  const RT = A('red-team'), GR = A('guardrail'), tR = T('red-team') + D;
+  think(c, A('writer'), ARR('writer'), 'a blank page. my favourite.', 1.6);
+  think(c, A('surveyor'), ARR('surveyor'), 'boots on the quay.', 1.3);
+  think(c, A('photogrammetrist'), ARR('photogrammetrist') + 0.2, '2,481 photos. let’s go.', 1.5);
+  const RT = A('red-team'), GR = A('guardrail'), tR = ARR('red-team');
   think(c, RT, tR + 0.1, 'nice page. be a shame if…', 1.5);
   think(c, GR, tR + 0.9, 'I see you, red-team.', 1.4);
   c.go(RT, () => ({ x: c.view().x1 + 90, y: RT.y - 30 }), tR + 1.8, 0.6, 'in');
-  c.log('librarian', 'heading down to Papers · see you there', T('librarian') + 0.3);
-  c.log('historian', 'heading down to Education and experience', T('historian') + 0.3);
-  c.call(T(ORDER[ORDER.length - 1]) + D + 0.1, () => dropBoot(true));
-  heroSketch(c, (id) => T(id) + D);
+  c.log('orchestrator', 'crew in formation · breaking off to work', OUT(0));
+  c.log('librarian', 'heading down to Papers · see you there', ARR('librarian') - 0.4);
+  c.log('historian', 'heading down to Education and experience', ARR('historian') - 0.4);
+  c.call(ARR(ORDER[ORDER.length - 1]) + 0.1, () => dropBoot(true));
+  heroSketch(c, ARR);
   return 1.35;
 }
 
@@ -1936,10 +1958,10 @@ function fillOf(el) {
 
 // One agent draws a box: to its top left corner, then the four edges with the pencil, the size noted.
 function drawBox(c, sk, A, el, s, opts) {
-  const b = Sketch.box(sk, el, opts);
+  const b = Sketch.box(sk, el, opts), L = (opts && opts.lead) || 0.34;
   b.by = A;
   c.glyph(A, 'cross', s - 0.1);
-  c.go(A, () => { const r = Sketch.rect(sk, b); return { x: r.x - 6, y: r.y }; }, s - 0.34, 0.32);
+  c.go(A, () => { const r = Sketch.rect(sk, b); return { x: r.x - 6, y: r.y }; }, s - L, L - 0.02, L > 0.34 ? 'inOut2' : 'out');
   c.call(s, () => { if (b.statMe) { const r = b.el.getBoundingClientRect(), g = sk.region.getBoundingClientRect(); b.stat = { x: r.left - g.left, y: r.top - g.top, w: r.width, h: r.height }; } });
   const d = Math.min(1.0, Math.max(0.55, (Sketch.rect(sk, b).w + Sketch.rect(sk, b).h) / 1400));
   c.tween(s, d, 'linear', (k) => { b.p = k * 4; const q = Sketch.pen(Sketch.rect(sk, b), b.p); A.set(q.x, q.y); });
@@ -1947,25 +1969,27 @@ function drawBox(c, sk, A, el, s, opts) {
   c.tween(s + d + 0.35, 0.35, 'inOut2', (k) => { b.dash = 1 - k; });   // inked a moment later
   c.glyph(A, 'arrow', s + d + 0.02);
   use(A, s + d);
-  span(A, s - 0.34, s + d + 0.05, () => { const r = Sketch.rect(sk, b); return { x: r.x - 6, y: r.y }; });
+  span(A, s - L, s + d + 0.05, () => { const r = Sketch.rect(sk, b); return { x: r.x - 6, y: r.y }; });
   b.drawn = s + d;
   return b;
 }
 // One agent paints a box: a wipe from left to right, the agent riding the edge of the paint.
-function fillBox(c, sk, A, b, s) {
-  c.go(A, () => { const r = Sketch.rect(sk, b); return { x: r.x + 4, y: r.y + r.h * 0.5 }; }, s - 0.3, 0.3);
+function fillBox(c, sk, A, b, s, lead) {
+  const L = lead || 0.3;
+  c.go(A, () => { const r = Sketch.rect(sk, b); return { x: r.x + 4, y: r.y + r.h * 0.5 }; }, s - L, L, lead ? 'inOut2' : 'out');
   c.tween(s, 0.5, 'inOut2', (k) => { b.fp = k; const r = Sketch.rect(sk, b); A.set(r.x + r.w * k, r.y + r.h * 0.5); });
   use(A, s + 0.5);
-  span(A, s - 0.3, s + 0.5, () => { const r = Sketch.rect(sk, b); return { x: r.x + 4, y: r.y + r.h * 0.5 }; });
+  span(A, s - L, s + 0.5, () => { const r = Sketch.rect(sk, b); return { x: r.x + 4, y: r.y + r.h * 0.5 }; });
   return s + 0.5;
 }
 // One agent lays the grey bars of an element's text, line by line.
-function drawBars(c, sk, A, el, s, light) {
+function drawBars(c, sk, A, el, s, light, lead) {
   const lh = parseFloat(getComputedStyle(el).lineHeight) || 20, n = Math.max(1, Math.round(c.rel(el).h / lh)), d = Math.min(1.1, 0.16 * n + 0.14);
+  const L = lead || 0.3;
   let set = null;
   c.call(s - 0.01, () => { set = Sketch.measure(sk, el, light); });
   c.glyph(A, 'cross', s - 0.25);
-  c.go(A, () => { const r = c.rel(el); return { x: r.x, y: r.y + Math.min(r.h, lh) * 0.5 }; }, s - 0.3, 0.3);
+  c.go(A, () => { const r = c.rel(el); return { x: r.x, y: r.y + Math.min(r.h, lh) * 0.5 }; }, s - L, L, lead ? 'inOut2' : 'out');
   c.tween(s, d, 'linear', (k) => {
     if (!set || !set.bars.length) return;
     set.p = k * set.bars.length;
@@ -1974,7 +1998,7 @@ function drawBars(c, sk, A, el, s, light) {
   });
   c.glyph(A, 'arrow', s + d + 0.02);
   use(A, s + d);
-  span(A, s - 0.3, s + d, () => { const r = c.rel(el); return { x: r.x, y: r.y + Math.min(r.h, lh) * 0.5 }; });
+  span(A, s - L, s + d, () => { const r = c.rel(el); return { x: r.x, y: r.y + Math.min(r.h, lh) * 0.5 }; });
   return s + d;
 }
 
@@ -1985,6 +2009,7 @@ const deal = (list, k) => Array.from({ length: k }, (_, i) => list.slice(Math.fl
 // run per agent, so the crew spreads over the floor and draws all of it at once. The inks follow the
 // pencil; the stylists paint the coloured blocks; whatever sits on a painted block is drawn once the paint
 // is on; each step of the region waits for the wireframe of what it builds.
+const SWIM_IN = 0.62;
 function sketchPass(c, mates, late = {}, { t0 = 0.08, only = null } = {}) {
   const region = c.region, sk = Sketch.of(c), mine = (el) => el.closest('[data-swarm]') === region;
   const laid = (el) => el.getClientRects().length && c.rel(el).w > 4 && c.rel(el).h > 4;
@@ -2007,19 +2032,25 @@ function sketchPass(c, mates, late = {}, { t0 = 0.08, only = null } = {}) {
   sk.loose = (sk.loose || []).concat(loose.map((el, i) => ({ el, o: offs[i] })));
   // the crew: whoever is here now first, those still busy upstairs take the later runs
   const now = mates.filter((a) => !late[a.id]), later = mates.filter((a) => late[a.id]).sort((a, b) => late[a.id] - late[b.id]);
-  const n = outer.length + inner.length, want = Math.max(1, Math.min(10, Math.ceil(n / 2.2)));   // two or three things each
+  const n = outer.length + inner.length, want = Math.max(1, Math.min(12, Math.ceil(n / 1.8)));   // two things each, or so
   const crew = now.slice(0, want), trades = [...new Set(mates.map((a) => tradeOf(a.id)))].filter((tr) => !NOHELP.test(tr));
   for (let i = 0; crew.length < want && trades.length && i < want * 2; i++) {   // short of hands: call in helpers
     const base = mates.find((a) => tradeOf(a.id) === trades[i % trades.length]), h = helperFor(c, base, 0, crew);
     if (h && !crew.includes(h)) crew.push(h);
   }
   later.forEach((a) => { if (crew.length < want) crew.push(a); });   // still short: those still busy upstairs, when free
-  const q = queue(c), doneAt = new Map(), boxes = new Map(), startOf = (A, k) => Math.max(t0 + k * 0.07, late[A.id] ? late[A.id] + 0.25 : 0);
+  // the school: whoever waits off the screen (the floor's crew and its helpers, all on one side) swims in
+  // to its first job, one a moment after the other, fanning out as it comes (SWIM_IN seconds)
+  const v = c.view(), entered = new Set(), parked = (A) => !late[A.id] && (A.x < v.x0 - 60 || A.x > v.x1 + 20);
+  const leadFor = (A) => { if (!A || entered.has(A)) return 0; entered.add(A); return parked(A) ? SWIM_IN : 0; };
+  const q = queue(c), doneAt = new Map(), boxes = new Map();
+  const startOf = (A, k) => (parked(A) ? t0 + SWIM_IN + k * 0.05 : Math.max(t0 + k * 0.07, late[A.id] ? late[A.id] + 0.25 : 0));
   const job = (it, after = 0) => (Ag, s) => {
     s = Math.max(s, after);
-    if (!it.box) { const e = drawBars(c, sk, Ag, it.el, s, lightOn(it.el)); doneAt.set(it.el, e); return e; }
+    const lead = leadFor(Ag);
+    if (!it.box) { const e = drawBars(c, sk, Ag, it.el, s, lightOn(it.el), lead); doneAt.set(it.el, e); return e; }
     const f = paint.get(it.el), rx = parseFloat(getComputedStyle(it.el).borderTopLeftRadius) || 0;
-    const b = drawBox(c, sk, Ag, it.el, s, { color: f && f.css, rx, light: lightOn(it.el), stat: it.el.matches(SK_STATIC) });
+    const b = drawBox(c, sk, Ag, it.el, s, { color: f && f.css, rx, light: lightOn(it.el), stat: it.el.matches(SK_STATIC), lead });
     boxes.set(it.el, b);
     doneAt.set(it.el, b.drawn);
     return b.drawn;
@@ -2032,7 +2063,7 @@ function sketchPass(c, mates, late = {}, { t0 = 0.08, only = null } = {}) {
   const paintAll = () => boxes.forEach((b, el) => {
     if (!b.fill || painted.has(el)) return;
     const want = b.drawn + 0.7, P = q.pick([...painters, b.by], want);
-    const e = q(P, want, (Ag, s) => fillBox(c, sk, Ag, b, s));
+    const e = q(P, want, (Ag, s) => fillBox(c, sk, Ag, b, s, leadFor(Ag)));
     hands.add(P);
     painted.set(el, e);
     if (el.matches(SK_FILL)) c.call(e, () => { el.classList.add('cl-fill'); b.fop = 0; });
@@ -2071,7 +2102,7 @@ function heroSketch(c, T) {
 }
 
 // The crew arriving at a floor: whoever is on a floor still being built comes over from there when it is
-// free (late, seconds), its cursor carried across; the others come in from the side of the screen. Each
+// free (late, seconds), its cursor carried across; the others swim in together from one side. Each
 // goes straight to its run of the wireframe; anyone with nothing to draw steps off the screen until an act
 // needs it, so nobody waits about in a crowd.
 const HELLO = {
@@ -2079,13 +2110,18 @@ const HELLO = {
   papers: ['editor', () => `${$$('#papers .pub').length} papers. bring coffee.`], cv: ['historian', 'let’s start at the start.'],
   service: ['librarian', 'impact factors. my favourite.'], contact: ['writer', 'top floor! well, bottom.'],
 };
+let SCHOOL = 0;   // the side the next floor's crew swims in from: the floors take turns
 function arrival(c, first, late = {}) {
   const v = c.view(), mates = c.crew.filter((a) => a.id !== 'red-team');
   // the floor keeps its finished height while its words are emptied and typed back, so nothing below moves
   c.region.style.minHeight = c.region.getBoundingClientRect().height + 'px';
   c.crew.forEach((a) => { if (late[a.id]) LATE.set(a, late[a.id] + 0.3); });
   const b0 = c.rel(first), mid = Math.max(v.y0 + 60, Math.min(v.y1 - 60, b0.y + 40));
-  mates.forEach((a, i) => a.set(i % 2 ? v.x1 + 50 : v.x0 - 160, mid + (i % 5) * 26));   // out of sight, name tag and all
+  // the crew comes in as one school from one side, out of sight till then, name tags and all; each peels
+  // off to its run of the wireframe a moment after the one before (helpers join it too)
+  const right = (SCHOOL = 1 - SCHOOL) === 1, sx = right ? v.x1 + 50 : v.x0 - 160;
+  c.school = { x: sx, y: mid, right };
+  mates.forEach((a, i) => a.set(sx + (right ? 1 : -1) * (i % 3) * 24, mid + ((i * 37) % 120) - 60));
   mates.forEach((a) => c.call(late[a.id] || 0, () => {
     const p = c.takeOver(a.id), g = c.region.getBoundingClientRect();
     if (p) a.set(p.x - g.left, p.y - g.top);
@@ -2180,8 +2216,9 @@ function canStart(r, building, left) {
 
 const seen = (el) => (el.checkVisibility ? el.checkVisibility({ opacityProperty: true, visibilityProperty: true }) : !!el.getClientRects().length);
 const ease2 = (k) => (k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2);
-// legs of a walk: { to (point or function), d (ms), hold (ms), then (called when it gets there) }
-function walk(from, legs, t0) {
+// legs of a walk: { to (point or function), d (ms), hold (ms), then (called when it gets there) }; the
+// agent swims there like on any other flight
+function walk(from, legs, t0, ag) {
   let start = t0, fx = from.x, fy = from.y, i = 0;
   return {
     at(now) {
@@ -2190,7 +2227,7 @@ function walk(from, legs, t0) {
         if (!L.q) L.q = typeof L.to === 'function' ? L.to() : L.to;
         if (!L.q) return null;
         const k = (now - start) / L.d;
-        if (k < 1) return { x: fx + (L.q.x - fx) * ease2(Math.max(0, k)), y: fy + (L.q.y - fy) * ease2(Math.max(0, k)) };
+        if (k < 1) return swim(ag, fx, fy, L.q.x, L.q.y, ease2(Math.max(0, k)));
         if (L.then) { L.then(); L.then = null; }
         if (now - start < L.d + (L.hold || 0)) return L.q;
         start += L.d + (L.hold || 0); fx = L.q.x; fy = L.q.y; i++;
@@ -2239,11 +2276,11 @@ const Idle = {
           if (nx) { try { to = typeof nx.to === 'function' ? nx.to() : nx.to; } catch (err) { to = null; } }
           if (!to || (Math.abs(to.x - a.x) < 30 && Math.abs(to.y - a.y) < 30)) { s.still = now; continue; }
           const d = Math.max(350, Math.min(1100, ((nx.t0 - t) / k - 0.35) * 1000));
-          s.beh = walk({ x: a.x, y: a.y }, [{ to: { x: to.x - 18, y: to.y - 14 }, d, hold: 60000 }], now);
+          s.beh = walk({ x: a.x, y: a.y }, [{ to: { x: to.x - 18, y: to.y - 14 }, d, hold: 60000 }], now, a);
         } else {
           // nothing for a while: off the screen by the nearest side
           const left = a.x - v.x0 < (v.x1 - v.x0) / 2, dest = { x: left ? v.x0 - 160 : v.x1 + 50, y: Math.max(v.y0 + 20, Math.min(v.y1 - 20, a.y)) };
-          s.beh = walk({ x: a.x, y: a.y }, [{ to: dest, d: 650 + Math.abs(dest.x - a.x) * 0.25 }], now);
+          s.beh = walk({ x: a.x, y: a.y }, [{ to: dest, d: 650 + Math.abs(dest.x - a.x) * 0.25 }], now, a);
         }
       }
       const p = s.beh.at(now);

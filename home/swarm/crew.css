@@ -232,7 +232,9 @@
 .cl-panel__row b.ok { box-shadow: inset 0 0 0 1px #8dffb9; color: #8dffb9; }
 
 /* the dots a cursor leaves when the crew is sent out */
-.cl-trail { position: absolute; left: 0; top: 0; width: 6px; height: 6px; border-radius: 50%; background: var(--c); box-shadow: 0 0 8px var(--c); }
+/* in the opening school the name tags shrink, like fish, and grow back as each one breaks away */
+.sb-ag .sb-ag__tag { transform-origin: 0 0; transition: scale 0.35s ease, opacity 0.35s ease; }
+.sb-ag.cl-fish .sb-ag__tag { scale: 0.6; opacity: 0.8; }
 
 /* ---------- The wireframe: pencil boxes and text bars, inked, painted, erased ---------- */
 .cl-sk { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; pointer-events: none; }

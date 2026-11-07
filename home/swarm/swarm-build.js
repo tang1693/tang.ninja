@@ -43,7 +43,9 @@
 //   return a later end; ctx.wait(el, t) holds the steps in and of el until t;
 // - ctx.spawn(id, color) adds an agent to the region's crew while it is planned (a helper the page calls
 //   in when the crew is busy), and the waitForCrew option (default true) set to false lets the page decide
-//   when an act may start instead of waiting for every agent it names.
+//   when an act may start instead of waiting for every agent it names;
+// - the crew swims like a school of fish: moves bow to the left of their way (swim(), exported for the
+//   page's own flights) and every cursor drags a short fading tail of itself when it moves fast (.sb-ghost).
 //
 // Markup (see references/api.md):
 //   <section data-swarm>                      a region; built when it scrolls into view
@@ -81,6 +83,7 @@ const GLYPHS =
   '<svg class="sb-g sb-g--ibeam" width="12" height="24" viewBox="0 0 12 24">' + OUTLINED('M2.5 2.5h7M6 2.5v19M2.5 21.5h7') + '</svg>' +
   '<svg class="sb-g sb-g--cross" width="22" height="22" viewBox="0 0 22 22">' + OUTLINED('M11 1.5v7M11 13.5v7M1.5 11h7M13.5 11h7') + '</svg>';
 
+const GHOST = '<svg width="18" height="22" viewBox="0 0 18 22"><path d="M2 1.5v16.1l4.3-4 2.9 6.6 2.8-1.2-2.8-6.5H15z" fill="var(--c)" stroke="#0b0b0a" stroke-width="1.3" stroke-linejoin="round"/></svg>';
 const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
 const store = (s) => ({
   get: (k) => { try { return s().getItem(k); } catch (e) { return null; } },
@@ -92,6 +95,60 @@ const stepsOf = (el) => (el.dataset.swarmStep || '').split(/\s+/).filter(Boolean
 const textNodes = (el) => { const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT), out = []; while (w.nextNode()) out.push(w.currentNode); return out; };
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const ACCENTS = 'em, [data-swarm-accent]';
+
+// ------------------------------------------------------------------ swimming (tang.ninja)
+// The crew moves like a school of fish (the user's wish, after a swarm-build demo): a cursor flying
+// further than a short hop bows to the left of where it is going (each agent a little more or less, so a
+// school turning together stays loose), with a slight sway on long flights; and every cursor drags a
+// short tail of fading copies of itself while it moves fast.
+const bowOf = (id) => { let h = 7; for (const ch of String(id)) h = (h * 31 + ch.charCodeAt(0)) % 1009; return 0.75 + (h % 51) / 100; };
+/** Where agent a is at eased progress e of a flight from (fx, fy) to (tx, ty). */
+export function swim(a, fx, fy, tx, ty, e) {
+  const dx = tx - fx, dy = ty - fy, L = Math.hypot(dx, dy), x = fx + dx * e, y = fy + dy * e;
+  if (L < 110) return { x, y };
+  const amp = Math.min(60, (L - 110) * 0.16) * ((a && a.bowK) || 1), w = L > 340 ? Math.min(8, (L - 340) * 0.025) : 0;
+  const s = Math.sin(Math.PI * e), lat = amp * s + w * Math.sin(3 * Math.PI * e) * s;
+  return { x: x + (dy / L) * lat, y: y - (dx / L) * lat };
+}
+const Tails = {
+  all: new Set(), raf: 0, N: 5, LAG: 24,
+  add(a) { this.all.add(a); if (!this.raf) this.raf = requestAnimationFrame((t) => this.tick(t)); },
+  at(h, t) {   // where the cursor was at time t (the oldest point we have if t is before it)
+    for (let i = h.length - 1; i > 0; i--) {
+      const p = h[i - 1], q = h[i];
+      if (p.t <= t) { const k = q.t > p.t ? Math.min(1, (t - p.t) / (q.t - p.t)) : 1; return { x: p.x + (q.x - p.x) * k, y: p.y + (q.y - p.y) * k }; }
+    }
+    return h[0];
+  },
+  tick(now) {
+    this.raf = 0;
+    for (const a of this.all) {
+      if (!a.el.isConnected) { this.all.delete(a); continue; }
+      const h = a.hist, last = h[h.length - 1];
+      if (!last || last.x !== a.x || last.y !== a.y) {
+        // a jump (parked, carried over from another region) is not a swim
+        if (last && Math.abs(a.x - last.x) + Math.abs(a.y - last.y) > 320) h.length = 0;
+        h.push({ x: a.x, y: a.y, t: now });
+      }
+      while (h.length > 2 && now - h[1].t > this.N * this.LAG + 60) h.shift();
+      const show = !a.gone && a.el.dataset.g === 'arrow' && a.el.style.opacity !== '0' && h.length > 1;
+      for (let k = 0; k < this.N; k++) {
+        const g = a.ghosts[k];
+        let o = 0, x = g._x, y = g._y;
+        if (show) {
+          const p = this.at(h, now - (k + 1) * this.LAG), d = Math.hypot(p.x - a.x, p.y - a.y);
+          if (d > 4) { x = p.x; y = p.y; o = (0.55 - k * 0.09) * Math.min(1, (d - 4) / (16 * (k + 1))); }
+        }
+        if (o !== g._o || (o && (x !== g._x || y !== g._y))) {
+          g._o = o; g._x = x; g._y = y;
+          g.style.opacity = o ? o.toFixed(3) : '0';
+          if (o) g.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0) scale(${(0.92 - k * 0.08).toFixed(2)})`;
+        }
+      }
+    }
+    if (this.all.size) this.raf = requestAnimationFrame((t) => this.tick(t));
+  },
+};
 
 // ------------------------------------------------------------------ timeline
 // A tiny scheduler: calls and tweens at absolute times, played on rAF,
@@ -271,9 +328,17 @@ export function swarmBuild(options = {}) {
       el.innerHTML = '<div class="sb-ag__in" style="animation-delay:' + (-i * 0.37).toFixed(2) + 's">' + GLYPHS + '<span class="sb-ag__tag">' + esc(id) + '</span></div>';
       const caret = put('sb-caret');
       caret.style.background = color;
-      const a = { id, el, caret, x: -999, y: -999 };
+      const a = { id, el, caret, x: -999, y: -999, bowK: bowOf(id), hist: [], ghosts: [] };
+      for (let k = 0; k < Tails.N; k++) {   // its tail, under it
+        const g = div('sb-ghost');
+        g.innerHTML = GHOST;
+        g.style.setProperty('--c', color);
+        el.parentNode.insertBefore(g, el);
+        a.ghosts.push(g);
+      }
       a.set = (x, y) => { a.x = x; a.y = y; el.style.transform = `translate3d(${x}px,${y}px,0)`; };
       a.set(-9999, -9999);
+      Tails.add(a);
       A[id] = a;
       (pool[roleOf(id)] = pool[roleOf(id)] || []).push(a);
       return a;
@@ -293,7 +358,7 @@ export function swarmBuild(options = {}) {
     // primitives
     const go = (a, x, y, t, d = 0.45, ease = 'out') => {
       let fx, fy;
-      tl.tween(Math.max(0, t), d, ease, (p) => a.set(fx + (x - fx) * p, fy + (y - fy) * p), () => { fx = a.x; fy = a.y; });
+      tl.tween(Math.max(0, t), d, ease, (p) => { const s = swim(a, fx, fy, x, y, p); a.set(s.x, s.y); }, () => { fx = a.x; fy = a.y; });
     };
     const glyph = (a, g, t) => tl.call(Math.max(0, t), () => { a.el.dataset.g = g; });
     const log = (who, msg, t) => tl.call(t, () => say(who, msg));
@@ -507,10 +572,10 @@ export function swarmBuild(options = {}) {
         agent: (n) => agentOf(n) || who[0],
         call: (at, fn) => tl.call(Math.max(0, at), fn),
         tween: (at, d, ease, update, init) => tl.tween(Math.max(0, at), d, ease, update, init),
-        // travel to a point given now or by a function read when the move starts
+        // travel to a point given now or by a function read when the move starts (swimming there)
         go: (ag, to, at, d = 0.45, ease = 'out') => {
           let fx, fy, q;
-          tl.tween(Math.max(0, at), d, ease, (p) => { if (q) ag.set(fx + (q.x - fx) * p, fy + (q.y - fy) * p); },
+          tl.tween(Math.max(0, at), d, ease, (p) => { if (q) { const s = swim(ag, fx, fy, q.x, q.y, p); ag.set(s.x, s.y); } },
             () => { fx = ag.x; fy = ag.y; q = typeof to === 'function' ? to() : to; });
         },
         follow: (ag, to, at, d) => tl.tween(Math.max(0, at), d, 'linear', () => { const q = to(); if (q) ag.set(q.x, q.y); }),
