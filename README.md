@@ -12,6 +12,7 @@ Yang Tang 的科研主页，加上孩子们做的浏览器游戏。
 | chizi.tang.ninja | `kids/chizi/games/` |
 | mozi.tang.ninja | `kids/mozi/games/` |
 | liangzi.tang.ninja | `kids/liangzi/games/` |
+| wind.tang.ninja | `apps/wind/index.html`（3D 风场 CFD 演示，源码在电脑上的 `Desktop/Claude/CFD/garden-wind-3d/`） |
 
 孩子们的页面是根据 `games/` 文件夹里的 `.html` 自动生成的。主页和孩子们的页面互相不放链接，工作和家里的分开。
 
@@ -53,10 +54,20 @@ Yang Tang 的科研主页，加上孩子们做的浏览器游戏。
 2. 建文件夹 `kids/<id>/games/`，放进游戏。
 3. 在 Cloudflare 的 tang-ninja 这个 Worker 里，**Settings → Domains & Routes** 加上 `<id>.tang.ninja`。
 
+## 加一个独立页面（比如 wind）
+
+和孩子们的页面不同，独立页面是一个现成的网页，原样上线：
+
+1. 把页面放进 `apps/<名字>/index.html`（它用到的其他文件也放在同一个文件夹里）。
+2. 在 `site.json` 的 `apps` 里加一项：`id` 是子域名。
+3. 在 Cloudflare 的 tang-ninja 这个 Worker 里，**Settings → Domains & Routes** 加上 `<名字>.tang.ninja`。
+
+更新 wind：在 `Desktop/Claude/CFD/garden-wind-3d/` 里运行 `npm run build`，把生成的 `dist/index.html` 覆盖到 `apps/wind/index.html`（文件开头那段开源许可说明要保留），或者直接告诉 Claude。
+
 ## Cloudflare 设置（只需要做一次）
 
 Workers & Pages → Create → 从 GitHub 导入 `tang1693/tang.ninja`：
 
 - Build command：`node build.mjs`
 - Deploy command：`npx wrangler deploy`（仓库里的 `wrangler.jsonc` 会把 `dist/` 当静态文件发布，把 `dist/_worker.js` 当路由）
-- 部署完成后，Settings → Domains & Routes → Add → Custom domain，加上 `tang.ninja`、`www.tang.ninja`、`chizi.tang.ninja`、`mozi.tang.ninja`、`liangzi.tang.ninja`（域名的 DNS 要托管在 Cloudflare）
+- 部署完成后，Settings → Domains & Routes → Add → Custom domain，加上 `tang.ninja`、`www.tang.ninja`、`chizi.tang.ninja`、`mozi.tang.ninja`、`liangzi.tang.ninja`、`wind.tang.ninja`（域名的 DNS 要托管在 Cloudflare）

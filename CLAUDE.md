@@ -22,9 +22,10 @@ Yang Tang's research homepage plus his kids' browser games. Static site on Cloud
 - `kids/<id>/games/*.html`: one self-contained game per file. Served at `<id>.tang.ninja/games/<slug>`.
 - `kids/<id>/games.json`: optional per-game `slug`, `blurb`, `title`, `added` (YYYY-MM-DD; shows "New" for 14 days), order (first = shown first). Games missing from it are shown first.
 - `kids/<id>/games/<same name>.jpg|png`: optional cover image, 960x600.
-- `site.json`: domain and the kids: `id` (subdomain), `name`, `theme` (`hazard`, `comic` or `dossier`, in `shared/themes/`; fonts per theme are in build.mjs `THEMES`).
+- `site.json`: domain and the kids: `id` (subdomain), `name`, `theme` (`hazard`, `comic` or `dossier`, in `shared/themes/`; fonts per theme are in build.mjs `THEMES`); and `apps`, standalone pages on their own subdomain.
+- `apps/<id>/`: a standalone page served as-is at `<id>.tang.ninja` (copied to `dist/<id>/`). `apps/wind/index.html` is the 3D wind CFD demo over vgpu's Mechanical Garden (wind.tang.ninja): a single-file Vite build whose source is on the user's computer in `~/Desktop/Claude/CFD/garden-wind-3d/`; to update it, rebuild there and copy `dist/index.html` over it, keeping the MIT notice comment at the top (the bundle drops the libraries' license headers). Neither the home page nor the kids' pages link to it.
 - `templates/kid.html` + `shared/kid.css`: the games-page structure shared by every theme.
-- `dist/_worker.js` (generated) routes `<id>.tang.ninja` to `dist/<id>/`; `wrangler.jsonc` deploys it as the Worker (`run_worker_first`) with `dist/` as its assets (`dist/.assetsignore` keeps the worker file out of the assets).
+- `dist/_worker.js` (generated) routes `<id>.tang.ninja` (kids and apps) to `dist/<id>/`; `wrangler.jsonc` deploys it as the Worker (`run_worker_first`) with `dist/` as its assets (`dist/.assetsignore` keeps the worker file out of the assets).
 
 ## Adding or updating a game
 1. Copy the `.html` into `kids/<id>/games/`, keeping the original file name so later versions overwrite it.
