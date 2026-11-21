@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>维港 · 水晶模型（4K）</title>
+<style>
+  /* 精致包豪斯: plaster paper, ink, and three primaries used as small solid marks; one grid, square corners, hairlines */
+  :root { --paper: #efebe4; --paper2: #e4dfd5; --ink: #151515; --ink2: rgba(21, 21, 21, .62); --ink3: rgba(21, 21, 21, .4);
+    --red: #c8372d; --yel: #e2ad35; --blu: #283a8f; --u: 8px;
+    --lat: "Futura", "Avenir Next", "Century Gothic", "Helvetica Neue", Arial, sans-serif;
+    --cjk: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif; }
+  html, body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--lat), var(--cjk); -webkit-font-smoothing: antialiased; }
+  #c { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; cursor: crosshair; touch-action: pan-y; }
+  #track { height: 900vh; }
+  /* altitude rail: where the camera is on the way down */
+  #rail { right: calc(3 * var(--u)); top: 50%; transform: translateY(-50%); width: 64px; padding: 14px 10px; display: flex; flex-direction: column; align-items: center; gap: 10px; z-index: 4; }
+  #rail .bar { position: relative; width: 2px; height: 180px; background: var(--ink); opacity: .85; }
+  #rail .dot { position: absolute; left: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; background: var(--red); border-radius: 50%; }
+  #rail .tick { position: absolute; left: -5px; width: 12px; height: 1px; background: var(--ink); }
+  #rail .v { font-family: var(--lat); font-size: 15px; font-weight: 500; font-variant-numeric: tabular-nums; line-height: 1; }
+  #rail .k { font-family: var(--cjk); font-size: 10px; letter-spacing: .14em; color: var(--ink2); }
+  #scrollhint { left: 50%; bottom: calc(3 * var(--u)); transform: translateX(-50%); padding: 9px 16px; font-family: var(--cjk); font-size: 12px; letter-spacing: .2em; display: flex; gap: 10px; align-items: center; transition: opacity .6s; z-index: 4; }
+  #scrollhint i { width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 9px solid var(--red); }
+  @media (max-width: 900px) { #rail { display: none; } }
+  #wc { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; z-index: 1; opacity: 0; pointer-events: none; cursor: crosshair; touch-action: pan-y; }
+  .stop { position: fixed; right: calc(6 * var(--u) + 64px); top: 50%; z-index: 5; width: 360px; padding: calc(3 * var(--u)) calc(3 * var(--u)) calc(2.5 * var(--u));
+    background: var(--paper); opacity: 0; transform: translateY(calc(-50% + 18px)); pointer-events: none; will-change: opacity, transform; }
+  .stop .marks { display: flex; gap: 6px; align-items: center; margin-bottom: calc(1.5 * var(--u)); }
+  .stop .marks span { display: block; width: 14px; height: 14px; }
+  .stop .marks .c { background: var(--red); border-radius: 50%; } .stop .marks .s { background: var(--blu); }
+  .stop .marks .t { width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-bottom: 14px solid var(--yel); }
+  .stop .no { font-family: var(--lat); font-size: 11px; letter-spacing: .3em; color: var(--red); font-weight: 600; }
+  .stop h2 { margin: 10px 0 0; font-family: var(--cjk); font-size: 40px; line-height: 1.12; font-weight: 600; letter-spacing: .08em; }
+  .stop h2 small { display: block; font-family: var(--lat); font-size: 12px; font-weight: 500; letter-spacing: .34em; margin-top: 10px; color: var(--ink2); }
+  .stop p { margin: 0; font-family: var(--cjk); font-size: 14px; line-height: 1.9; letter-spacing: .02em; }
+  .stop .how { margin-top: calc(1.5 * var(--u)); font-family: var(--cjk); font-size: 12px; color: var(--ink2); line-height: 1.8; }
+  .stop .how b { color: var(--red); font-weight: 600; }
+  #stop3 { background: rgba(14, 8, 26, .78); color: #f4ecff; } #stop3 .rule { background: #f4ecff; } #stop3 h2 small, #stop3 .how { color: rgba(244, 236, 255, .66); }
+  #stop3 .how b { color: #00e5ff; }
+  @media (max-width: 900px) { .stop { left: calc(2 * var(--u)); right: calc(2 * var(--u)); width: auto; top: auto; bottom: calc(3 * var(--u)); transform: translateY(18px); } .stop h2 { font-size: 30px; } }
+  .ui { position: fixed; pointer-events: none; z-index: 2; }
+  #hint { display: none; }
+  #err { left: calc(3 * var(--u)); bottom: calc(1 * var(--u)); font-size: 11px; color: var(--red); z-index: 6; }
+  .card { position: fixed; z-index: 5; background: var(--paper); color: var(--ink); }
+  .cap { font-family: var(--lat); font-size: 10px; letter-spacing: .28em; text-transform: uppercase; color: var(--ink2); }
+  .tag { display: inline-flex; align-items: center; gap: 10px; }
+  .tag i { font-style: normal; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; font-family: var(--lat); font-size: 11px; font-weight: 600; color: var(--paper); background: var(--red); }
+  .tag i.b { background: var(--blu); } .tag i.y { background: var(--yel); color: var(--ink); }
+  .tag b { font-family: var(--cjk); font-size: 15px; font-weight: 600; letter-spacing: .12em; }
+  .tag em { font-style: normal; font-family: var(--lat); font-size: 10px; letter-spacing: .3em; color: var(--ink3); }
+  .rule { height: 1px; background: var(--ink); opacity: .85; margin: calc(1.5 * var(--u)) 0; }
+
+  /* 01 title column */
+  #intro { left: calc(3 * var(--u)); top: calc(3 * var(--u)); width: 292px; padding: calc(2.5 * var(--u)) calc(2.5 * var(--u)) calc(2 * var(--u)); }
+  #intro .marks { display: flex; gap: 6px; align-items: center; margin-bottom: calc(1.5 * var(--u)); }
+  #intro .marks span { display: block; width: 14px; height: 14px; }
+  #intro .marks .c { background: var(--red); border-radius: 50%; } #intro .marks .s { background: var(--blu); }
+  #intro .marks .t { width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-bottom: 14px solid var(--yel); }
+  #intro h1 { margin: 6px 0 0; font-family: var(--cjk); font-size: 30px; line-height: 1.15; font-weight: 600; letter-spacing: .08em; }
+  #intro h1 small { display: block; font-family: var(--lat); font-size: 12px; font-weight: 500; letter-spacing: .34em; margin-top: 8px; color: var(--ink2); }
+  #intro p { margin: 0; font-family: var(--cjk); font-size: 12.5px; line-height: 1.85; color: var(--ink); letter-spacing: .02em; }
+  #intro ol { list-style: none; margin: 0; padding: 0; }
+  #intro li { display: grid; grid-template-columns: 26px 1fr; align-items: baseline; font-family: var(--cjk); font-size: 12px; line-height: 1.9; }
+  #intro li span { font-family: var(--lat); font-size: 10px; letter-spacing: .1em; color: var(--red); font-weight: 600; }
+  #intro li b { font-weight: 600; }
+  #intro.min p, #intro.min ol, #intro.min .rule { display: none; }
+
+  /* 02 sea-breeze instrument */
+  #wind { left: calc(3 * var(--u)); bottom: calc(3 * var(--u)); width: 236px; padding: calc(2 * var(--u)); user-select: none; -webkit-user-select: none; }
+  #wind .hd { display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+  #wind .read { display: flex; align-items: baseline; justify-content: space-between; margin: calc(1.5 * var(--u)) 0 2px; }
+  #wind .num { font-family: var(--lat); font-size: 40px; line-height: 1; font-weight: 500; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+  #wind .num small { font-size: 11px; font-weight: 500; letter-spacing: .2em; margin-left: 6px; color: var(--ink2); }
+  #wind .dir { font-family: var(--cjk); font-size: 12px; color: var(--ink); text-align: right; line-height: 1.4; }
+  #wind .frame { margin-top: calc(1.5 * var(--u)); border: 2px solid var(--ink); }
+  #wind canvas { display: block; width: 232px; height: 232px; cursor: crosshair; touch-action: none; }
+  #wind .lg { height: 6px; margin: calc(1.25 * var(--u)) 0 4px; background: linear-gradient(90deg, #283a8f 0%, #8d9bc6 33%, #ece7dd 67%, #e2ad35 83%, #c8372d 100%); }
+  #wind .lt { display: flex; justify-content: space-between; font-family: var(--lat); font-size: 9.5px; letter-spacing: .12em; color: var(--ink2); }
+  #wind .tip { font-family: var(--cjk); font-size: 11px; line-height: 1.7; color: var(--ink2); margin-top: var(--u); }
+  #wind.min .frame, #wind.min .lg, #wind.min .lt, #wind.min .tip { display: none; }
+
+  /* top-right controls */
+  .btn { position: fixed; top: calc(3 * var(--u)); z-index: 6; height: 36px; padding: 0 16px 0 12px; display: inline-flex; align-items: center; gap: 10px;
+    font-family: var(--cjk); font-size: 12px; letter-spacing: .14em; color: var(--ink); background: var(--paper); border: 0; cursor: pointer; }
+  .btn i { display: block; width: 10px; height: 10px; background: var(--red); border-radius: 50%; }
+  .btn i.sq { background: var(--ink); border-radius: 0; }
+  .btn:hover { background: var(--ink); color: var(--paper); } .btn:hover i.sq { background: var(--paper); }
+  #pbtn { right: calc(3 * var(--u)); } #cbtn { right: calc(3 * var(--u) + 92px); }
+
+  /* 03 settings */
+  #panel { right: calc(3 * var(--u)); top: calc(3 * var(--u) + 44px); width: 312px; max-height: calc(100vh - 100px); overflow-y: auto; padding: calc(2 * var(--u)) calc(2.5 * var(--u)); display: none; font-size: 12px; }
+  #panel.open { display: block; }
+  #panel h4 { margin: calc(2 * var(--u)) 0 6px; display: flex; align-items: center; gap: 8px; font-family: var(--cjk); font-size: 12px; font-weight: 600; letter-spacing: .16em; }
+  #panel h4::before { content: ""; width: 8px; height: 8px; background: var(--blu); }
+  #panel h4:first-child { margin-top: 0; }
+  #panel .row { display: grid; grid-template-columns: 70px 1fr 50px; align-items: center; gap: 10px; margin: 7px 0 1px; font-family: var(--cjk); }
+  #panel .row span { text-align: right; font-family: var(--lat); font-size: 11px; font-variant-numeric: tabular-nums; }
+  #panel .tip { color: var(--ink3); font-family: var(--cjk); font-size: 10.5px; line-height: 1.5; margin: 0 0 4px 80px; }
+  #panel .btns { display: flex; gap: 8px; margin-top: calc(2 * var(--u)); }
+  #panel button { flex: 1; font-family: var(--cjk); font-size: 12px; letter-spacing: .1em; color: var(--ink); background: transparent; border: 1px solid var(--ink); padding: 7px 0; cursor: pointer; }
+  #panel button:hover { background: var(--ink); color: var(--paper); }
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 16px; background: transparent; margin: 0; }
+  input[type=range]::-webkit-slider-runnable-track { height: 1px; background: var(--ink); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 11px; height: 11px; margin-top: -5px; background: var(--red); border: 0; }
+  input[type=range]::-moz-range-track { height: 1px; background: var(--ink); } input[type=range]::-moz-range-thumb { width: 11px; height: 11px; background: var(--red); border: 0; border-radius: 0; }
+
+  /* 04 colophon */
+  #colo { right: calc(3 * var(--u)); bottom: calc(3 * var(--u)); width: 340px; padding: calc(2 * var(--u)) calc(2.5 * var(--u)); }
+  #colo p { margin: 0; font-family: var(--cjk); font-size: 12.5px; line-height: 1.85; letter-spacing: .02em; }
+  #colo .rule { margin: calc(1.25 * var(--u)) 0; }
+  #colo .meta { display: flex; justify-content: space-between; white-space: nowrap; font-family: var(--lat); font-size: 9px; letter-spacing: .2em; text-transform: uppercase; color: var(--ink2); }
+  #colo b { color: var(--ink); font-weight: 600; }
+
+  #load { inset: 0; z-index: 9; display: flex; flex-direction: column; gap: 14px; align-items: center; justify-content: center; background: var(--paper); transition: opacity .8s;
+    font-family: var(--cjk); font-size: 12px; letter-spacing: .3em; color: var(--ink2); }
+  #load .marks { display: flex; gap: 8px; } #load .marks span { width: 12px; height: 12px; display: block; animation: blink 1.2s infinite; }
+  #load .marks span:nth-child(1) { background: var(--red); border-radius: 50%; } #load .marks span:nth-child(2) { background: var(--yel); animation-delay: .2s; } #load .marks span:nth-child(3) { background: var(--blu); animation-delay: .4s; }
+  @keyframes blink { 50% { opacity: .25; } }
+  @media (max-height: 760px) { #intro ol, #intro .rule, #wind .tip { display: none; } }
+  @media (max-width: 900px) { #intro p, #intro ol, #intro .rule, #colo { display: none; } #intro { width: auto; } #wind .tip { display: none; } }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<canvas id="wc"></canvas>
+<div id="track"></div>
+<div class="card ui" id="rail"><div class="k">高度</div><div class="v" id="rAlt">0</div><div class="bar"><div class="tick" style="top:0"></div><div class="tick" style="top:50%"></div><div class="tick" style="top:100%"></div><div class="dot" id="rDot"></div></div><div class="v" id="rTilt">0°</div><div class="k">俯角</div></div>
+<div class="card ui" id="scrollhint"><i></i>向下滚动</div>
+<div class="ui" id="hint"></div>
+<div class="ui" id="load"><div class="marks"><span></span><span></span><span></span></div>模型载入中</div>
+<div class="ui" id="err"></div>
+
+<section class="stop" id="stop1">
+  <div class="marks"><span class="c"></span><span class="t"></span><span class="s"></span></div>
+  <div class="no">01 · 2900 M</div>
+  <h2>一座水晶的城<small>VICTORIA HARBOUR</small></h2>
+  <div class="rule"></div>
+  <p>从两千九百米的高空看维港：每一栋楼都是一块玻璃，从蒂芙尼蓝和克莱因蓝开始。</p>
+  <div class="how"><b>移动鼠标</b>　放出云雾，看海风把它带去哪里</div>
+</section>
+<section class="stop" id="stop2">
+  <div class="marks"><span class="s"></span><span class="c"></span><span class="t"></span></div>
+  <div class="no">02 · IFC</div>
+  <h2>风穿过中环<small>WIND &amp; FOG</small></h2>
+  <div class="rule"></div>
+  <p>落到中环上空，楼都换上了自己的颜色。海风从维港吹上岸，在楼宇之间转弯、加速、打旋。</p>
+  <div class="how"><b>按住拖动</b>　只吹风，不出雾</div>
+</section>
+<section class="stop" id="stop3">
+  <div class="marks"><span class="t"></span><span class="s"></span><span class="c"></span></div>
+  <div class="no">03 · ICC</div>
+  <h2>入夜<small>NIGHT OVER WEST KOWLOON</small></h2>
+  <div class="rule"></div>
+  <p>天暗下来，整座城一起慢慢变成粉色。海面是实时算的浅水方程：船在推水，水撞到码头卷出漩涡。</p>
+  <div class="how"><b>划过海面</b>　推着水走　·　<b>点一下</b>　一记重击</div>
+</section>
+
+<section class="card" id="wind">
+  <div class="hd tag"><i>01</i><b>海风</b><em>SEA BREEZE</em></div>
+  <div class="read"><div class="num"><span id="wSpd">0</span><small>M/S</small></div><div class="dir" id="wDir"></div></div>
+  <div class="frame"><canvas id="bcv"></canvas></div>
+  <div class="lg"></div><div class="lt"><span>0</span><span>0.5×</span><span>1×</span><span>1.5×</span></div>
+  <div class="tip">拖动箭头：指向即风去的方向，长度即风速，外圈 36 m/s。颜色是街道高度的风速与海风之比，虚线框是画面所见范围。</div>
+</section>
+
+<button class="btn" id="cbtn"><i></i>清除云雾</button><button class="btn" id="pbtn"><i class="sq"></i>参数</button>
+<section class="card" id="panel"></section>
+
+<script>
+const CFG = {"tilt":45.0,"az":135.0,"lens":60.0,"uc":318.1980515339463,"vc":675.0,"D":2176.0,"pw":1920,"ph":1080,"dom":{"X0":-2318.0,"Y0":-1880.0,"S":3700.0},"grid":[400,400,12],"tiles":[4,3],"dz":12,"cams":[{"tilt":0.0,"pos":[-1295.98,-845.98,2900.0],"az":135.0,"lens":60.0},{"tilt":0.248,"pos":[-1288.66,-838.66,2897.09],"az":135.0,"lens":59.521},{"tilt":0.499,"pos":[-1281.28,-831.28,2894.15],"az":135.0,"lens":59.047},{"tilt":0.751,"pos":[-1273.86,-823.86,2891.16],"az":135.0,"lens":58.578},{"tilt":1.005,"pos":[-1266.38,-816.38,2888.14],"az":135.0,"lens":58.114},{"tilt":1.262,"pos":[-1258.85,-808.85,2885.08],"az":135.0,"lens":57.654},{"tilt":1.52,"pos":[-1251.27,-801.27,2881.97],"az":135.0,"lens":57.199},{"tilt":1.781,"pos":[-1243.64,-793.64,2878.82],"az":135.0,"lens":56.749},{"tilt":2.045,"pos":[-1235.95,-785.95,2875.63],"az":135.0,"lens":56.303},{"tilt":2.311,"pos":[-1228.21,-778.21,2872.4],"az":135.0,"lens":55.862},{"tilt":2.58,"pos":[-1220.42,-770.42,2869.12],"az":135.0,"lens":55.426},{"tilt":2.851,"pos":[-1212.57,-762.57,2865.8],"az":135.0,"lens":54.994},{"tilt":3.125,"pos":[-1204.67,-754.67,2862.44],"az":135.0,"lens":54.566},{"tilt":3.402,"pos":[-1196.71,-746.71,2859.03],"az":135.0,"lens":54.144},{"tilt":3.682,"pos":[-1188.7,-738.7,2855.57],"az":135.0,"lens":53.725},{"tilt":3.965,"pos":[-1180.63,-730.63,2852.06],"az":135.0,"lens":53.312},{"tilt":4.251,"pos":[-1172.51,-722.51,2848.51],"az":135.0,"lens":52.902},{"tilt":4.539,"pos":[-1164.33,-714.33,2844.91],"az":135.0,"lens":52.497},{"tilt":4.831,"pos":[-1156.1,-706.1,2841.27],"az":135.0,"lens":52.097},{"tilt":5.126,"pos":[-1147.82,-697.82,2837.57],"az":135.0,"lens":51.701},{"tilt":5.423,"pos":[-1139.47,-689.47,2833.82],"az":135.0,"lens":51.309},{"tilt":5.724,"pos":[-1131.08,-681.08,2830.03],"az":135.0,"lens":50.922},{"tilt":6.028,"pos":[-1122.63,-672.63,2826.19],"az":135.0,"lens":50.539},{"tilt":6.334,"pos":[-1114.13,-664.13,2822.29],"az":135.0,"lens":50.16},{"tilt":6.643,"pos":[-1105.57,-655.57,2818.35],"az":135.0,"lens":49.786},{"tilt":6.955,"pos":[-1096.97,-646.97,2814.36],"az":135.0,"lens":49.415},{"tilt":7.27,"pos":[-1088.31,-638.31,2810.31],"az":135.0,"lens":49.049},{"tilt":7.587,"pos":[-1079.59,-629.59,2806.21],"az":135.0,"lens":48.687},{"tilt":7.907,"pos":[-1070.83,-620.83,2802.07],"az":135.0,"lens":48.33},{"tilt":8.229,"pos":[-1062.02,-612.02,2797.87],"az":135.0,"lens":47.976},{"tilt":8.554,"pos":[-1053.16,-603.16,2793.62],"az":135.0,"lens":47.627},{"tilt":8.881,"pos":[-1044.25,-594.25,2789.32],"az":135.0,"lens":47.282},{"tilt":9.21,"pos":[-1035.3,-585.3,2784.97],"az":135.0,"lens":46.94},{"tilt":9.54,"pos":[-1026.29,-576.29,2780.56],"az":135.0,"lens":46.603},{"tilt":9.873,"pos":[-1017.24,-567.24,2776.11],"az":135.0,"lens":46.27},{"tilt":10.207,"pos":[-1008.15,-558.15,2771.6],"az":135.0,"lens":45.941},{"tilt":10.543,"pos":[-999.02,-549.02,2767.04],"az":135.0,"lens":45.616},{"tilt":10.88,"pos":[-989.84,-539.84,2762.43],"az":135.0,"lens":45.294},{"tilt":11.219,"pos":[-980.62,-530.62,2757.77],"az":135.0,"lens":44.977},{"tilt":11.558,"pos":[-971.37,-521.37,2753.05],"az":135.0,"lens":44.664},{"tilt":11.899,"pos":[-962.07,-512.07,2748.29],"az":135.0,"lens":44.354},{"tilt":12.24,"pos":[-952.74,-502.74,2743.48],"az":135.0,"lens":44.049},{"tilt":12.582,"pos":[-943.37,-493.37,2738.61],"az":135.0,"lens":43.747},{"tilt":12.925,"pos":[-933.97,-483.97,2733.69],"az":135.0,"lens":43.449},{"tilt":13.269,"pos":[-924.54,-474.54,2728.73],"az":135.0,"lens":43.155},{"tilt":13.613,"pos":[-915.07,-465.07,2723.71],"az":135.0,"lens":42.864},{"tilt":13.958,"pos":[-905.58,-455.58,2718.64],"az":135.0,"lens":42.577},{"tilt":14.303,"pos":[-896.05,-446.05,2713.53],"az":135.0,"lens":42.294},{"tilt":14.649,"pos":[-886.49,-436.49,2708.36],"az":135.0,"lens":42.015},{"tilt":14.995,"pos":[-876.9,-426.9,2703.15],"az":135.0,"lens":41.739},{"tilt":15.342,"pos":[-867.29,-417.29,2697.88],"az":135.0,"lens":41.467},{"tilt":15.69,"pos":[-857.64,-407.64,2692.57],"az":135.0,"lens":41.199},{"tilt":16.038,"pos":[-847.97,-397.97,2687.21],"az":135.0,"lens":40.934},{"tilt":16.386,"pos":[-838.26,-388.26,2681.81],"az":135.0,"lens":40.673},{"tilt":16.735,"pos":[-828.53,-378.53,2676.36],"az":135.0,"lens":40.415},{"tilt":17.084,"pos":[-818.77,-368.77,2670.86],"az":135.0,"lens":40.161},{"tilt":17.434,"pos":[-808.98,-358.98,2665.31],"az":135.0,"lens":39.91},{"tilt":17.785,"pos":[-799.16,-349.16,2659.72],"az":135.0,"lens":39.663},{"tilt":18.135,"pos":[-789.32,-339.32,2654.08],"az":135.0,"lens":39.419},{"tilt":18.487,"pos":[-779.45,-329.45,2648.4],"az":135.0,"lens":39.179},{"tilt":18.838,"pos":[-769.55,-319.55,2642.68],"az":135.0,"lens":38.942},{"tilt":19.19,"pos":[-759.62,-309.62,2636.9],"az":135.0,"lens":38.708},{"tilt":19.543,"pos":[-749.66,-299.66,2631.09],"az":135.0,"lens":38.478},{"tilt":19.896,"pos":[-739.68,-289.68,2625.23],"az":135.0,"lens":38.251},{"tilt":20.249,"pos":[-729.67,-279.67,2619.32],"az":135.0,"lens":38.028},{"tilt":20.602,"pos":[-719.64,-269.64,2613.38],"az":135.0,"lens":37.807},{"tilt":20.956,"pos":[-709.58,-259.58,2607.38],"az":135.0,"lens":37.59},{"tilt":21.311,"pos":[-699.49,-249.49,2601.35],"az":135.0,"lens":37.376},{"tilt":21.666,"pos":[-689.38,-239.38,2595.27],"az":135.0,"lens":37.166},{"tilt":22.021,"pos":[-679.25,-229.25,2589.14],"az":135.0,"lens":36.958},{"tilt":22.376,"pos":[-669.09,-219.09,2582.98],"az":135.0,"lens":36.754},{"tilt":22.732,"pos":[-658.91,-208.91,2576.77],"az":135.0,"lens":36.553},{"tilt":23.088,"pos":[-648.7,-198.7,2570.51],"az":135.0,"lens":36.354},{"tilt":23.444,"pos":[-638.47,-188.47,2564.21],"az":135.0,"lens":36.159},{"tilt":23.801,"pos":[-628.22,-178.22,2557.87],"az":135.0,"lens":35.967},{"tilt":24.158,"pos":[-617.95,-167.95,2551.49],"az":135.0,"lens":35.779},{"tilt":24.515,"pos":[-607.65,-157.65,2545.06],"az":135.0,"lens":35.593},{"tilt":24.873,"pos":[-597.34,-147.34,2538.58],"az":135.0,"lens":35.41},{"tilt":25.23,"pos":[-587.01,-137.01,2532.07],"az":135.0,"lens":35.23},{"tilt":25.588,"pos":[-576.65,-126.65,2525.51],"az":135.0,"lens":35.053},{"tilt":25.947,"pos":[-566.28,-116.28,2518.9],"az":135.0,"lens":34.879},{"tilt":26.305,"pos":[-555.89,-105.89,2512.25],"az":135.0,"lens":34.707},{"tilt":26.664,"pos":[-545.48,-95.48,2505.55],"az":135.0,"lens":34.539},{"tilt":27.023,"pos":[-535.06,-85.06,2498.81],"az":135.0,"lens":34.374},{"tilt":27.382,"pos":[-524.62,-74.62,2492.02],"az":135.0,"lens":34.211},{"tilt":27.741,"pos":[-514.17,-64.17,2485.19],"az":135.0,"lens":34.051},{"tilt":28.1,"pos":[-503.7,-53.7,2478.31],"az":135.0,"lens":33.894},{"tilt":28.46,"pos":[-493.22,-43.22,2471.38],"az":135.0,"lens":33.739},{"tilt":28.82,"pos":[-482.72,-32.72,2464.41],"az":135.0,"lens":33.588},{"tilt":29.179,"pos":[-472.22,-22.22,2457.39],"az":135.0,"lens":33.439},{"tilt":29.539,"pos":[-461.7,-11.7,2450.32],"az":135.0,"lens":33.292},{"tilt":29.899,"pos":[-451.18,-1.18,2443.2],"az":135.0,"lens":33.149},{"tilt":30.26,"pos":[-440.64,9.36,2436.04],"az":135.0,"lens":33.008},{"tilt":30.62,"pos":[-430.1,19.9,2428.82],"az":135.0,"lens":32.869},{"tilt":30.98,"pos":[-419.55,30.45,2421.55],"az":135.0,"lens":32.733},{"tilt":31.341,"pos":[-408.99,41.01,2414.24],"az":135.0,"lens":32.6},{"tilt":31.701,"pos":[-398.43,51.57,2406.87],"az":135.0,"lens":32.469},{"tilt":32.062,"pos":[-387.86,62.14,2399.45],"az":135.0,"lens":32.341},{"tilt":32.422,"pos":[-377.3,72.7,2391.98],"az":135.0,"lens":32.215},{"tilt":32.783,"pos":[-366.72,83.28,2384.45],"az":135.0,"lens":32.092},{"tilt":33.143,"pos":[-356.15,93.85,2376.88],"az":135.0,"lens":31.971},{"tilt":33.503,"pos":[-345.58,104.42,2369.24],"az":135.0,"lens":31.853},{"tilt":33.864,"pos":[-335.01,114.99,2361.55],"az":135.0,"lens":31.736},{"tilt":34.224,"pos":[-324.43,125.57,2353.81],"az":135.0,"lens":31.623},{"tilt":34.584,"pos":[-313.86,136.14,2346.01],"az":135.0,"lens":31.511},{"tilt":34.944,"pos":[-303.29,146.71,2338.15],"az":135.0,"lens":31.402},{"tilt":35.303,"pos":[-292.73,157.27,2330.23],"az":135.0,"lens":31.295},{"tilt":35.663,"pos":[-282.16,167.84,2322.26],"az":135.0,"lens":31.191},{"tilt":36.021,"pos":[-271.6,178.4,2314.22],"az":135.0,"lens":31.088},{"tilt":36.38,"pos":[-261.05,188.95,2306.13],"az":135.0,"lens":30.988},{"tilt":36.738,"pos":[-250.5,199.5,2297.97],"az":135.0,"lens":30.89},{"tilt":37.096,"pos":[-239.95,210.05,2289.75],"az":135.0,"lens":30.794},{"tilt":37.453,"pos":[-229.42,220.58,2281.47],"az":135.0,"lens":30.701},{"tilt":37.81,"pos":[-218.88,231.12,2273.13],"az":135.0,"lens":30.609},{"tilt":38.166,"pos":[-208.36,241.64,2264.73],"az":135.0,"lens":30.52},{"tilt":38.521,"pos":[-197.84,252.16,2256.26],"az":135.0,"lens":30.432},{"tilt":38.876,"pos":[-187.32,262.68,2247.72],"az":135.0,"lens":30.347},{"tilt":39.23,"pos":[-176.82,273.18,2239.13],"az":135.0,"lens":30.264},{"tilt":39.583,"pos":[-166.32,283.68,2230.46],"az":135.0,"lens":30.183},{"tilt":39.935,"pos":[-155.84,294.16,2221.74],"az":135.0,"lens":30.103},{"tilt":40.287,"pos":[-145.36,304.64,2212.94],"az":135.0,"lens":30.026},{"tilt":40.638,"pos":[-134.89,315.11,2204.08],"az":135.0,"lens":29.95},{"tilt":40.988,"pos":[-124.43,325.57,2195.15],"az":135.0,"lens":29.877},{"tilt":41.337,"pos":[-113.98,336.02,2186.16],"az":135.0,"lens":29.805},{"tilt":41.685,"pos":[-103.54,346.46,2177.09],"az":135.0,"lens":29.735},{"tilt":42.032,"pos":[-93.11,356.89,2167.96],"az":135.0,"lens":29.667},{"tilt":42.378,"pos":[-82.7,367.3,2158.76],"az":135.0,"lens":29.601},{"tilt":42.723,"pos":[-72.29,377.71,2149.48],"az":135.0,"lens":29.537},{"tilt":43.067,"pos":[-61.9,388.1,2140.13],"az":135.0,"lens":29.474},{"tilt":43.41,"pos":[-51.52,398.48,2130.71],"az":135.0,"lens":29.413},{"tilt":43.751,"pos":[-41.15,408.85,2121.21],"az":135.0,"lens":29.354},{"tilt":44.092,"pos":[-30.8,419.2,2111.64],"az":135.0,"lens":29.296},{"tilt":44.431,"pos":[-20.45,429.55,2101.99],"az":135.0,"lens":29.24},{"tilt":44.769,"pos":[-10.12,439.88,2092.27],"az":135.0,"lens":29.186},{"tilt":45.106,"pos":[0.19,450.19,2082.46],"az":135.0,"lens":29.133},{"tilt":45.441,"pos":[10.49,460.49,2072.58],"az":135.0,"lens":29.082},{"tilt":45.775,"pos":[20.78,470.78,2062.61],"az":135.0,"lens":29.033},{"tilt":46.108,"pos":[31.06,481.06,2052.55],"az":135.0,"lens":28.984},{"tilt":46.44,"pos":[41.31,491.31,2042.42],"az":135.0,"lens":28.938},{"tilt":46.77,"pos":[51.56,501.56,2032.19],"az":135.0,"lens":28.893},{"tilt":47.098,"pos":[61.79,511.79,2021.88],"az":135.0,"lens":28.849},{"tilt":47.426,"pos":[72.0,522.0,2011.48],"az":135.0,"lens":28.807},{"tilt":47.751,"pos":[82.2,532.2,2000.99],"az":135.0,"lens":28.767},{"tilt":48.075,"pos":[92.38,542.38,1990.4],"az":135.0,"lens":28.727},{"tilt":48.398,"pos":[102.55,552.55,1979.72],"az":135.0,"lens":28.689},{"tilt":48.719,"pos":[112.7,562.7,1968.94],"az":135.0,"lens":28.653},{"tilt":49.039,"pos":[122.84,572.84,1958.06],"az":135.0,"lens":28.618},{"tilt":49.357,"pos":[132.95,582.95,1947.08],"az":135.0,"lens":28.584},{"tilt":49.673,"pos":[143.05,593.05,1936.0],"az":135.0,"lens":28.551},{"tilt":49.988,"pos":[153.13,603.13,1924.81],"az":135.0,"lens":28.519},{"tilt":50.3,"pos":[163.2,613.2,1913.52],"az":135.0,"lens":28.489},{"tilt":50.611,"pos":[173.24,623.24,1902.11],"az":135.0,"lens":28.46},{"tilt":50.919,"pos":[183.26,633.26,1890.59],"az":135.0,"lens":28.432},{"tilt":51.226,"pos":[193.26,643.26,1878.96],"az":135.0,"lens":28.406},{"tilt":51.53,"pos":[203.24,653.24,1867.22],"az":135.0,"lens":28.38},{"tilt":51.831,"pos":[213.19,663.19,1855.35],"az":135.0,"lens":28.355},{"tilt":52.13,"pos":[223.11,673.11,1843.36],"az":135.0,"lens":28.332},{"tilt":52.426,"pos":[233.01,683.01,1831.24],"az":135.0,"lens":28.31},{"tilt":52.718,"pos":[242.87,692.87,1818.98],"az":135.0,"lens":28.288},{"tilt":53.008,"pos":[252.7,702.7,1806.59],"az":135.0,"lens":28.268},{"tilt":53.294,"pos":[262.51,712.51,1794.05],"az":135.0,"lens":28.249},{"tilt":53.577,"pos":[272.27,722.27,1781.36],"az":135.0,"lens":28.23},{"tilt":53.856,"pos":[282.0,732.0,1768.51],"az":135.0,"lens":28.213},{"tilt":54.131,"pos":[291.7,741.7,1755.49],"az":135.0,"lens":28.196},{"tilt":54.402,"pos":[301.35,751.35,1742.29],"az":135.0,"lens":28.181},{"tilt":54.669,"pos":[310.97,760.97,1728.91],"az":135.0,"lens":28.166},{"tilt":54.931,"pos":[320.54,770.54,1715.32],"az":135.0,"lens":28.152},{"tilt":55.189,"pos":[330.08,780.08,1701.53],"az":135.0,"lens":28.139},{"tilt":55.443,"pos":[339.57,789.57,1687.52],"az":135.0,"lens":28.126},{"tilt":55.691,"pos":[349.02,799.02,1673.29],"az":135.0,"lens":28.115},{"tilt":55.935,"pos":[358.42,808.42,1658.83],"az":135.0,"lens":28.104},{"tilt":56.174,"pos":[367.78,817.78,1644.14],"az":135.0,"lens":28.093},{"tilt":56.408,"pos":[377.1,827.1,1629.2],"az":135.0,"lens":28.084},{"tilt":56.637,"pos":[386.37,836.37,1614.01],"az":135.0,"lens":28.075},{"tilt":56.86,"pos":[395.59,845.59,1598.57],"az":135.0,"lens":28.067},{"tilt":57.078,"pos":[404.77,854.77,1582.88],"az":135.0,"lens":28.059},{"tilt":57.291,"pos":[413.9,863.9,1566.94],"az":135.0,"lens":28.052},{"tilt":57.498,"pos":[422.98,872.98,1550.73],"az":135.0,"lens":28.046},{"tilt":57.699,"pos":[432.01,882.01,1534.27],"az":135.0,"lens":28.04},{"tilt":57.895,"pos":[441.0,891.0,1517.55],"az":135.0,"lens":28.035},{"tilt":58.085,"pos":[449.93,899.93,1500.58],"az":135.0,"lens":28.03},{"tilt":58.267,"pos":[458.7,908.7,1483.57],"az":135.0,"lens":28.026},{"tilt":58.437,"pos":[467.12,917.12,1466.93],"az":135.0,"lens":28.022},{"tilt":58.593,"pos":[475.06,925.06,1450.94],"az":135.0,"lens":28.019},{"tilt":58.734,"pos":[482.45,932.45,1435.77],"az":135.0,"lens":28.016},{"tilt":58.862,"pos":[489.3,939.3,1421.5],"az":135.0,"lens":28.014},{"tilt":58.977,"pos":[495.63,945.63,1408.11],"az":135.0,"lens":28.012},{"tilt":59.08,"pos":[501.49,951.49,1395.54],"az":135.0,"lens":28.01},{"tilt":59.174,"pos":[506.93,956.93,1383.71],"az":135.0,"lens":28.009},{"tilt":59.259,"pos":[512.02,962.02,1372.5],"az":135.0,"lens":28.008},{"tilt":59.337,"pos":[516.82,966.82,1361.8],"az":135.0,"lens":28.007},{"tilt":59.41,"pos":[521.39,971.39,1351.51],"az":135.0,"lens":28.006},{"tilt":59.478,"pos":[525.79,975.79,1341.49],"az":135.0,"lens":28.005},{"tilt":59.542,"pos":[529.94,980.21,1331.62],"az":135.0,"lens":28.004},{"tilt":59.603,"pos":[533.82,984.78,1321.77],"az":135.0,"lens":28.004},{"tilt":59.662,"pos":[537.48,989.51,1311.85],"az":135.0,"lens":28.003},{"tilt":59.719,"pos":[540.93,994.36,1301.86],"az":135.0,"lens":28.003},{"tilt":59.773,"pos":[544.2,999.32,1291.8],"az":135.0,"lens":28.002},{"tilt":59.824,"pos":[547.3,1004.37,1281.66],"az":135.0,"lens":28.002},{"tilt":59.873,"pos":[550.23,1009.5,1271.45],"az":135.0,"lens":28.002},{"tilt":59.918,"pos":[553.03,1014.69,1261.17],"az":135.0,"lens":28.001},{"tilt":59.96,"pos":[555.68,1019.94,1250.81],"az":135.0,"lens":28.001},{"tilt":59.999,"pos":[558.22,1025.22,1240.38],"az":135.0,"lens":28.001},{"tilt":60.033,"pos":[560.64,1030.55,1229.89],"az":135.0,"lens":28.001},{"tilt":60.063,"pos":[562.95,1035.9,1219.32],"az":135.0,"lens":28.0},{"tilt":60.089,"pos":[565.16,1041.28,1208.69],"az":135.0,"lens":28.0},{"tilt":60.108,"pos":[567.28,1046.68,1197.99],"az":135.0,"lens":28.0},{"tilt":60.122,"pos":[569.31,1052.1,1187.22],"az":135.0,"lens":28.0},{"tilt":60.129,"pos":[571.26,1057.53,1176.4],"az":135.0,"lens":28.0},{"tilt":60.129,"pos":[573.13,1062.97,1165.51],"az":135.0,"lens":28.0},{"tilt":60.12,"pos":[574.94,1068.42,1154.57],"az":135.0,"lens":28.0},{"tilt":60.101,"pos":[576.67,1073.87,1143.57],"az":135.0,"lens":28.0},{"tilt":60.072,"pos":[578.34,1079.33,1132.53],"az":135.0,"lens":28.0},{"tilt":60.031,"pos":[579.95,1084.79,1121.43],"az":135.0,"lens":28.0},{"tilt":59.977,"pos":[581.51,1090.25,1110.3],"az":135.0,"lens":28.0},{"tilt":59.908,"pos":[583.01,1095.71,1099.12],"az":135.0,"lens":28.0},{"tilt":59.823,"pos":[584.46,1101.16,1087.91],"az":135.0,"lens":28.0},{"tilt":59.721,"pos":[585.86,1106.62,1076.66],"az":135.0,"lens":28.0},{"tilt":59.6,"pos":[587.21,1112.06,1065.39],"az":135.0,"lens":28.0},{"tilt":59.459,"pos":[588.52,1117.5,1054.1],"az":135.0,"lens":28.0},{"tilt":59.295,"pos":[589.79,1122.94,1042.78],"az":135.0,"lens":28.0},{"tilt":59.109,"pos":[591.02,1128.37,1031.46],"az":135.0,"lens":28.0},{"tilt":58.898,"pos":[592.21,1133.79,1020.13],"az":135.0,"lens":28.0},{"tilt":58.658,"pos":[593.37,1139.26,1008.66],"az":135.0,"lens":28.0},{"tilt":58.381,"pos":[594.54,1144.91,996.81],"az":135.0,"lens":28.0},{"tilt":58.056,"pos":[595.74,1150.87,984.3],"az":135.001,"lens":28.0},{"tilt":57.665,"pos":[596.98,1157.29,970.8],"az":135.003,"lens":28.0},{"tilt":57.187,"pos":[598.3,1164.34,955.99],"az":135.009,"lens":28.0},{"tilt":56.589,"pos":[599.72,1172.22,939.45],"az":135.022,"lens":28.0},{"tilt":55.83,"pos":[601.26,1181.16,920.71],"az":135.047,"lens":28.0},{"tilt":54.851,"pos":[602.95,1191.41,899.28],"az":135.095,"lens":28.0},{"tilt":53.577,"pos":[604.8,1203.24,874.68],"az":135.178,"lens":28.0},{"tilt":51.926,"pos":[606.8,1216.86,846.61],"az":135.32,"lens":28.0},{"tilt":49.826,"pos":[608.9,1232.24,815.27],"az":135.551,"lens":28.0},{"tilt":47.266,"pos":[611.03,1249.01,781.71],"az":135.901,"lens":28.0},{"tilt":44.354,"pos":[613.05,1266.23,748.05],"az":136.381,"lens":28.0},{"tilt":41.209,"pos":[614.9,1283.25,715.76],"az":136.989,"lens":28.0},{"tilt":37.864,"pos":[616.58,1300.02,685.08],"az":137.728,"lens":28.0},{"tilt":34.358,"pos":[618.11,1316.52,656.15],"az":138.6,"lens":28.0},{"tilt":30.737,"pos":[619.5,1332.71,629.05],"az":139.606,"lens":28.0},{"tilt":27.056,"pos":[620.77,1348.58,603.79],"az":140.743,"lens":28.0},{"tilt":23.378,"pos":[621.91,1364.09,580.32],"az":142.006,"lens":28.0},{"tilt":19.765,"pos":[622.95,1379.22,558.54],"az":143.387,"lens":28.0},{"tilt":16.278,"pos":[623.89,1393.94,538.33],"az":144.879,"lens":28.0},{"tilt":12.959,"pos":[624.73,1408.24,519.57],"az":146.471,"lens":28.0},{"tilt":9.833,"pos":[625.49,1422.11,502.16],"az":148.152,"lens":28.0},{"tilt":6.899,"pos":[626.18,1435.56,486.04],"az":149.908,"lens":28.0},{"tilt":4.136,"pos":[626.79,1448.59,471.14],"az":151.726,"lens":28.0},{"tilt":1.5,"pos":[627.35,1461.21,457.45],"az":153.591,"lens":28.0},{"tilt":-1.06,"pos":[627.85,1473.44,444.94],"az":155.488,"lens":28.0},{"tilt":-3.6,"pos":[628.3,1485.3,433.61],"az":157.402,"lens":28.0}],"na":287,"alt":[[2900,0.0],[2897,0.2],[2894,0.5],[2891,0.8],[2888,1.0],[2885,1.3],[2882,1.5],[2879,1.8],[2876,2.0],[2872,2.3],[2869,2.6],[2866,2.9],[2862,3.1],[2859,3.4],[2856,3.7],[2852,4.0],[2849,4.3],[2845,4.5],[2841,4.8],[2838,5.1],[2834,5.4],[2830,5.7],[2826,6.0],[2822,6.3],[2818,6.6],[2814,7.0],[2810,7.3],[2806,7.6],[2802,7.9],[2798,8.2],[2794,8.6],[2789,8.9],[2785,9.2],[2781,9.5],[2776,9.9],[2772,10.2],[2767,10.5],[2762,10.9],[2758,11.2],[2753,11.6],[2748,11.9],[2743,12.2],[2739,12.6],[2734,12.9],[2729,13.3],[2724,13.6],[2719,14.0],[2714,14.3],[2708,14.6],[2703,15.0],[2698,15.3],[2693,15.7],[2687,16.0],[2682,16.4],[2676,16.7],[2671,17.1],[2665,17.4],[2660,17.8],[2654,18.1],[2648,18.5],[2643,18.8],[2637,19.2],[2631,19.5],[2625,19.9],[2619,20.2],[2613,20.6],[2607,21.0],[2601,21.3],[2595,21.7],[2589,22.0],[2583,22.4],[2577,22.7],[2571,23.1],[2564,23.4],[2558,23.8],[2551,24.2],[2545,24.5],[2539,24.9],[2532,25.2],[2526,25.6],[2519,25.9],[2512,26.3],[2506,26.7],[2499,27.0],[2492,27.4],[2485,27.7],[2478,28.1],[2471,28.5],[2464,28.8],[2457,29.2],[2450,29.5],[2443,29.9],[2436,30.3],[2429,30.6],[2422,31.0],[2414,31.3],[2407,31.7],[2399,32.1],[2392,32.4],[2384,32.8],[2377,33.1],[2369,33.5],[2362,33.9],[2354,34.2],[2346,34.6],[2338,34.9],[2330,35.3],[2322,35.7],[2314,36.0],[2306,36.4],[2298,36.7],[2290,37.1],[2281,37.5],[2273,37.8],[2265,38.2],[2256,38.5],[2248,38.9],[2239,39.2],[2230,39.6],[2222,39.9],[2213,40.3],[2204,40.6],[2195,41.0],[2186,41.3],[2177,41.7],[2168,42.0],[2159,42.4],[2149,42.7],[2140,43.1],[2131,43.4],[2121,43.8],[2112,44.1],[2102,44.4],[2092,44.8],[2082,45.1],[2073,45.4],[2063,45.8],[2053,46.1],[2042,46.4],[2032,46.8],[2022,47.1],[2011,47.4],[2001,47.8],[1990,48.1],[1980,48.4],[1969,48.7],[1958,49.0],[1947,49.4],[1936,49.7],[1925,50.0],[1914,50.3],[1902,50.6],[1891,50.9],[1879,51.2],[1867,51.5],[1855,51.8],[1843,52.1],[1831,52.4],[1819,52.7],[1807,53.0],[1794,53.3],[1781,53.6],[1769,53.9],[1755,54.1],[1742,54.4],[1729,54.7],[1715,54.9],[1702,55.2],[1688,55.4],[1673,55.7],[1659,55.9],[1644,56.2],[1629,56.4],[1614,56.6],[1599,56.9],[1583,57.1],[1567,57.3],[1551,57.5],[1534,57.7],[1518,57.9],[1501,58.1],[1484,58.3],[1467,58.4],[1451,58.6],[1436,58.7],[1422,58.9],[1408,59.0],[1396,59.1],[1384,59.2],[1372,59.3],[1362,59.3],[1352,59.4],[1341,59.5],[1332,59.5],[1322,59.6],[1312,59.7],[1302,59.7],[1292,59.8],[1282,59.8],[1271,59.9],[1261,59.9],[1251,60.0],[1240,60.0],[1230,60.0],[1219,60.1],[1209,60.1],[1198,60.1],[1187,60.1],[1176,60.1],[1166,60.1],[1155,60.1],[1144,60.1],[1133,60.1],[1121,60.0],[1110,60.0],[1099,59.9],[1088,59.8],[1077,59.7],[1065,59.6],[1054,59.5],[1043,59.3],[1031,59.1],[1020,58.9],[1009,58.7],[997,58.4],[984,58.1],[971,57.7],[956,57.2],[939,56.6],[921,55.8],[899,54.9],[875,53.6],[847,51.9],[815,49.8],[782,47.3],[748,44.4],[716,41.2],[685,37.9],[656,34.4],[629,30.7],[604,27.1],[580,23.4],[559,19.8],[538,16.3],[520,13.0],[502,9.8],[486,6.9],[471,4.1],[457,1.5],[445,-1.1],[434,-3.6],[423,-6.2],[414,-8.8],[406,-11.6],[399,-14.4],[393,-17.4],[388,-20.6],[383,-23.8],[379,-27.2],[375,-30.7],[372,-34.3],[369,-38.0],[367,-41.7],[364,-45.6],[362,-49.4],[361,-53.3],[359,-57.2],[358,-61.0],[357,-64.8],[355,-68.5],[354,-72.0],[354,-75.4],[353,-78.6],[352,-81.6],[352,-84.5],[351,-87.0],[351,-89.3],[351,-91.2],[351,-92.8],[350,-94.2],[350,-95.3],[350,-96.2],[350,-96.9],[350,-97.4],[350,-97.8],[350,-98.1],[350,-98.3]],"wcam":[[[516.8180199862218,966.8180199862218,1361.803607098436],59.33735680313368,135.0,28.00671873891694],[[39.396559041855255,-343.3070104831251,-751.5063225020644],239.40987574923147,339.1,28.00584942197301,1],[[41.61629420573445,-337.4918739874423,-741.4853797547178],239.4777103175404,339.1,28.00508450776973,1],[[43.60252494551264,-331.759931860914,-731.6161576385666],239.54185484640104,339.1,28.004404334815845,1],[[45.276247116537206,-326.0053625705884,-721.7667143066385],239.60319708082534,339.1,28.003793236994195,1],[[46.68513648618779,-320.2008098906111,-711.8505695473241],239.662210239922,339.1,28.00324180881036,1],[[47.85631338311322,-314.3598002478005,-701.8608273843874],239.71881934740293,339.1,28.00274659195816,1],[[48.81311104091117,-308.49585770643944,-691.7974104954387],239.7728897011786,339.1,28.002304564632258,1],[[49.57634851795041,-302.6194663739669,-681.6604010489118],239.824265662791,339.1,28.001912705027287,1],[[50.16449520089088,-296.7387529588431,-671.4500543574288],239.87276618499874,339.1,28.001567991337897,1],[[50.59389088829357,-290.86002200939015,-661.1668107436351],239.91817949876724,339.1,28.00126740175873,1],[[50.878980846564104,-284.98817057007136,-650.8113056892735],239.96025694497132,339.1,28.001007914484433,1],[[51.032543867667925,-279.127005532812,-640.3843783974148],239.9987059888319,339.1,28.000786507709655,1],[[51.06590232277139,-273.27948968693124,-629.8870789385919],240.03318252096471,339.1,28.000600159629034,1],[[50.98911021017943,-267.447927123487,-619.3206741741958],240.0632826256643,339.1,28.000445848437224,1],[[50.81111838256655,-261.63411046362603,-608.6866526558877],240.08853408065863,339.1,28.000320552328862,1],[[50.53991816357063,-255.83942939403994,-597.9867286894507],240.10838793720615,339.1,28.000221249498598,1],[[50.18266544829581,-250.06495897646886,-587.222845727294],240.12221059568577,339.1,28.00014491814107,1],[[49.74578749153048,-244.3115262419562,-576.3971792172774],240.1292768351372,339.1,28.00008853645094,1],[[49.23507469374428,-238.5797628178704,-565.5121389884821],240.12876436691062,339.1,28.000049082622834,1],[[48.655759431290676,-232.87014582443942,-554.570371198482],240.11975045054118,339.1,28.000023534851408,1],[[48.01258398449332,-227.18303144632495,-543.5747598034586],240.1012110695702,339.1,28.000008871331303,1],[[47.30985876335521,-221.5186789453952,-532.5284274443034],240.07202311046336,339.1,28.00000207025717,1],[[46.55151290836662,-215.8772729473435,-521.4347355714988],240.03096988276883,339.1,28.00000010982365,1],[[45.74113775608842,-210.25893867136705,-510.29728356320106],239.9767501782306,339.1,28.0,1],[[44.88202508903737,-204.663758015216,-499.11990130719255],239.90798855415082,339.1,28.0,1],[[43.977199102650644,-199.0917740764611,-487.90665964721234],239.82325634455427,339.1,28.0,1],[[43.02944536050464,-193.5430023182226,-476.66185616984717],239.72108920947247,339.1,28.0,1],[[42.04133628586726,-188.017440098801,-465.39000300701696],239.6000063785681,339.1,28.0,1],[[41.01525283538453,-182.51507044777026,-454.0958197059317],239.4585355214222,339.1,28.0,1],[[39.95340357039427,-177.03586552586864,-442.7842193405111],239.29523730257944,339.1,28.0,1],[[38.85784194197697,-171.57979193099618,-431.4602914408986],239.10873009173912,339.1,28.0,1],[[37.730135668552094,-166.14517371479167,-420.12585341263525],238.89764599446323,339.1,28.0,1],[[36.5594148631684,-160.67382111984995,-408.66416499414186],238.65806313879804,339.1,28.0,1],[[35.31811129319988,-155.03971745270553,-396.8138712347461],238.3814485117612,339.10001477548815,28.0,1],[[33.97391377524377,-149.10995066251263,-384.2958019026171],238.05592019048856,339.1005272589826,28.0,1],[[32.488437071813024,-142.74008916311237,-370.80415005189684],237.6651949581632,339.1028054717366,28.0,1],[[30.81462372044996,-135.76578469407957,-355.98983311728944],237.1867914575095,339.1088435169786,28.0,1],[[28.894007037509198,-127.99596614365947,-339.4479157513763],236.58943090552836,339.12190252587266,28.0,1],[[26.6542721809073,-119.20928761628124,-320.71380441266956],235.83006063467462,339.14743398373344,28.0,1],[[24.00883129831948,-109.15983898482949,-299.28249994898624],234.85067415505858,339.1945317766508,28.0,1],[[20.86206307322155,-97.60323228094512,-274.6770497738423],233.57714325232405,339.2779657388395,28.0,1],[[17.127383568302946,-84.36245537236903,-246.6079249953059],231.92582366534214,339.4202342176702,28.0,1],[[12.76823069477399,-69.45563483394079,-215.26537370711094],229.82567295097624,339.65135607735516,28.0,1],[[7.865875030989798,-53.28079269822126,-181.70882855135778],227.26594043099257,340.00132749881004,28.0,1],[[2.678227247463525,-36.73396753240064,-148.0459930840525],224.35421837725883,340.4813797437651,28.0,1],[[-2.587594475182158,-20.443807394985583,-115.76012470453543],221.20855190024258,341.0887523826224,28.0,1],[[-7.900625757775657,-4.450005264260369,-85.08227688115812],217.86417792682056,341.8276869456049,28.0,1],[[-13.239268124660981,11.23250918740996,-56.151819019346476],214.35826975200393,342.7003869994404,28.0,1],[[-18.582020616760076,26.584915438286146,-29.051351799173062],210.73705501913608,343.7064953673669,28.0,1],[[-23.907499362569638,41.58551593548043,-3.7934788907127768],207.05604155307805,344.84329034103735,28.0,1],[[-29.19495349542646,56.21181748407503,19.675286981414956],203.3775562313891,346.10588189242367,28.0,1],[[-34.42511308164296,70.44318507841746,41.45524717732951],199.76548011597305,347.48740788572127,28.0,1],[[-39.58109183301079,84.26334730846816,61.66705571276316],196.27785817748847,348.979230289254,28.0,1],[[-44.649105447829925,97.6622080914598,80.42772875330775],192.95894949416083,350.57113138737776,28.0,1],[[-49.61887665223102,110.63673937771836,97.83530138015658],189.83269342275554,352.2515099923853,28.0,1],[[-54.48369212196518,123.19096365761985,113.96290149640345],186.89927543566927,354.00757765641083,28.0,1],[[-59.240102182998356,135.33507394128662,128.85939813920413],184.1356988448784,355.825554883334,28.0,1],[[-63.88728991911694,147.08380596480688,142.5536664802512],181.50030523608035,357.6908673406847,28.0,1],[[-68.42621255298573,158.45434634215732,155.06139071457892],178.94019174834816,359.5883420715472,28.0,1],[[-72.85863935416572,169.46408740548256,166.39399756076318],176.39967199003294,361.5024037064645,28.0,1],[[-77.1863670144609,180.1289042141739,176.56980335179514],173.827615991671,363.4172706753435,28.0,1],[[-81.41071578108578,190.46216105856422,185.6248999590921],171.18229607222614,365.31715141935825,28.0,1],[[-85.53231494930611,200.47442448959885,193.62041506393734],168.4334901687646,367.18644060285516,28.0,1],[[-89.55107555542088,210.17360412868203,200.64306945820772],165.56247437904463,369.0099153252571,28.0,1],[[-93.46623215913863,219.56522452596198,206.79815730176733],162.56069167466865,370.77293133296826,28.0,1],[[-97.27637872067392,228.65265007967247,212.19722215134198],159.42759997679286,372.4616192312794,28.0,1],[[-100.97948164888673,237.43722986937968,216.94512044766861],156.168034471527,374.0630806962688,28.0,1],[[-104.57288300981301,245.9183996619648,221.13123671651283],152.78958337332259,375.5655846867087,28.0,1],[[-108.05331693770725,254.09379923402128,224.8271035427124],149.30068813438527,376.95876365596905,28.0,1],[[-111.41695880923677,261.95945221493776,228.08930661486374],145.71003060359658,378.23380976392747,28.0,1],[[-114.65956519711676,269.5101432244917,230.9647445836281],142.02725823458667,379.3836710888662,28.0,1],[[-117.77662560212556,276.7398058880518,233.49519604174338],138.2644327713841,380.4032478393798,28.0,1],[[-120.76359443303335,283.64208184064285,235.72013354786577],134.43750132992773,381.2895885662788,28.0,1],[[-123.61612117008106,290.21086028504027,237.67754911398606],130.56715296508807,382.0420863744948,28.0,1],[[-126.3302511625418,296.44073819657797,239.40331725834312],126.67876541306966,382.6626751349841,28.0,1],[[-128.9025712869981,302.32734639244734,240.9297630842052],122.80139815001462,383.1560256966328,28.0,1],[[-131.33029848539363,307.86754145654277,242.28418897645997],118.96600916085042,383.529742098161,28.0,1],[[-133.61132406599782,313.05949642197146,243.4880646298052],115.20329646860787,383.7945577800271,28.0,1],[[-135.74421994128724,317.9027064828927,244.55726798290607],111.54173014611648,383.96453179633204,28.0,1],[[-137.72820480443264,322.39790666224974,245.50324718857792],108.00634264660003,384.0572450267244,28.0,1],[[-139.5630291965628,326.54680974982233,246.33457873678162],104.61866074619172,384.0939963883038,28.0,1],[[-141.2487126595212,330.3515155947907,247.05836798994824],101.39781263710805,384.0999990475265,28.0,1],[[-142.7851351174405,333.813599138604,247.6812377752849],98.36228743038153,384.1,28.0,1],[[-144.16923829977316,336.9278323599648,248.20902103158232],95.53616736122818,384.1,28.0,1],[[-145.38356835027608,339.6565053871326,248.64343207710908],92.97411724217362,384.1,28.0,1],[[-146.41731690264717,341.9767954433956,248.9903340624178],90.71923807758338,384.1,28.0,1],[[-147.27441753118364,343.8987894865369,249.26081625333882],88.78324599586904,384.1,28.0,1],[[-147.96895128877804,345.45504669650603,249.467862682955],87.1544963978577,384.1,28.0,1],[[-148.52059317696663,346.6903672645744,249.62407109031938],85.80743477987762,384.1,28.0,1],[[-148.95101039554433,347.65376039363014,249.74051607526508],84.71020787354723,384.1,28.0,1],[[-149.28130904911282,348.39278626779276,249.82635790299082],83.82974557471955,384.1,28.0,1],[[-149.53055195247885,348.95029696429026,249.88888820276907],83.13457111530266,384.1,28.0,1],[[-149.71511700373352,349.363048191423,249.93377312674102],82.59610032719036,384.1,28.0,1],[[-149.8480810217734,349.66035588400064,249.96522855513604],82.19074740514198,384.1,28.0,1],[[-149.93979807396025,349.8654129858494,249.986400829574],81.89911931644095,384.1,28.0,1],[[-149.99999999999955,349.999999999999,250.00000000000455],81.69999999999993,384.1,28.0,1]]};
+const Q = new URLSearchParams(location.search);
+const cv = document.getElementById('c'), errBox = document.getElementById('err');
+const gl = cv.getContext('webgl2', { antialias: false, alpha: false, premultipliedAlpha: false });
+if (!gl) { errBox.textContent = '这个浏览器不支持 WebGL2'; throw 0; }
+if (!gl.getExtension('EXT_color_buffer_float')) { errBox.textContent = '这个浏览器不支持浮点渲染目标'; throw 0; }
+gl.getExtension('OES_texture_float_linear');
+
+// ---------- camera: the same one the 4K picture was rendered with ----------
+const A = CFG.az * Math.PI / 180;
+const RT = [Math.cos(A), Math.sin(A), 0], UP = [0, 0, 1], BK = [0, 0, 1], CAM = [0, 0, 3000];
+let CAMT = 0;                                                            // current tilt (deg)
+let CAMLENS = CFG.lens, CAMAZ = CFG.az;
+function setCam(tiltDeg, pos, azDeg, lensMm) { const T = tiltDeg * Math.PI / 180; CAMT = tiltDeg; CAMAZ = azDeg === undefined ? CFG.az : azDeg; CAMLENS = lensMm || CFG.lens;
+  const A = CAMAZ * Math.PI / 180; RT[0] = Math.cos(A); RT[1] = Math.sin(A);
+  UP[0] = -Math.sin(A) * Math.cos(T); UP[1] = Math.cos(A) * Math.cos(T); UP[2] = Math.sin(T);
+  BK[0] = Math.sin(A) * Math.sin(T); BK[1] = -Math.cos(A) * Math.sin(T); BK[2] = Math.cos(T);
+  CAM[0] = pos[0]; CAM[1] = pos[1]; CAM[2] = pos[2]; }
+const NF = CFG.cams.length, NA = CFG.na;                              // NF fog frames (0-190), NA pictures in all
+function camAt(f) { const i = Math.min(NF - 2, Math.floor(f)), t = Math.min(1, Math.max(0, f - i)), a = CFG.cams[i], b = CFG.cams[i + 1];
+  return [a.tilt + (b.tilt - a.tilt) * t, [0, 1, 2].map(k => a.pos[k] + (b.pos[k] - a.pos[k]) * t)]; }
+setCam(...camAt(0));
+const ASP = CFG.ph / CFG.pw;
+function rayAt(ix, iy) { const d = [0, 1, 2].map(k => -BK[k] * CAMLENS + RT[k] * ((ix - .5) * 36) + UP[k] * ((.5 - iy) * 36 * ASP)); const l = Math.hypot(...d); return d.map(v => v / l); }
+
+// ---------- 3D wind grid over the view, stored as slices side by side in one texture ----------
+if (Q.has('g')) { const g = parseInt(Q.get('g')); CFG.grid = [g, g, CFG.grid[2]]; }               // smaller grid for slow machines / tests
+const GX = CFG.grid[0], GY = CFG.grid[1], GZ = CFG.grid[2], TLX = CFG.tiles[0], TLY = CFG.tiles[1];
+const CS = [CFG.dom.S / GX, CFG.dom.S / GY, CFG.dz];
+const AW = GX * TLX, AH = GY * TLY;
+// every tunable value lives here; the panel (参数) edits it, and this browser remembers it
+const PDEF = { windSpd: 20, windDir: -6, ts: 8, relax: .08, eps: .09, buoy: .06,
+  mWind: 1, mMax: 70, mR: 69, layer: 5, fogAmt: 2, fogR: 40, ext: .04, shadow: .39, glass: .75, ring: 1, stay: 4, fadeT: 1.5 };
+const WMAX = 36;
+const PR = Object.assign({}, PDEF);
+try { Object.assign(PR, JSON.parse(localStorage.getItem('hk-fog-params') || '{}')); } catch (e) {}
+const WIND = [0, 0, 0];
+function updWind() { const a = PR.windDir * Math.PI / 180; WIND[0] = -Math.sin(a) * PR.windSpd; WIND[1] = -Math.cos(a) * PR.windSpd; }   // "from" direction, 0 = from the north (the harbour)
+updWind();
+const LDIR = (() => { const v = [-0.579, 0.579, 0.574]; const l = Math.hypot(...v); return v.map(x => x / l); })();   // towards the sun of the render
+
+const VS = `#version 300 es
+in vec2 p; void main(){ gl_Position = vec4(p, 0, 1); }`;
+const GRID = `
+uniform vec3 G; uniform vec2 TL; uniform vec3 CS; uniform sampler2D hgt;
+ivec2 AC(ivec3 c){ c = clamp(c, ivec3(0), ivec3(G) - 1); int tx = int(TL.x); return ivec2((c.z % tx) * int(G.x) + c.x, (c.z / tx) * int(G.y) + c.y); }
+ivec3 cellHere(){ ivec2 f = ivec2(gl_FragCoord.xy); int gx = int(G.x), gy = int(G.y); ivec2 t = f / ivec2(gx, gy); return ivec3(f.x - t.x * gx, f.y - t.y * gy, t.y * int(TL.x) + t.x); }
+float Hb(ivec2 xy){ xy = clamp(xy, ivec2(0), ivec2(G.xy) - 1); return texture(hgt, vec2((float(xy.x) + .5) / G.x, 1. - (float(xy.y) + .5) / G.y)).r * 510.; }
+bool solid(ivec3 c){ if (c.z < 0) return true; if (c.z >= int(G.z)) return false; return Hb(c.xy) > (float(c.z) + .5) * CS.z; }
+vec4 F(sampler2D t, ivec3 c){ return texelFetch(t, AC(c), 0); }
+vec2 AUV(vec2 xy, float k){ vec2 tile = vec2(mod(k, TL.x), floor(k / TL.x)); vec2 p = clamp(xy, vec2(.5), G.xy - .5); return (tile * G.xy + p) / (TL * G.xy); }
+vec4 S3(sampler2D t, vec3 p){ float z = clamp(p.z - .5, 0., G.z - 1.); float k0 = floor(z); float k1 = min(k0 + 1., G.z - 1.);
+  return mix(texture(t, AUV(p.xy, k0)), texture(t, AUV(p.xy, k1)), z - k0); }
+const ivec3 X1 = ivec3(1, 0, 0), Y1 = ivec3(0, 1, 0), Z1 = ivec3(0, 0, 1);`;
+const MOUSE = `
+uniform vec3 mA, mB; uniform float mR;
+float stroke(vec3 p){ vec3 q = p * CS, a = mA * CS, b = mB * CS; vec2 ab = b.xy - a.xy;
+  float t = clamp(dot(q.xy - a.xy, ab) / max(dot(ab, ab), 1e-3), 0., 1.); vec2 e = q.xy - (a.xy + ab * t);
+  float dz = q.z - mix(a.z, b.z, t);
+  return exp(-dot(e, e) / (mR * mR) - dz * dz / (15. * 15.)); }`;
+const NOISE = `
+float hash(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+float vnoise(vec2 p){ vec2 i = floor(p), f = fract(p); vec2 u = f * f * (3. - 2. * f);
+  return mix(mix(hash(i), hash(i + vec2(1, 0)), u.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), u.x), u.y); }`;
+function sh(type, src) { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) { const m = gl.getShaderInfoLog(s); errBox.textContent = m; console.error(m, src); throw m; } return s; }
+function prog(fs) { const p = gl.createProgram(); gl.attachShader(p, sh(gl.VERTEX_SHADER, VS));
+  gl.attachShader(p, sh(gl.FRAGMENT_SHADER, '#version 300 es\nprecision highp float;\nprecision highp int;\n' + fs)); gl.bindAttribLocation(p, 0, 'p'); gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) { errBox.textContent = gl.getProgramInfoLog(p); throw 0; }
+  const u = {}; const n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS); for (let i = 0; i < n; i++) { const a = gl.getActiveUniform(p, i); u[a.name.replace('[0]', '')] = gl.getUniformLocation(p, a.name); } return { p, u }; }
+const vb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vb); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+function tex(w, h, ifmt, fmt, type, filter, data = null) { const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+  gl.texImage2D(gl.TEXTURE_2D, 0, ifmt, w, h, 0, fmt, type, data);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE); return t; }
+function fbo(...ts) { const f = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, f);
+  ts.forEach((t, i) => gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0 + i, gl.TEXTURE_2D, t, 0));
+  if (ts.length > 1) gl.drawBuffers(ts.map((_, i) => gl.COLOR_ATTACHMENT0 + i)); return f; }
+function pair(ifmt, fmt) { const a = [0, 1].map(() => { const t = tex(AW, AH, ifmt, fmt, gl.HALF_FLOAT, gl.LINEAR); return { t, f: fbo(t) }; });
+  return { get r() { return a[0]; }, get w() { return a[1]; }, swap() { a.reverse(); } }; }
+function bindT(u, unit, t) { gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(gl.TEXTURE_2D, t); gl.uniform1i(u, unit); }
+function draw(target, w, h) { gl.bindFramebuffer(gl.FRAMEBUFFER, target); gl.viewport(0, 0, w, h); gl.drawArrays(gl.TRIANGLES, 0, 3); }
+
+const P = {
+  advV: prog(GRID + MOUSE + `uniform sampler2D vel, den; uniform float dt, buoy, mOn, init, relax; uniform vec3 wind, mV; out vec4 o;
+    void main(){ ivec3 c = cellHere(); if (solid(c)) { o = vec4(0); return; }
+      vec3 p = vec3(c) + .5; vec3 v = F(vel, c).xyz; vec3 v2 = S3(vel, p - v * dt / CS).xyz;
+      vec3 nb = F(vel, c + X1).xyz + F(vel, c - X1).xyz + F(vel, c + Y1).xyz + F(vel, c - Y1).xyz + F(vel, c + Z1).xyz + F(vel, c - Z1).xyz;
+      v2 = mix(v2, nb / 6., .18);
+      float z = p.z * CS.z;
+      vec3 wz = wind * clamp(pow(z / 150., .16), .62, 1.2);                 // a little slower near the ground
+      float k = relax * dt;                                                   // a gust settles back into the breeze slowly
+      if (c.y >= int(G.y) - 3 || c.x >= int(G.x) - 3 || init > 0.) k = 1.;  // the breeze comes in over the harbour edges
+      v2 += (wz - v2) * min(k, 1.);
+      v2.z -= buoy * F(den, c).r * dt;                                      // fog is cool and heavy: it stays low and pours into streets
+      if (mOn > 0.) {                                                        // the stroke speeds the air up along its direction, never slows it
+        float sp = length(mV.xy), g = min(1., stroke(p) * mOn);
+        if (sp > .1 && g > .002) { vec2 dir = mV.xy / sp; float al = dot(v2.xy, dir); if (al < sp) v2.xy += dir * (sp - al) * g; } }
+      float s = length(v2); if (s > 80.) v2 *= 80. / s;
+      o = vec4(v2, 0); }`),
+  curl: prog(GRID + `uniform sampler2D vel; out vec4 o;
+    void main(){ ivec3 c = cellHere(); vec3 L = F(vel, c - X1).xyz, R = F(vel, c + X1).xyz, B = F(vel, c - Y1).xyz, Tt = F(vel, c + Y1).xyz, D = F(vel, c - Z1).xyz, U = F(vel, c + Z1).xyz;
+      vec3 w = vec3((Tt.z - B.z) / (2. * CS.y) - (U.y - D.y) / (2. * CS.z), (U.x - D.x) / (2. * CS.z) - (R.z - L.z) / (2. * CS.x), (R.y - L.y) / (2. * CS.x) - (Tt.x - B.x) / (2. * CS.y));
+      o = vec4(w, length(w)); }`),
+  conf: prog(GRID + `uniform sampler2D vel, cu; uniform float dt, eps; out vec4 o;
+    void main(){ ivec3 c = cellHere(); if (solid(c)) { o = vec4(0); return; } vec3 v = F(vel, c).xyz;
+      vec3 g = vec3((F(cu, c + X1).w - F(cu, c - X1).w) / (2. * CS.x), (F(cu, c + Y1).w - F(cu, c - Y1).w) / (2. * CS.y), (F(cu, c + Z1).w - F(cu, c - Z1).w) / (2. * CS.z));
+      float gn = length(g); vec3 N = gn > 1e-7 ? g / gn : vec3(0);
+      vec3 f = eps * CS.z * cross(N, F(cu, c).xyz);                          // vorticity confinement: keeps the eddies behind towers alive
+      o = vec4(v + f * dt, 0); }`),
+  obs: prog(GRID + `out uvec4 o;
+    void main(){ ivec3 c = cellHere(); uint m = 0u;
+      if (solid(c)) m |= 1u; if (solid(c - X1)) m |= 2u; if (solid(c + X1)) m |= 4u; if (solid(c - Y1)) m |= 8u; if (solid(c + Y1)) m |= 16u; if (solid(c - Z1)) m |= 32u; if (solid(c + Z1)) m |= 64u;
+      o = uvec4(m, 0, 0, 0); }`),
+  div: prog(GRID + `uniform sampler2D vel; uniform highp usampler2D msk; out vec4 o;
+    void main(){ ivec3 c = cellHere(); uint m = texelFetch(msk, AC(c), 0).r; if ((m & 1u) != 0u) { o = vec4(0); return; }
+      float xm = (m & 2u) != 0u ? 0. : F(vel, c - X1).x, xp = (m & 4u) != 0u ? 0. : F(vel, c + X1).x;
+      float ym = (m & 8u) != 0u ? 0. : F(vel, c - Y1).y, yp = (m & 16u) != 0u ? 0. : F(vel, c + Y1).y;
+      float zm = (m & 32u) != 0u ? 0. : F(vel, c - Z1).z, zp = (m & 64u) != 0u ? 0. : F(vel, c + Z1).z;
+      o = vec4((xp - xm) / (2. * CS.x) + (yp - ym) / (2. * CS.y) + (zp - zm) / (2. * CS.z), 0, 0, 0); }`),
+  jac: prog(GRID + `uniform sampler2D prs, dv; uniform highp usampler2D msk; out vec4 o;
+    void main(){ ivec3 c = cellHere(); uint m = texelFetch(msk, AC(c), 0).r; if ((m & 1u) != 0u) { o = vec4(0); return; }
+      float pc = F(prs, c).r; float wx = 1. / (CS.x * CS.x), wy = 1. / (CS.y * CS.y), wz = 1. / (CS.z * CS.z);
+      float s = wx * (((m & 2u) != 0u ? pc : F(prs, c - X1).r) + ((m & 4u) != 0u ? pc : F(prs, c + X1).r))
+              + wy * (((m & 8u) != 0u ? pc : F(prs, c - Y1).r) + ((m & 16u) != 0u ? pc : F(prs, c + Y1).r))
+              + wz * (((m & 32u) != 0u ? pc : F(prs, c - Z1).r) + (c.z >= int(G.z) - 1 ? 0. : (m & 64u) != 0u ? pc : F(prs, c + Z1).r));
+      o = vec4((s - F(dv, c).r) / (2. * wx + 2. * wy + 2. * wz), 0, 0, 0); }`),
+  grad: prog(GRID + `uniform sampler2D prs, vel; uniform highp usampler2D msk; out vec4 o;
+    void main(){ ivec3 c = cellHere(); uint m = texelFetch(msk, AC(c), 0).r; if ((m & 1u) != 0u) { o = vec4(0); return; } float pc = F(prs, c).r;
+      vec3 g = vec3((((m & 4u) != 0u ? pc : F(prs, c + X1).r) - ((m & 2u) != 0u ? pc : F(prs, c - X1).r)) / (2. * CS.x),
+                    (((m & 16u) != 0u ? pc : F(prs, c + Y1).r) - ((m & 8u) != 0u ? pc : F(prs, c - Y1).r)) / (2. * CS.y),
+                    ((c.z >= int(G.z) - 1 ? 0. : (m & 64u) != 0u ? pc : F(prs, c + Z1).r) - ((m & 32u) != 0u ? pc : F(prs, c - Z1).r)) / (2. * CS.z));
+      o = vec4(F(vel, c).xyz - g, 0); }`),
+  advD1: prog(GRID + `uniform sampler2D vel, den; uniform float dt; out vec4 o;
+    void main(){ ivec3 c = cellHere();
+      if (solid(c)) {                                                        // carry the fog next to a wall into it, so sampling there does not thin out
+        vec2 s = vec2(0); float n = 0.; ivec3 nb[5] = ivec3[5](c + X1, c - X1, c + Y1, c - Y1, c + Z1);
+        for (int i = 0; i < 5; i++) if (!solid(nb[i])) { s += F(den, nb[i]).rg; n += 1.; }
+        o = vec4(n > 0. ? s / n : vec2(0), 0, 0); return; }
+      vec3 p = vec3(c) + .5; o = vec4(S3(den, p - F(vel, c).xyz * dt / CS).rg, 0, 0); }`),
+  advD2: prog(GRID + NOISE + MOUSE + `uniform sampler2D vel, den, fwd; uniform float dt, tau, time, mAmt, slow, stay, fade; uniform vec4 dom; out vec4 o;
+    void main(){ ivec3 c = cellHere();
+      if (solid(c)) {                                                        // carry the fog next to a wall into it, so sampling there does not thin out
+        vec2 s = vec2(0); float n = 0.; ivec3 nb[5] = ivec3[5](c + X1, c - X1, c + Y1, c - Y1, c + Z1);
+        for (int i = 0; i < 5; i++) if (!solid(nb[i])) { s += F(den, nb[i]).rg; n += 1.; }
+        o = vec4(n > 0. ? s / n : vec2(0), 0, 0); return; }
+      vec3 p = vec3(c) + .5; vec3 v = F(vel, c).xyz * dt / CS;
+      vec2 d = F(fwd, c).rg + .35 * (F(den, c).rg - S3(fwd, p + v).rg);       // forward, back, correct (gently)
+      vec3 bp = p - v - .5; ivec3 i0 = ivec3(floor(bp)); vec2 mn = vec2(1e9), mx = vec2(-1e9);   // ...but never beyond the values it came from
+      for (int k = 0; k < 8; k++) { vec2 s = F(den, i0 + ivec3(k & 1, (k >> 1) & 1, (k >> 2) & 1)).rg; mn = min(mn, s); mx = max(mx, s); }
+      d = clamp(d, mn, mx);
+      // stuck-time: it grows where the air barely moves; fog stuck longer than "stay" melts away over "fade"
+      float age = d.x > 1e-3 ? d.y / d.x : 0.;
+      float sp = length(F(vel, c).xy); age += dt * (sp < slow ? 1. : .12);
+      if (age > stay) d.x *= exp(-dt / fade);
+      d.x *= exp(-dt / tau);
+      if (mAmt > 0.) d.x += mAmt * stroke(p) * dt;                           // new fog arrives fresh (stuck-time 0)
+      d.x = clamp(d.x, 0., 1.6); o = vec4(d.x, d.x * age, 0, 0); }`),
+};
+
+// ---------- fog as seen from the camera: marched through the grid, stopped by the first surface; behind crystal it shows through, bent ----------
+const FOG = prog(GRID + NOISE + `
+uniform sampler2D den, pas1, pas2, pF, pB, pS; uniform vec3 C, Rt, Up, Bk, L, wind; uniform float lens, asp, time, blend, frame, ext, bendK; uniform vec2 res; uniform vec4 cover, dom;
+layout(location = 0) out vec4 oF; layout(location = 1) out vec4 oB; layout(location = 2) out vec4 oS;
+float D(vec3 q, bool walls){ vec3 p = vec3((q.x - dom.x) / CS.x, (q.y - dom.y) / CS.y, q.z / CS.z);
+  if (p.x < 0. || p.y < 0. || p.x > G.x || p.y > G.y || p.z > G.z || p.z < 0.) return 0.;
+  if (walls && q.z < Hb(ivec2(p.xy))) return 0.;
+  float b = S3(den, p).r; if (b < .01) return 0.;
+  b *= 1. - smoothstep(G.z * CS.z - 40., G.z * CS.z - 4., q.z);
+  return smoothstep(0., 1.05, b) * 1.35;                                      // the flow itself gives the shape: smooth, streaked, curled
+}
+vec3 shade(vec3 q){ float lit = exp(-D(q + L * 12., false) * .7 - D(q + L * 32., false) * .9 - D(q + L * 70., false) * .7);
+  vec3 cold = mix(vec3(.60, .62, .67), vec3(.74, .76, .80), smoothstep(0., 90., q.z));
+  return mix(cold, vec3(1., .985, .955), lit); }
+void march(vec3 o_, vec3 d, float t0, float t1, int n, vec2 bend, bool walls, float j, inout vec3 acc, inout float Tr){
+  if (t1 <= t0) return; float st = (t1 - t0) / float(n); float t = t0 + st * j;
+  for (int i = 0; i < 48; i++) { if (i >= n) break;
+    vec3 q = o_ + d * t; q.xy += bend * (t - t0); t += st;
+    float de = D(q, walls); if (de < .003) continue;
+    float a = 1. - exp(-de * ext * st);
+    acc += Tr * a * shade(q); Tr *= 1. - a; if (Tr < .01) break; }
+}
+void main(){
+  vec2 uv = gl_FragCoord.xy / res; vec2 su = vec2(uv.x, 1. - uv.y);
+  vec2 ic = cover.xy + su * cover.zw;
+  vec4 P1 = texture(pas1, ic);
+  float c1 = P1.r * 255., c2 = P1.g * 255.; bool glass = P1.b > .5;
+  vec3 d = normalize(-Bk * lens + Rt * ((ic.x - .5) * 36.) + Up * ((.5 - ic.y) * 36. * asp));
+  vec2 fp = gl_FragCoord.xy + 5.588238 * mod(frame, 64.); float j = fract(52.9829189 * fract(dot(fp, vec2(.06711056, .00583715))));
+  float zTop = G.z * CS.z;
+  float tin = (zTop - C.z) / d.z, tg = -C.z / d.z;
+  float t1 = c1 < .5 ? tg : (c1 * 2. - 20. - C.z) / d.z;
+  vec3 acc = vec3(0); float Tr = 1.;
+  march(C, d, tin, t1, 36, vec2(0), false, j, acc, Tr);
+  vec3 accB = vec3(0); float TrB = 1.;
+  if (glass) {
+    float t2 = min(c2 < .5 ? tg : (c2 * 2. - 20. - C.z) / d.z, tg);
+    vec3 n = texture(pas2, ic).xyz * 2. - 1.;
+    vec2 bend = (n.xy - d.xy * dot(n, d)) * .35 * bendK;                        // a thick crystal shifts what lies behind it sideways
+    march(C, d, max(t1, tin), t2, 14, bend, true, j, accB, TrB);
+  }
+  // the fog's shadow on the surface it hides
+  vec3 P = C + d * t1; float od = 0.;
+  for (int i = 0; i < 10; i++) { od += D(P + L * (8. + 22. * (float(i) + j)), false); }
+  float sh = exp(-od * ext * 22. * .8);
+  vec4 nF = vec4(acc, 1. - Tr), nB = vec4(accB, 1. - TrB), nS = vec4(sh, 0, 0, 1);
+  oF = mix(texture(pF, uv), nF, blend); oB = mix(texture(pB, uv), nB, blend); oS = mix(texture(pS, uv), nS, blend);
+}`);
+const COMP = prog(`
+uniform sampler2D base, base2, fogF, fogB, fogS, pas1; uniform float bmix, fogK; uniform vec2 res; uniform vec4 cover, ring; uniform vec3 C, Rt, Up, Bk; uniform float lens, asp, ringR, shK, gK; out vec4 o;
+void main(){ vec2 su = gl_FragCoord.xy / res; su.y = 1. - su.y; vec2 ic = cover.xy + su * cover.zw; vec2 fu = vec2(su.x, 1. - su.y);
+  vec3 col = mix(texture(base, ic).rgb, texture(base2, ic).rgb, bmix);
+  col *= 1. - shK * fogK * (1. - texture(fogS, fu).r);
+  vec4 b = texture(fogB, fu), f = texture(fogF, fu);
+  float g = gK * fogK; col = col * (1. - b.a * g) + b.rgb * g * vec3(.97, .95, .92);
+  col = col * (1. - f.a * fogK) + f.rgb * fogK;
+  // where the mouse acts: a thin ring lying on the wind layer, hidden by whatever stands in front of it
+  vec3 d = normalize(-Bk * lens + Rt * ((ic.x - .5) * 36.) + Up * ((.5 - ic.y) * 36. * asp));
+  float t = (ring.z - C.z) / d.z; float r = length(C.xy + d.xy * t - ring.xy);
+  float c1 = texture(pas1, ic).r * 255.; float hz = c1 < .5 ? -1e3 : c1 * 2. - 20.;
+  float vis = 1. - smoothstep(ring.z + 2., ring.z + 8., hz);
+  float w = fwidth(r); float line = 1. - smoothstep(.5 * w, 1.6 * w, abs(r - ringR));
+  col = mix(col, vec3(.784, .216, .176), line * ring.w * fogK * .85 * vis * (1. - f.a * .7));
+  o = vec4(col, 1); }`);
+
+// ---------- 风板: the wind at street level seen from above, turned so its "up" is the camera's forward ----------
+const BOARD = prog(GRID + `uniform sampler2D vel, den, gnd; uniform vec2 ctr, ax, ay; uniform float side, zl, wn, res; uniform vec4 dom; out vec4 o;
+vec3 cmap(float t){ t = clamp(t / 1.5, 0., 1.);
+  vec3 a = vec3(.157, .227, .561), b = vec3(.553, .608, .776), c = vec3(.925, .906, .867), d = vec3(.886, .678, .208), e = vec3(.784, .216, .176);
+  return t < .333 ? mix(a, b, t / .333) : t < .667 ? mix(b, c, (t - .333) / .334) : t < .833 ? mix(c, d, (t - .667) / .166) : mix(d, e, (t - .833) / .167); }
+void main(){ vec2 uv = gl_FragCoord.xy / res; vec2 w = ctr + (uv.x - .5) * side * ax + (uv.y - .5) * side * ay;
+  vec3 p = vec3((w.x - dom.x) / CS.x, (w.y - dom.y) / CS.y, zl / CS.z);
+  if (p.x < 0. || p.y < 0. || p.x > G.x || p.y > G.y) { o = vec4(.894, .875, .835, 1); return; }
+  float z = texture(gnd, (w - dom.xy) / dom.z).r + zl; p.z = z / CS.z;
+  if (z > G.z * CS.z - 6.) { o = vec4(.80, .78, .74, 1); return; }                 // hillside above the simulated air
+  float h = Hb(ivec2(p.xy));
+  if (h > z) { o = vec4(.082, .082, .082, 1); return; }
+  o = vec4(cmap(length(S3(vel, p).xy) / wn), 1); }`);                      // colour is wind speed only
+const ARW = prog(GRID + `uniform sampler2D vel, gnd; uniform vec2 ctr, ax, ay; uniform float side, zl, res; uniform vec4 dom; out vec4 o;
+void main(){ vec2 uv = gl_FragCoord.xy / res; vec2 w = ctr + (uv.x - .5) * side * ax + (uv.y - .5) * side * ay;
+  float z = texture(gnd, (w - dom.xy) / dom.z).r + zl; vec3 p = vec3((w.x - dom.x) / CS.x, (w.y - dom.y) / CS.y, z / CS.z);
+  if (p.x < 0. || p.y < 0. || p.x > G.x || p.y > G.y || z > G.z * CS.z - 6. || Hb(ivec2(p.xy)) > z) { o = vec4(.5, .5, 1, 1); return; }
+  vec2 v = S3(vel, p).xy; o = vec4(clamp(vec2(dot(v, ax), dot(v, ay)) / 60. * .5 + .5, 0., 1.), 0, 1); }`);
+
+// ---------- state ----------
+const vel = pair(gl.RGBA16F, gl.RGBA), den = pair(gl.RG16F, gl.RG), prs = pair(gl.R16F, gl.RED);
+const dvT = tex(AW, AH, gl.R16F, gl.RED, gl.HALF_FLOAT, gl.NEAREST), dvF = fbo(dvT);
+const cuT = tex(AW, AH, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, gl.NEAREST), cuF = fbo(cuT);
+const fwdT = tex(AW, AH, gl.RG16F, gl.RG, gl.HALF_FLOAT, gl.LINEAR), fwdF = fbo(fwdT);
+let baseT, pas1T, pas2T, hgtT, flatT;
+const VIEW = { b0: null, b1: null, mix: 0, p1: null, p2: null, bend: 0, fogK: 1, f: 0 };
+const FR = [], PS = [];                                                  // FR[k] / PS[k]: requested from the packs
+// frames: Blob (ENC) -> decoded off the main thread by createImageBitmap (DEC) -> texture (cache), for a window around the playhead
+const ENC = new Map(), DEC = new Map(), BUSY = new Set(), cache = new Map();
+const MOB = matchMedia('(pointer: coarse)').matches, TEXMAX = MOB ? 8 : 14, DECMAX = 6, DECPAR = MOB ? 2 : 4, WATER0 = 252;   // b16: 1080p pictures (8 MB a texture) -> fewer kept; water from 252
+let IBOK = typeof createImageBitmap === 'function';
+function decodeBlob(b) {
+  const viaImg = () => new Promise((ok, no) => { const i = new Image(), u = URL.createObjectURL(b);
+    i.onload = () => { (i.decode ? i.decode().catch(() => {}) : Promise.resolve()).then(() => { URL.revokeObjectURL(u); ok(i); }); }; i.onerror = () => { URL.revokeObjectURL(u); no(); }; i.src = u; });
+  if (!IBOK) return viaImg();
+  return createImageBitmap(b, { premultiplyAlpha: 'none', colorSpaceConversion: 'none' }).catch(() => createImageBitmap(b)).catch(() => { IBOK = false; return viaImg(); }); }
+const freeSrc = x => { if (x && x.close) x.close(); };
+function trimDec() { while (DEC.size > DECMAX) { let old = null;          // drop pictures already on the GPU first, then the least recently used
+    for (const [k, v] of DEC) { const sc = (cache.has(k) ? 0 : 1e12) + v.used; if (!old || sc < old[2]) old = [k, v, sc]; }
+    freeSrc(old[1].src); DEC.delete(old[0]); } }
+function decodeKey(key, force) { if (DEC.has(key) || BUSY.has(key) || (!force && cache.has(key)) || BUSY.size >= DECPAR + (force ? 1 : 0)) return;
+  const b = ENC.get(key); if (!b) return; BUSY.add(key);
+  decodeBlob(b).then(src => { BUSY.delete(key); DEC.set(key, { src, used: performance.now() }); trimDec(); }, () => BUSY.delete(key)); }
+function trimTex() { while (cache.size > TEXMAX) { let old = null; for (const [k, v] of cache) if (!old || v.used < old[1].used) old = [k, v]; gl.deleteTexture(old[1].t); cache.delete(old[0]); } }
+function upload(key) { const d = DEC.get(key); if (!d) return null;
+  const t = imgTex(d.src, gl.RGBA8, gl.RGBA, key[0] === 'p' ? gl.NEAREST : gl.LINEAR, false); cache.set(key, { t, used: performance.now() });
+  if (!(key[0] === 'f' && +key.slice(1) >= WATER0)) { freeSrc(d.src); DEC.delete(key); }       // the water layer needs the late frames' pictures as well
+  trimTex(); return t; }
+function texFor(key) { const c = cache.get(key); if (!c) return null; c.used = performance.now(); return c.t; }
+function nearestTex(pre, i, n) { for (let d = 0; d < n; d++) for (const j of [i - d, i + d]) if (j >= 0 && j < n && cache.has(pre + j)) return j; return -1; }
+function frameSrc(k) { const key = 'f' + k, d = DEC.get(key); if (d) { d.used = performance.now(); return d.src; } want(k); decodeKey(key, true); return null; }
+let velF = 0, fLast = 0;                                                 // playhead speed, frames per second
+function feedFrames(f, dt) {                                             // decode and upload the frames around the playhead, most needed first, within a small time budget
+  velF += ((f - fLast) / Math.max(dt, 1e-3) - velF) * Math.min(1, dt * 6); fLast = f;
+  const dir = velF >= 0 ? 1 : -1, ah = Math.min(MOB ? 12 : 22, 4 + Math.round(Math.abs(velF) * .3)), c0 = Math.floor(f), list = [c0, c0 + 1];
+  for (let o = 1; o <= ah; o++) list.push(dir > 0 ? c0 + 1 + o : c0 - o);
+  for (let o = 1; o <= 3; o++) list.push(dir > 0 ? c0 - o : c0 + 1 + o);
+  const now = performance.now(), fog = VIEW.fogK > 0; let ups = 0;
+  for (let i = 0; i < list.length; i++) { const k = list[i]; if (k < 0 || k >= NA) continue; want(k);
+    for (const key of (fog && k < NF) ? ['f' + k, 'p' + k] : ['f' + k]) {
+      const c = cache.get(key); if (c) { c.used = now - i; continue; }   // keep the window warm (nearest = most recent)
+      if (DEC.has(key)) { if (ups < (i < 2 ? 3 : 2) && (ups === 0 || performance.now() - now < (MOB ? 5 : 4))) { upload(key); cache.get(key).used = now - i; ups++; } }
+      else decodeKey(key); } } }
+const mskT = (() => { const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t); gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8UI, AW, AH, 0, gl.RED_INTEGER, gl.UNSIGNED_BYTE, null);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST); return t; })(), mskF = fbo(mskT);
+let fogW = 0, fogH = 0, fogA = [], fogFB = [], fogCur = 0, firstFog = true;
+const PACK = { idx: null, p: {} }, URLS = {};
+function packIdx() { return PACK.idx || (PACK.idx = fetch('packs/index.json').then(r => r.ok ? r.json() : { files: {} }).catch(() => ({ files: {} }))); }
+const fetchBlob = path => fetch(path).then(r => r.ok ? r.blob() : null).catch(() => null);
+function packBlob(path) {                  // the file as a Blob, sliced out of its pack (each pack is fetched once); files not in a pack load on their own
+  return packIdx().then(ix => { const e = ix.files[path]; if (!e) return fetchBlob(path); const nm = e[0];
+    let p = PACK.p[nm]; if (!p) p = PACK.p[nm] = fetch('packs/' + nm).then(r => { if (!r.ok) throw nm; return r.arrayBuffer(); }).then(buf => {
+      const u = {}; for (const f in ix.files) { const q = ix.files[f]; if (q[0] === nm) u[f] = new Blob([new Uint8Array(buf, q[1], q[2])], { type: q[3] }); } return u; });
+    return p.then(u => u[path] || fetchBlob(path), () => fetchBlob(path)); }).catch(() => null); }
+function packUrl(path) { return packBlob(path).then(b => b ? (URLS[path] || (URLS[path] = URL.createObjectURL(b))) : path); }
+function setSrc(img, path) { packUrl(path).then(u => { img.src = u; }); }
+function loadImg(src) { return new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => no(src); setSrc(i, src); }); }
+function imgTex(img, ifmt, fmt, filter, mip) { const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+  gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE); gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+  gl.texImage2D(gl.TEXTURE_2D, 0, ifmt, fmt, gl.UNSIGNED_BYTE, img);
+  if (mip) gl.generateMipmap(gl.TEXTURE_2D);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, mip ? gl.LINEAR_MIPMAP_LINEAR : filter); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE); return t; }
+
+// screen <-> picture ("cover" fit); the fog layer is drawn at up to FOGMAX pixels wide
+let cover = [0, 0, 1, 1], FOGMAX = Q.has('fq') ? parseInt(Q.get('fq')) : 1280;
+function makeFog() { const fw = Math.min(FOGMAX, cv.width, Math.round(Math.sqrt((MOB ? .35e6 : .92e6) * cv.width / cv.height))), fh = Math.round(fw * cv.height / cv.width);
+  if (fw === fogW && fh === fogH) return; fogW = fw; fogH = fh;
+  fogA = [0, 1].map(() => [0, 1, 2].map(() => tex(fw, fh, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, gl.LINEAR)));
+  fogFB = fogA.map(s => fbo(...s)); firstFog = true; }
+function resize() { const dpr = Math.min(devicePixelRatio || 1, 2, Math.sqrt((MOB ? 2.2e6 : 8.3e6) / (innerWidth * innerHeight)));   /* 4K build: the canvas may go up to 3840x2160 */   // the film is 720p: more pixels only cost time
+ cv.width = Math.round(innerWidth * dpr); cv.height = Math.round(innerHeight * dpr);
+  const sa = innerHeight / innerWidth;
+  if (sa > ASP) { const w = ASP / sa; cover = [(1 - w) / 2, 0, w, 1]; } else { const h = sa / ASP; cover = [0, (1 - h) / 2, 1, h]; }
+  makeFog(); }
+addEventListener('resize', resize); resize();
+
+// pointer: where the cursor's line of sight meets the wind layer, LAYER metres above the (smoothed) ground
+let INIT = true; const MR = 50; let GRD = null, HN = 256, gndT = null;
+function buildGround(img) { HN = img.width;
+  const c = document.createElement('canvas'); c.width = HN; c.height = HN; const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(img, 0, 0);
+  const px = x.getImageData(0, 0, HN, HN).data; let h = new Float32Array(HN * HN);
+  for (let y = 0; y < HN; y++) for (let i = 0; i < HN; i++) h[y * HN + i] = px[((HN - 1 - y) * HN + i) * 4] * 2;
+  const pass = (src, dx, dy, R, f, init) => { const o = new Float32Array(HN * HN);
+    for (let y = 0; y < HN; y++) for (let i = 0; i < HN; i++) { let m = init;
+      for (let k = -R; k <= R; k++) { const xx = Math.min(HN - 1, Math.max(0, i + k * dx)), yy = Math.min(HN - 1, Math.max(0, y + k * dy)); m = f(m, src[yy * HN + xx]); }
+      o[y * HN + i] = init === 0 ? m / (2 * R + 1) : m; } return o; };
+  h = pass(pass(h, 1, 0, 8, Math.min, 1e9), 0, 1, 8, Math.min, 1e9);                 // buildings out: the lowest point nearby
+  for (let r = 0; r < 2; r++) h = pass(pass(h, 1, 0, 6, (a, b) => a + b, 0), 0, 1, 6, (a, b) => a + b, 0);   // then smooth
+  GRD = h;
+  gndT = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, gndT); gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, HN, HN, 0, gl.RED, gl.FLOAT, h);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE); }
+function groundAt(x, y) { if (!GRD) return 0; const gx = (x - CFG.dom.X0) / CFG.dom.S * HN - .5, gy = (y - CFG.dom.Y0) / CFG.dom.S * HN - .5;
+  const i = Math.floor(gx), j = Math.floor(gy), fx = gx - i, fy = gy - j, g = (a, b) => GRD[Math.min(HN - 1, Math.max(0, b)) * HN + Math.min(HN - 1, Math.max(0, a))];
+  return (g(i, j) * (1 - fx) + g(i + 1, j) * fx) * (1 - fy) + (g(i, j + 1) * (1 - fx) + g(i + 1, j + 1) * fx) * fy; }
+function layerAt(cx, cy) { const ix = cover[0] + cx / innerWidth * cover[2], iy = cover[1] + cy / innerHeight * cover[3]; const d = rayAt(ix, iy);
+  const P = t => [CAM[0] + d[0] * t, CAM[1] + d[1] * t, CAM[2] + d[2] * t], f = t => { const q = P(t); return q[2] - groundAt(q[0], q[1]) - PR.layer; };
+  let t = (700 - CAM[2]) / d[2];
+  for (let i = 0; i < 400; i++) { const tn = t + 8; if (f(tn) <= 0) { let a = t, b = tn; for (let k = 0; k < 12; k++) { const m = (a + b) / 2; if (f(m) > 0) a = m; else b = m; } return P(b); } t = tn; }
+  return P(t); }
+const ptr = { x: 0, y: 0, moved: -1e9, down: false };
+cv.addEventListener('pointermove', e => { ptr.x = e.clientX; ptr.y = e.clientY; ptr.moved = performance.now(); });
+cv.addEventListener('pointerdown', e => { ptr.down = e.pointerType !== 'touch';   // on a phone, a finger draws fog
+  ptr.x = e.clientX; ptr.y = e.clientY; ptr.moved = performance.now(); cv.setPointerCapture(e.pointerId); });
+cv.addEventListener('pointerup', () => { ptr.down = false; });
+cv.addEventListener('pointerleave', () => { ptr.moved = -1e9; });
+const toCell = w => [(w[0] - CFG.dom.X0) / CS[0], (w[1] - CFG.dom.Y0) / CS[1], w[2] / CS[2]];
+
+// ---------- one simulation step ----------
+function setGrid(u) { gl.uniform3f(u.G, GX, GY, GZ); gl.uniform2f(u.TL, TLX, TLY); gl.uniform3fv(u.CS, CS); }
+function stepA(dt, m) {
+  let p = P.advV; gl.useProgram(p.p); setGrid(p.u); bindT(p.u.hgt, 7, hgtT); bindT(p.u.vel, 0, vel.r.t); bindT(p.u.den, 1, den.r.t);
+  gl.uniform1f(p.u.dt, dt); gl.uniform1f(p.u.buoy, PR.buoy); gl.uniform1f(p.u.relax, PR.relax); gl.uniform1f(p.u.init, INIT ? 1 : 0); INIT = false; gl.uniform3fv(p.u.wind, WIND);
+  gl.uniform1f(p.u.mOn, m.push); gl.uniform1f(p.u.mR, PR.mR); gl.uniform3fv(p.u.mA, m.a); gl.uniform3fv(p.u.mB, m.b); gl.uniform3fv(p.u.mV, m.vel); draw(vel.w.f, AW, AH); vel.swap();
+  p = P.curl; gl.useProgram(p.p); setGrid(p.u); bindT(p.u.hgt, 7, hgtT); bindT(p.u.vel, 0, vel.r.t); draw(cuF, AW, AH);
+  p = P.conf; gl.useProgram(p.p); setGrid(p.u); bindT(p.u.hgt, 7, hgtT); bindT(p.u.vel, 0, vel.r.t); bindT(p.u.cu, 1, cuT); gl.uniform1f(p.u.dt, dt); gl.uniform1f(p.u.eps, PR.eps); draw(vel.w.f, AW, AH); vel.swap();
+  p = P.div; gl.useProgram(p.p); setGrid(p.u); bindT(p.u.msk, 6, mskT); bindT(p.u.vel, 0, vel.r.t); draw(dvF, AW, AH);
+  p = P.jac; gl.useProgram(p.p); setGrid(p.u); bindT(p.u.msk, 6, mskT); bindT(p.u.dv, 1, dvT);
+  for (let i = 0; i < JAC / 2; i++) { bindT(p.u.prs, 0, prs.r.t); draw(prs.w.f, AW, AH); prs.swap(); }
+}
+function stepB(dt, time, src, m) { let p = P.jac; gl.useProgram(p.p); setGrid(p.u); bindT(p.u.msk, 6, mskT); bindT(p.u.dv, 1, dvT);
+  for (let i = 0; i < JAC / 2; i++) { bindT(p.u.prs, 0, prs.r.t); draw(prs.w.f, AW, AH); prs.swap(); }
+  p = P.grad; gl.useProgram(p.p); setGrid(p.u); bindT(p.u.msk, 6, mskT); bindT(p.u.prs, 0, prs.r.t); bindT(p.u.vel, 1, vel.r.t); draw(vel.w.f, AW, AH); vel.swap();
+  p = P.advD1; gl.useProgram(p.p); setGrid(p.u); bindT(p.u.hgt, 7, hgtT); bindT(p.u.vel, 0, vel.r.t); bindT(p.u.den, 1, den.r.t); gl.uniform1f(p.u.dt, dt); draw(fwdF, AW, AH);
+  p = P.advD2; gl.useProgram(p.p); setGrid(p.u); bindT(p.u.hgt, 7, hgtT); bindT(p.u.vel, 0, vel.r.t); bindT(p.u.den, 1, den.r.t); bindT(p.u.fwd, 2, fwdT);
+  gl.uniform1f(p.u.dt, dt); gl.uniform1f(p.u.tau, 3000); gl.uniform1f(p.u.time, time);
+  gl.uniform1f(p.u.mAmt, m.emit); gl.uniform1f(p.u.mR, PR.fogR); gl.uniform1f(p.u.slow, Math.max(1.5, PR.windSpd * .72 * .35)); gl.uniform1f(p.u.stay, PR.stay * TS); gl.uniform1f(p.u.fade, PR.fadeT * TS); gl.uniform3fv(p.u.mA, m.a); gl.uniform3fv(p.u.mB, m.b); gl.uniform4f(p.u.dom, CFG.dom.X0, CFG.dom.Y0, CFG.dom.S, 0); draw(den.w.f, AW, AH); den.swap();
+}
+
+function step(dt, time, src, m) { stepA(dt, m); stepB(dt, time, src, m); }
+
+// ---------- frame ----------
+const hint = document.getElementById('hint'), fpsEl = Q.has('fps') ? document.getElementById('err') : null;
+let TS = PR.ts; let M = { emit: 0, push: 0, a: [-99, -99, -99], b: [-99, -99, -99], vel: [0, 0, 0] }, JAC = 12, sdt = 0, SIMEVERY = Q.has('se') ? parseInt(Q.get('se')) : 2, simAcc = 0;                                            // simulated seconds per real second
+let t0 = 0, last = 0, simT = 0, fpsAcc = 0, fpsN = 0, slow = 0;
+let cur = null, from = null, fromT = 0, ringP = [0, 0, -1e4], ringA = 0;
+function pointerNow(now, dt) {
+  const active = now - ptr.moved < 120;
+  cur = (active || ptr.down) && VIEW.fogK > .5 ? layerAt(ptr.x, ptr.y) : null;
+  if (cur) ringP = cur;
+  const want = (now - ptr.moved < 900 || ptr.down) ? 1 : 0;
+  ringA = want > ringA ? Math.min(1, ringA + dt * 6) : Math.max(0, ringA - dt * 1.5);
+}
+function stroke(now) {
+  const m = { emit: 0, push: 0, a: [-99, -99, -99], b: [-99, -99, -99], vel: [0, 0, 0] };
+  if (!cur) { from = null; return m; }
+  const f = from || cur, el = Math.max(.008, (now - fromT) / 1000);
+  let vx = (cur[0] - f[0]) / el / TS * PR.mWind, vy = (cur[1] - f[1]) / el / TS * PR.mWind; const sp = Math.hypot(vx, vy);   // the cursor's speed, in simulated m/s
+  if (sp > PR.mMax) { vx *= PR.mMax / sp; vy *= PR.mMax / sp; }
+  m.a = toCell(f); m.b = toCell(cur); m.vel = [vx, vy, 0];
+  m.push = 1; m.emit = ptr.down ? 0 : (9 + Math.min(6, sp * .25)) * PR.fogAmt;
+  from = cur; fromT = now; return m;
+}
+function render() {
+  const nx = 1 - fogCur, S = fogA[fogCur];
+  gl.useProgram(FOG.p); let u = FOG.u; setGrid(u); bindT(u.hgt, 7, hgtT); bindT(u.den, 0, den.r.t); bindT(u.pas1, 1, VIEW.p1); bindT(u.pas2, 2, VIEW.p2);
+  bindT(u.pF, 3, S[0]); bindT(u.pB, 4, S[1]); bindT(u.pS, 5, S[2]);
+  gl.uniform3fv(u.C, CAM); gl.uniform3fv(u.Rt, RT); gl.uniform3fv(u.Up, UP); gl.uniform3fv(u.Bk, BK); gl.uniform3fv(u.L, LDIR); gl.uniform3fv(u.wind, WIND);
+  gl.uniform1f(u.lens, CAMLENS); gl.uniform1f(u.asp, ASP); gl.uniform1f(u.time, simT); gl.uniform1f(u.blend, firstFog ? 1 : camBlend); gl.uniform1f(u.bendK, VIEW.bend); gl.uniform1f(u.ext, PR.ext); gl.uniform1f(u.frame, fc);
+  gl.uniform2f(u.res, fogW, fogH); gl.uniform4fv(u.cover, cover); gl.uniform4f(u.dom, CFG.dom.X0, CFG.dom.Y0, CFG.dom.S, 0);
+  draw(fogFB[nx], fogW, fogH); firstFog = false; fogCur = nx; const N = fogA[nx];
+  comp(N);
+}
+function comp(N) { const u = COMP.u; gl.useProgram(COMP.p); bindT(u.base, 0, VIEW.b0); bindT(u.base2, 5, VIEW.b1); gl.uniform1f(u.bmix, VIEW.mix); bindT(u.fogF, 1, N[0]); bindT(u.fogB, 2, N[1]); bindT(u.fogS, 3, N[2]); bindT(u.pas1, 4, VIEW.p1); gl.uniform1f(u.fogK, VIEW.fogK);
+  gl.uniform2f(u.res, cv.width, cv.height); gl.uniform4fv(u.cover, cover); gl.uniform3fv(u.C, CAM); gl.uniform3fv(u.Rt, RT); gl.uniform3fv(u.Up, UP); gl.uniform3fv(u.Bk, BK);
+  gl.uniform1f(u.lens, CAMLENS); gl.uniform1f(u.asp, ASP); gl.uniform4f(u.ring, ringP[0], ringP[1], ringP[2], ringA * PR.ring); gl.uniform1f(u.ringR, PR.mR * .85); gl.uniform1f(u.shK, PR.shadow); gl.uniform1f(u.gK, PR.glass);
+  draw(null, cv.width, cv.height);
+}
+const DEMO = Q.has('demo');
+function demo(time, now) {
+  if (time > 2 && time < 6) { const k = (time - 2) / 4; ptr.x = innerWidth * (.18 + .55 * k); ptr.y = innerHeight * (.66 - .1 * k); ptr.moved = now; ptr.down = false; }
+  else if (time > 9 && time < 10.5) { const k = (time - 9) / 1.5; ptr.x = innerWidth * (.7 - .35 * k); ptr.y = innerHeight * (.5 + .05 * k); ptr.moved = now; ptr.down = true; }
+  else ptr.down = false;
+}
+const BENCH = Q.has('bench'); let bPhase = 0, bT = 0, bN = 0, bRes = [], skipSim = false, skipFog = false, half = false, fc = 0;
+const bNames = ['warm', 'se2', 'no sim', 'no fog', 'se1', 'se4'];
+function bench(rdt) { if (bPhase >= bNames.length) return; bT += rdt; bN++;
+  if (bT > 3) { bRes.push(bNames[bPhase] + ' ' + (bT / bN * 1000).toFixed(1)); bPhase++; bT = 0; bN = 0;
+    skipSim = bPhase === 2; skipFog = bPhase === 3; SIMEVERY = bPhase === 4 ? 1 : bPhase === 5 ? 4 : 2; errBox.textContent = bRes.join(' · '); } }
+let stillT = [];
+const railAlt = document.getElementById('rAlt'), railTilt = document.getElementById('rTilt'), railDot = document.getElementById('rDot'), shint = document.getElementById('scrollhint');
+let camBlend = .3, lastCam = [0, 0, 0, 0, 0, 0], fPrev = 0, yS = 0;
+// the page in screen heights: the film runs straight through, never held (user 14:46); text cards just float over it
+// 11-19 16:00 user: the opening took half the scroll ("鼠标移动不了的无力感"): frames ~50-160 now pass 2.2x faster per screen, all frames kept;
+// from ~220 on the old pace (35 frames a screen). YF[k] = screen position of frame k.
+const FPS1 = 378 / 10.75, FPS0 = FPS1 * 2.2, sst = x => { x = Math.min(1, Math.max(0, x)); return x * x * (3 - 2 * x); };
+const dens = f => FPS1 + (FPS0 - FPS1) * (1 - sst((f - 160) / 77));        // b16 frames (old 160-220)        // b15: no ramp at the start - the first scroll already moves at the opening's pace
+const YF = new Float64Array(NA); for (let k = 1; k < NA; k++) YF[k] = YF[k - 1] + 2 / (dens(k - 1) + dens(k));
+const TOT = YF[NA - 1];
+document.getElementById('track').style.height = '0';                     // the page itself does not scroll: wheel, touch and keys move the film
+document.documentElement.style.overflow = 'hidden'; document.body.style.overflow = 'hidden';
+let vY = 0;                                                                 // position along the page, in screen heights
+const moveBy = d => { vY = Math.min(TOT, Math.max(0, vY + d)); };
+addEventListener('wheel', e => { if (e.target.closest && e.target.closest('#panel')) return; e.preventDefault(); fling = 0; touchMode = false; const k = e.deltaMode === 1 ? 32 : e.deltaMode === 2 ? innerHeight : 1; moveBy(e.deltaY * k / innerHeight); }, { passive: false });
+let touchY = null, touchT = 0, tVel = 0, fling = 0, touchMode = false;   // touch: the film follows the finger, and a flick carries on (momentum)
+addEventListener('touchstart', e => { touchY = e.touches[0].clientY; touchT = e.timeStamp; tVel = 0; fling = 0; touchMode = true; }, { passive: true });
+addEventListener('touchmove', e => { if (touchY === null || e.target.closest('#wind, #panel')) return; const y = e.touches[0].clientY, d = (touchY - y) / innerHeight, ms = Math.max(1, e.timeStamp - touchT);
+  moveBy(d); const v = d / ms * 1000; tVel = ms > 80 ? v : tVel + (v - tVel) * Math.min(1, ms / 45); touchY = y; touchT = e.timeStamp; e.preventDefault(); }, { passive: false });
+addEventListener('touchend', e => { if (touchY !== null && e.timeStamp - touchT < 100 && Math.abs(tVel) > .3) fling = Math.max(-7, Math.min(7, tVel)); touchY = null; });
+addEventListener('touchcancel', () => { touchY = null; });
+addEventListener('keydown', e => { const k = { ArrowDown: .15, ArrowUp: -.15, PageDown: .9, PageUp: -.9, ' ': .9, End: TOT, Home: -TOT }[e.key]; if (k !== undefined) { fling = 0; moveBy(e.shiftKey && e.key === ' ' ? -k : k); e.preventDefault(); } });
+const STOPS = [[-1, 0, 18, 40], [140, 160, 206, 234], [267, 274, 287, 288]], stopEl = [1, 2, 3].map(i => document.getElementById('stop' + i));   // frames: fade in a-b, stay b-c, fade out c-d
+const smooth = x => { x = Math.min(1, Math.max(0, x)); return x * x * (3 - 2 * x); };
+function frameAt(y) { y = Math.min(TOT, Math.max(0, y)); let lo = 0, hi = NA - 1; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (YF[m] <= y) lo = m; else hi = m; } return lo + (y - YF[lo]) / (YF[hi] - YF[lo]); }
+function stopW(i, f) { const [a, b, c, d] = STOPS[i]; return smooth((f - a) / (b - a)) * (1 - smooth((f - c) / (d - c))); }
+const water = { active: 0, mix: 0, img: null };
+const _cs = new Map();                                                   // style / text writes only when the value changes
+function css(el, p, v) { let m = _cs.get(el); if (!m) _cs.set(el, m = {}); if (m[p] !== v) { m[p] = v; el.style[p] = v; } }
+function txt(el, v) { if (el._t !== v) { el._t = v; el.textContent = v; } }
+const XF = .6;                                                           // cross-fade over the middle 60% of each frame's slot
+const MOT = new Float32Array(NA);                                         // how far the view turns from frame k to k+1 (degrees, roughly)
+for (let k = 0; k < NA - 1; k++) { const p = CFG.alt[k], q = CFG.alt[k + 1]; let m = Math.abs(q[1] - p[1]) + Math.abs(q[0] - p[0]) / 15, d = -1;
+  if (k + 1 < NF) d = Math.abs(CFG.cams[k + 1].az - CFG.cams[k].az) % 360;
+  else if (CFG.wcam && CFG.wcam[k - 190] && CFG.wcam[k + 1 - 190]) d = Math.abs(CFG.wcam[k + 1 - 190][2] - CFG.wcam[k - 190][2]) % 360;
+  if (d >= 0) m += Math.min(d, 360 - d); MOT[k] = m; }
+function updateView(dt) {
+  if (fling) { moveBy(fling * dt); fling *= Math.exp(-dt / .42); if (Math.abs(fling) < .03 || vY <= 0 || vY >= TOT) fling = 0; }
+  const y = Q.has('y') ? parseFloat(Q.get('y')) : vY;
+  yS += (y - yS) * (1 - Math.exp(-dt * (touchMode ? 12 : 4.5)));   // 16:31 user: a longer ease-out after the wheel (was 7) if (Math.abs(y - yS) < 1e-4 || Q.has('y')) yS = y;          // the camera glides after the scroll
+  const f = frameAt(yS), W3 = [0, 1, 2].map(i => stopW(i, f)); VIEW.f = f;
+  feedFrames(f, dt);
+  // the frames on either side of the playhead that are on the GPU (normally k and k+1; up to 4 apart while some are still missing)
+  const k0 = Math.floor(f); let a = -1, b = -1, mix = 0;
+  for (let d = 0; d < 4 && a < 0; d++) if (k0 - d >= 0 && cache.has('f' + (k0 - d))) a = k0 - d;
+  for (let d = 1; d <= 4 && b < 0; d++) if (k0 + d < NA && cache.has('f' + (k0 + d))) b = k0 + d;
+  if (a >= 0 && b >= 0 && b - a <= 4) {                                  // the fade is as wide as XF only while the film moves, and narrower where the view turns fast; at rest it settles on one sharp frame
+    let mo = 0; for (let j = a; j < b; j++) mo = Math.max(mo, MOT[j]);
+    const xf = XF * Math.min(1, Math.abs(velF) / 6) * Math.min(1, Math.max(.25, 2.5 / Math.max(mo, 1e-3))), tt = (f - a) / (b - a);
+    mix = xf < .02 ? (tt < .5 ? 0 : 1) : smooth((tt - .5) / xf + .5); }
+  else if (a >= 0 && (b < 0 || f - a <= b - f)) b = a; else if (b >= 0) a = b;
+  else a = b = nearestTex('f', Math.round(f), NA);
+  const k = Math.max(0, mix < .5 ? a : b);
+  const kf = Math.min(k, NF - 1), ck = CFG.cams[kf]; setCam(ck.tilt, ck.pos, ck.az, ck.lens);            // the fog uses the (nearer) shown frame's own camera
+  VIEW.fogK = 1 - smooth((f - 246) / 4);            // 00:30 user: CFD on the whole ground world (up to straight down at 240)                                  // the fog stays while Central is in view (it leaves as the camera tips down, ~f340); then the water
+  const mv = Math.hypot(CAM[0] - lastCam[0], CAM[1] - lastCam[1], CAM[2] - lastCam[2]) + Math.abs(CAMT - lastCam[3]) * 20 + Math.abs(CAMAZ - lastCam[4]) * 20 + Math.abs(CAMLENS - lastCam[5]) * 20;
+  camBlend = mv > .05 ? Math.min(1, .55 + mv / 20) : .3; lastCam = [CAM[0], CAM[1], CAM[2], CAMT, CAMAZ, CAMLENS];
+  const t0_ = a >= 0 ? texFor('f' + a) : null, t1_ = b >= 0 ? texFor('f' + b) : null;
+  const ip = VIEW.fogK > 0 ? (cache.has('p' + kf) ? kf : nearestTex('p', kf, NF)) : -1, tp = ip >= 0 ? texFor('p' + ip) : null;
+  VIEW.b0 = t0_ || stillT[0]; VIEW.b1 = t1_ || VIEW.b0; VIEW.mix = t0_ && t1_ ? mix : 0; VIEW.p1 = tp || pas1T; VIEW.p2 = flatT; VIEW.bend = 0;
+  water.active = k >= 252 ? smooth((f - 252) / 6) : 0; water.k0 = a; water.k1 = b; water.mix = mix; water.n = Math.max(252, k);   // 00:30 user: water sim on the whole sky world (after the flip)   // live water only on the sky water (the folded shore's harbour), as it comes into view; the real harbour stays still
+  stopEl.forEach((el, i) => { const w = W3[i]; css(el, 'opacity', w.toFixed(3)); css(el, 'transform', innerWidth > 900 ? `translateY(calc(-50% + ${((1 - w) * 18).toFixed(1)}px))` : `translateY(${((1 - w) * 18).toFixed(1)}px)`); });
+  css(windBox, 'opacity', VIEW.fogK.toFixed(3)); css(windBox, 'visibility', VIEW.fogK > .01 ? 'visible' : 'hidden');
+  for (const el of [document.getElementById('cbtn'), pbtn]) css(el, 'visibility', VIEW.fogK > .5 ? 'visible' : 'hidden');
+  if (VIEW.fogK < .5 && panel.classList.contains('open')) panel.classList.remove('open');
+  const al = CFG.alt[Math.min(NA - 1, k)]; txt(railAlt, al[0] + ' m'); txt(railTilt, Math.round(al[1]) + '°'); css(railDot, 'top', (Math.min(1, yS / TOT) * 100).toFixed(1) + '%');
+  if (y > .05) css(shint, 'opacity', '0');
+}
+function frame(now) {
+  if (DEMO) demo((now - t0) / 1000, now);
+  const rdt = (now - last) / 1000, dt = Math.min(.05, rdt); last = now; const time = (now - t0) / 1000;
+  updateView(dt);
+  pointerNow(now, dt);
+  fc++; if (BENCH) bench(rdt);
+  simAcc += dt;
+  if (!skipSim && VIEW.fogK > 0 && !water.cover) { const ph = fc % SIMEVERY;
+    if (ph === 0) { sdt = Math.min(.1, simAcc) * TS; simAcc = 0; M = stroke(now); stepA(sdt, M); }
+    if (ph === (SIMEVERY >> 1)) { simT += sdt; stepB(sdt, simT, .9, M); } }
+  if (water.cover) { }                                                    // the water layer (opaque) covers the film: nothing to draw here
+  else if (skipFog || VIEW.fogK <= 0) comp(fogA[fogCur]);
+  else render();
+  // keep it smooth on slower machines: a coarser fog layer if frames run long
+  fpsAcc += rdt; fpsN++;
+  if (fpsN === 60 && !BENCH) { const ms = fpsAcc / fpsN * 1000; if (fpsEl) fpsEl.textContent = ms.toFixed(1) + ' ms · fog ' + fogW + 'px';
+    if (ms > 24 && ++slow >= 2) { if (FOGMAX > 760) { FOGMAX = Math.round(FOGMAX * .8); makeFog(); } else if (SIMEVERY < 4) SIMEVERY *= 2; slow = 0; } fpsAcc = 0; fpsN = 0; }
+  if (fc % 8 === 0) boardGPU();
+  if (time > 6) css(hint, 'opacity', '.55');
+  requestAnimationFrame(frame);
+}
+
+// test hook: read back the fog density and the fog layer
+window.__dbg = () => {
+  const rd = (f, w, h, half) => { gl.bindFramebuffer(gl.FRAMEBUFFER, f); const fmt = gl.getParameter(gl.IMPLEMENTATION_COLOR_READ_FORMAT), ty = gl.getParameter(gl.IMPLEMENTATION_COLOR_READ_TYPE);
+    if (half) { const a = new Float32Array(w * h * 4); gl.readPixels(0, 0, w, h, gl.RGBA, gl.FLOAT, a); return { a, n: 4, fmt, ty }; }
+    const a = new Uint8Array(w * h * 4); gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, a); return { a, n: 4 }; };
+  const st = (r, ch) => { let mx = -1e9, mn = 1e9, s = 0, nz = 0, nan = 0; for (let i = ch; i < r.a.length; i += r.n) { const v = r.a[i]; if (v !== v) { nan++; continue; } mx = Math.max(mx, v); mn = Math.min(mn, v); s += v; if (v > .01) nz++; } return { mx, mn, mean: s / (r.a.length / r.n), nz, nan }; };
+  const out = {};
+  try { const r = rd(den.r.f, AW, AH, true); out.den = st(r, 0); out.fmt = [r.fmt, r.ty, gl.getError()]; } catch (e) { out.denErr = String(e); }
+  try { const r = rd(vel.r.f, AW, AH, true); out.vx = st(r, 0); out.vz = st(r, 2); } catch (e) { out.velErr = String(e); }
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fogFB[fogCur]); gl.readBuffer(gl.COLOR_ATTACHMENT0);
+  { const a = new Uint8Array(fogW * fogH * 4); gl.readPixels(0, 0, fogW, fogH, gl.RGBA, gl.UNSIGNED_BYTE, a); out.fogF = st({ a, n: 4 }, 3); }
+  gl.readBuffer(gl.COLOR_ATTACHMENT1);
+  { const a = new Uint8Array(fogW * fogH * 4); gl.readPixels(0, 0, fogW, fogH, gl.RGBA, gl.UNSIGNED_BYTE, a); out.fogB = st({ a, n: 4 }, 3); }
+  gl.readBuffer(gl.COLOR_ATTACHMENT0); gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  out.err = gl.getError(); out.cam = CAM; out.fog = [fogW, fogH]; return out; };
+// ---------- 参数面板 ----------
+const PSPEC = [
+  ['风'],
+  ['relax', '阵风回落', .002, .08, .001, '', '鼠标带起的风多快回到海风；越大越快'],
+  ['鼠标'],
+  ['mWind', '带风力度', 0, 3, .05, '×', '鼠标移动速度转成风速的倍数'],
+  ['mMax', '最大风速', 10, 120, 1, 'm/s'],
+  ['mR', '吹风范围', 20, 120, 1, 'm', '半径，也是地面圆环的大小'],
+  ['fogAmt', '出雾量', 0, 3, .05, '×'],
+  ['fogR', '出雾范围', 10, 80, 1, 'm'],
+  ['layer', '风层高度', 5, 80, 1, 'm', '鼠标作用的那层空气，离地多高'],
+  ['云雾'],
+  ['ext', '浓度', .01, .12, .002, '', '越大越不透明'],
+  ['buoy', '下沉', 0, .3, .01, '', '雾比空气重多少，越大越贴地'],
+  ['eps', '涡旋', 0, .8, .01, '', '保留卷曲的程度，太大会起毛'],
+  ['ts', '时间倍速', 1, 12, .5, '×', '模拟比真实快几倍'],
+  ['stay', '滞留消散', .5, 20, .5, '秒', '雾停在风很弱的地方超过这么久，就开始消散'],
+  ['fadeT', '消散快慢', .3, 6, .1, '秒', '开始消散后，大约多久淡到看不见'],
+  ['画面'],
+  ['shadow', '雾的影子', 0, .6, .01, ''],
+  ['glass', '水晶透雾', 0, 1, .01, '', '玻璃楼后面的雾透出来多少'],
+  ['ring', '地面圆环', 0, 1, 1, '', '0 关，1 开'],
+];
+const panel = document.getElementById('panel'), pbtn = document.getElementById('pbtn');
+function fmt(v, st) { const d = st >= 1 ? 0 : st >= .1 ? 1 : st >= .01 ? 2 : 3; return (+v).toFixed(d); }
+function savePR() { try { localStorage.setItem('hk-fog-params', JSON.stringify(PR)); } catch (e) {} }
+function applyPR() { updWind(); TS = PR.ts; }
+function buildPanel() {
+  let h = '';
+  for (const r of PSPEC) {
+    if (r.length === 1) { h += `<h4>${r[0]}</h4>`; continue; }
+    const [k, name, mn, mx, st, unit, tip] = r;
+    h += `<div class="row"><label>${name}</label><input type="range" data-k="${k}" min="${mn}" max="${mx}" step="${st}" value="${PR[k]}"><span id="pv-${k}">${fmt(PR[k], st)}${unit}</span></div>`;
+    if (tip) h += `<div class="tip">${tip}</div>`;
+  }
+  h += `<div class="btns"><button id="pReset">恢复默认</button><button id="pCopy">复制参数</button></div>`;
+  panel.innerHTML = h;
+  panel.querySelectorAll('input[type=range]').forEach(el => el.addEventListener('input', () => {
+    const k = el.dataset.k, r = PSPEC.find(x => x[0] === k); PR[k] = parseFloat(el.value);
+    document.getElementById('pv-' + k).textContent = fmt(PR[k], r[4]) + r[5]; applyPR(); savePR(); }));
+  document.getElementById('pReset').onclick = () => { Object.assign(PR, PDEF); applyPR(); savePR(); buildPanel(); boardText(); };
+  document.getElementById('pCopy').onclick = e => { const t = JSON.stringify(PR); const b = e.target;
+    (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => { b.textContent = '已复制'; }, () => { prompt('参数：', t); }).finally(() => setTimeout(() => b.textContent = '复制参数', 1200)); };
+}
+function clearFog() { [den.r.f, den.w.f, fwdF].forEach(f => { gl.bindFramebuffer(gl.FRAMEBUFFER, f); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT); }); }
+document.getElementById('cbtn').onclick = clearFog;
+buildPanel();
+pbtn.onclick = () => panel.classList.toggle('open');
+addEventListener('keydown', e => { if (e.key === 'p' || e.key === 'P') panel.classList.toggle('open'); });
+
+// ---------- 风板 ----------
+const BRES = 128, ARES = 48, BSIDE = 2500, BCTR = [-1100, -650];
+const nrm = v => { const l = Math.hypot(v[0], v[1]); return [v[0] / l, v[1] / l]; };
+const AXR = nrm([RT[0], RT[1]]), AXU = [-Math.sin(A), Math.cos(A)];   // board right = camera right, board up = the camera's heading
+const boardT = tex(BRES, BRES, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, gl.NEAREST), boardF = fbo(boardT), arwT = tex(ARES, ARES, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, gl.NEAREST), arwF = fbo(arwT);
+const bPix = new Uint8Array(BRES * BRES * 4), aPix = new Uint8Array(ARES * ARES * 4), bImg = new ImageData(BRES, BRES);
+const bOff = document.createElement('canvas'); bOff.width = bOff.height = BRES; const bOffX = bOff.getContext('2d');
+const bc = document.getElementById('bcv'), bx = bc.getContext('2d'), windBox = document.getElementById('wind');
+const wSpdEl = document.getElementById('wSpd'), wDirEl = document.getElementById('wDir');
+function sizeBoard() { const d = Math.min(devicePixelRatio || 1, 2); bc.width = bc.height = Math.round(232 * d); }
+sizeBoard(); addEventListener('resize', sizeBoard);
+const toBoard = w => [((w[0] - BCTR[0]) * AXR[0] + (w[1] - BCTR[1]) * AXR[1]) / BSIDE + .5, ((w[0] - BCTR[0]) * AXU[0] + (w[1] - BCTR[1]) * AXU[1]) / BSIDE + .5];
+const footNow = () => [[0, 0], [1, 0], [1, 1], [0, 1]].map(([ix, iy]) => { const d = rayAt(ix, iy), t = -CAM[2] / d[2]; return toBoard([CAM[0] + d[0] * t, CAM[1] + d[1] * t]); });
+function windName(a) {                                                  // a = where the wind comes from, 0 = north, clockwise
+  a = ((a % 360) + 360) % 360; const i = Math.round(a / 90) % 4, off = Math.round(((a - i * 90 + 540) % 360) - 180);
+  const nm = ['北', '东', '南', '西'][i], side = [['偏西', '偏东'], ['偏北', '偏南'], ['偏东', '偏西'], ['偏南', '偏北']][i];
+  return nm + '风' + (off === 0 ? '' : ' · ' + side[off > 0 ? 1 : 0] + ' ' + Math.abs(off) + '°'); }
+function boardText() { wSpdEl.textContent = PR.windSpd.toFixed(1); wDirEl.textContent = PR.windSpd < .05 ? '无风' : windName(PR.windDir); }
+const RB = { pb: gl.createBuffer(), pa: gl.createBuffer(), sync: null, wn: 4 };      // the board's pixels come back a few frames later (no GPU stall)
+gl.bindBuffer(gl.PIXEL_PACK_BUFFER, RB.pb); gl.bufferData(gl.PIXEL_PACK_BUFFER, BRES * BRES * 4, gl.STREAM_READ);
+gl.bindBuffer(gl.PIXEL_PACK_BUFFER, RB.pa); gl.bufferData(gl.PIXEL_PACK_BUFFER, ARES * ARES * 4, gl.STREAM_READ); gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+function boardGPU() {
+  const zl = 20, wn = Math.max(4, PR.windSpd * .72);
+  if (!gndT || VIEW.fogK <= .01 || windBox.classList.contains('min') || Math.abs(velF) > 2) return;    // hidden, or the film is moving: the board waits
+  if (RB.sync) { if (gl.getSyncParameter(RB.sync, gl.SYNC_STATUS) !== gl.SIGNALED) return; gl.deleteSync(RB.sync); RB.sync = null;
+    gl.bindBuffer(gl.PIXEL_PACK_BUFFER, RB.pb); gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, bPix); gl.bindBuffer(gl.PIXEL_PACK_BUFFER, RB.pa); gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, aPix);
+    gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null); drawBoard(RB.wn); } let u = BOARD.u; gl.useProgram(BOARD.p); setGrid(u); bindT(u.hgt, 7, hgtT); bindT(u.vel, 0, vel.r.t); bindT(u.den, 1, den.r.t); bindT(u.gnd, 2, gndT);
+  gl.uniform2fv(u.ctr, BCTR); gl.uniform2fv(u.ax, AXR); gl.uniform2fv(u.ay, AXU); gl.uniform1f(u.side, BSIDE); gl.uniform1f(u.zl, zl); gl.uniform1f(u.wn, wn); gl.uniform1f(u.res, BRES);
+  gl.uniform4f(u.dom, CFG.dom.X0, CFG.dom.Y0, CFG.dom.S, 0); draw(boardF, BRES, BRES); gl.bindBuffer(gl.PIXEL_PACK_BUFFER, RB.pb); gl.readPixels(0, 0, BRES, BRES, gl.RGBA, gl.UNSIGNED_BYTE, 0); gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+  u = ARW.u; gl.useProgram(ARW.p); setGrid(u); bindT(u.hgt, 7, hgtT); bindT(u.vel, 0, vel.r.t); bindT(u.gnd, 2, gndT);
+  gl.uniform2fv(u.ctr, BCTR); gl.uniform2fv(u.ax, AXR); gl.uniform2fv(u.ay, AXU); gl.uniform1f(u.side, BSIDE); gl.uniform1f(u.zl, zl); gl.uniform1f(u.res, ARES);
+  gl.uniform4f(u.dom, CFG.dom.X0, CFG.dom.Y0, CFG.dom.S, 0); draw(arwF, ARES, ARES); gl.bindBuffer(gl.PIXEL_PACK_BUFFER, RB.pa); gl.readPixels(0, 0, ARES, ARES, gl.RGBA, gl.UNSIGNED_BYTE, 0); gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+  RB.sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0); gl.flush(); RB.wn = wn; }
+function arrow(x0, y0, x1, y1, hw) { const a = Math.atan2(y1 - y0, x1 - x0); bx.beginPath(); bx.moveTo(x0, y0); bx.lineTo(x1, y1);
+  bx.moveTo(x1 - Math.cos(a - .5) * hw, y1 - Math.sin(a - .5) * hw); bx.lineTo(x1, y1); bx.lineTo(x1 - Math.cos(a + .5) * hw, y1 - Math.sin(a + .5) * hw); bx.stroke(); }
+function drawBoard(wn) {
+  if (windBox.classList.contains('min')) return;
+  for (let y = 0; y < BRES; y++) bImg.data.set(bPix.subarray((BRES - 1 - y) * BRES * 4, (BRES - y) * BRES * 4), y * BRES * 4);
+  bOffX.putImageData(bImg, 0, 0); const W = bc.width, k = W / 232; bx.imageSmoothingEnabled = true; bx.drawImage(bOff, 0, 0, W, W);
+  // the field: short curved arrows that follow the flow (traced through it), length by speed
+  const fld = (u, v) => {                                                 // u, v in board units (0..1, v up) -> [vx, vy] or null over a building
+    const x = u * ARES - .5, y = v * ARES - .5, i = Math.floor(x), j = Math.floor(y), fx = x - i, fy = y - j; let vx = 0, vy = 0;
+    for (let q = 0; q < 4; q++) { const ii = Math.min(ARES - 1, Math.max(0, i + (q & 1))), jj = Math.min(ARES - 1, Math.max(0, j + (q >> 1))), o = (jj * ARES + ii) * 4;
+      if (aPix[o + 2] > 128) return null; const w = ((q & 1) ? fx : 1 - fx) * ((q >> 1) ? fy : 1 - fy);
+      vx += (aPix[o] / 255 - .5) * 120 * w; vy += (aPix[o + 1] / 255 - .5) * 120 * w; }
+    return [vx, vy]; };
+  const NS = 13, cell = W / NS, STEPS = 5;
+  bx.strokeStyle = 'rgba(21, 21, 21, .55)'; bx.lineWidth = 1.1 * k; bx.lineCap = 'round'; bx.lineJoin = 'round';
+  for (let j = 0; j < NS; j++) for (let i = 0; i < NS; i++) {
+    const su = (i + .5 + (j % 2) * .25) / NS, sv = (j + .5) / NS, f0 = fld(su, sv); if (!f0) continue;
+    const sp = Math.hypot(f0[0], f0[1]); if (sp < .3) continue;
+    const L = Math.max(.25, Math.min(1, sp / wn)) * cell * .9, ds = L / (2 * STEPS) / W;    // half the length back, half forward
+    const trace = dir => { const pts = []; let u = su, v = sv;
+      for (let n = 0; n < STEPS; n++) { const a = fld(u, v); if (!a) break; const la = Math.hypot(a[0], a[1]); if (la < .05) break;
+        const um = u + dir * a[0] / la * ds * .5, vm = v + dir * a[1] / la * ds * .5, b = fld(um, vm); if (!b) break; const lb = Math.hypot(b[0], b[1]); if (lb < .05) break;
+        u += dir * b[0] / lb * ds; v += dir * b[1] / lb * ds; pts.push([u * W, (1 - v) * W]); }
+      return pts; };
+    const pts = [...trace(-1).reverse(), [su * W, (1 - sv) * W], ...trace(1)]; if (pts.length < 3) continue;
+    bx.beginPath(); bx.moveTo(pts[0][0], pts[0][1]);
+    for (let n = 1; n < pts.length - 1; n++) { const mx = (pts[n][0] + pts[n + 1][0]) / 2, my = (pts[n][1] + pts[n + 1][1]) / 2; bx.quadraticCurveTo(pts[n][0], pts[n][1], mx, my); }
+    const e = pts[pts.length - 1], p = pts[pts.length - 2]; bx.lineTo(e[0], e[1]);
+    const an = Math.atan2(e[1] - p[1], e[0] - p[0]), hw = 2.8 * k;
+    bx.moveTo(e[0] - Math.cos(an - .55) * hw, e[1] - Math.sin(an - .55) * hw); bx.lineTo(e[0], e[1]); bx.lineTo(e[0] - Math.cos(an + .55) * hw, e[1] - Math.sin(an + .55) * hw);
+    bx.stroke(); }
+  bx.lineCap = 'butt';
+  // what the picture shows
+  bx.strokeStyle = 'rgba(21, 21, 21, .8)'; bx.lineWidth = 1 * k; bx.setLineDash([4 * k, 3 * k]); bx.beginPath();
+  footNow().forEach((p, i) => { const x = p[0] * W, y = (1 - p[1]) * W; i ? bx.lineTo(x, y) : bx.moveTo(x, y); }); bx.closePath(); bx.stroke(); bx.setLineDash([]);
+  // speed ring (36 m/s) and north
+  const c = W / 2, R = W * .42; bx.strokeStyle = 'rgba(21, 21, 21, .55)'; bx.beginPath(); bx.arc(c, c, R, 0, Math.PI * 2); bx.stroke();
+  const nb = nrm([AXR[1], AXU[1]]), nx = c + nb[0] * R, ny = c - nb[1] * R, na = Math.atan2(-nb[1], nb[0]);            // north: a small solid triangle on the ring
+  bx.fillStyle = '#151515'; bx.beginPath(); bx.moveTo(nx + Math.cos(na) * 7 * k, ny + Math.sin(na) * 7 * k);
+  bx.lineTo(nx + Math.cos(na + 2.3) * 6 * k, ny + Math.sin(na + 2.3) * 6 * k); bx.lineTo(nx + Math.cos(na - 2.3) * 6 * k, ny + Math.sin(na - 2.3) * 6 * k); bx.fill();
+  bx.font = `600 ${10 * k}px "PingFang SC", sans-serif`; bx.textAlign = 'center'; bx.textBaseline = 'middle'; bx.fillText('北', c + nb[0] * (R + 15 * k), c - nb[1] * (R + 15 * k));
+  // the sea breeze itself
+  const tw = [WIND[0], WIND[1]], sp = Math.hypot(tw[0], tw[1]);
+  if (sp > .05) { const L = sp / WMAX * R, ux = (tw[0] * AXR[0] + tw[1] * AXR[1]) / sp, uy = (tw[0] * AXU[0] + tw[1] * AXU[1]) / sp, ex = c + ux * L, ey = c - uy * L;
+    bx.strokeStyle = '#efebe4'; bx.lineWidth = 7 * k; bx.lineCap = 'square'; bx.beginPath(); bx.moveTo(c, c); bx.lineTo(ex - ux * 9 * k, ey + uy * 9 * k); bx.stroke();
+    bx.strokeStyle = '#151515'; bx.lineWidth = 3.5 * k; bx.beginPath(); bx.moveTo(c, c); bx.lineTo(ex - ux * 9 * k, ey + uy * 9 * k); bx.stroke();
+    const an = Math.atan2(-uy, ux); bx.fillStyle = '#151515'; bx.strokeStyle = '#efebe4'; bx.lineWidth = 1.5 * k; bx.beginPath();     // solid triangular head
+    bx.moveTo(ex + Math.cos(an) * 3 * k, ey + Math.sin(an) * 3 * k); bx.lineTo(ex + Math.cos(an + 2.6) * 13 * k, ey + Math.sin(an + 2.6) * 13 * k);
+    bx.lineTo(ex + Math.cos(an - 2.6) * 13 * k, ey + Math.sin(an - 2.6) * 13 * k); bx.closePath(); bx.fill(); bx.stroke(); bx.lineCap = 'butt'; }
+  bx.fillStyle = '#c8372d'; bx.strokeStyle = '#efebe4'; bx.lineWidth = 1.5 * k; bx.beginPath(); bx.arc(c, c, 5.5 * k, 0, Math.PI * 2); bx.fill(); bx.stroke(); }
+// drag on the board: the arrow from the centre is where the wind blows, its length is the speed
+let bDrag = false;
+function boardSet(e) { const r = bc.getBoundingClientRect(), c = r.width / 2, R = r.width * .42;
+  const dx = (e.clientX - r.left - c) / R, dy = -(e.clientY - r.top - c) / R, m = Math.min(1, Math.hypot(dx, dy));
+  PR.windSpd = m < .03 ? 0 : Math.round(m * WMAX * 2) / 2;
+  if (m >= .03) { const tx = dx * AXR[0] + dy * AXU[0], ty = dx * AXR[1] + dy * AXU[1]; PR.windDir = Math.round(Math.atan2(-tx, -ty) * 180 / Math.PI); }
+  updWind(); savePR(); boardText(); }
+bc.addEventListener('pointerdown', e => { bDrag = true; bc.setPointerCapture(e.pointerId); boardSet(e); });
+bc.addEventListener('pointermove', e => { if (bDrag) boardSet(e); });
+bc.addEventListener('pointerup', () => { bDrag = false; });
+windBox.querySelector('.hd').onclick = () => windBox.classList.toggle('min');
+boardText();
+
+let STILL3 = null;
+const loadEl = document.getElementById('load');
+const pad = k => String(k).padStart(3, '0');
+for (let k = 0; k < NA; k++) FR.push(null); for (let k = 0; k < NF; k++) PS.push(null);
+function want(k) { if (!FR[k]) { FR[k] = 1; packBlob('frames/f' + pad(k) + '.jpg').then(b => { if (b) ENC.set('f' + k, b); }); }
+  if (k < NF && !PS[k]) { PS[k] = 1; packBlob('frames/p' + pad(k) + '.png').then(b => { if (b) ENC.set('p' + k, b); }); } }
+Promise.all(['still1.jpg', 'pass1.png', 'pass2.png', 'heights.png', 'frames/f000.jpg', 'frames/p000.png', 'still2.jpg', 'still3.jpg'].map(loadImg)).then(([b, p1, p2, h, f0, q0, s2, s3]) => {
+  cache.set('f0', { t: imgTex(f0, gl.RGBA8, gl.RGBA, gl.LINEAR, false), used: 0 }); cache.set('p0', { t: imgTex(q0, gl.RGBA8, gl.RGBA, gl.NEAREST, false), used: 0 });
+  const order = [], seen = new Set(); for (const st of [8, 4, 2, 1]) for (let k = 0; k < NA; k += st) if (!seen.has(k)) { seen.add(k); order.push(k); } for (const k of [190, NA - 1]) if (!seen.has(k)) order.push(k);
+  let nx = 0; const feed = () => { for (let n = 0; n < 4 && nx < order.length; n++) want(order[nx++]); if (nx < order.length) setTimeout(feed, 120); }; feed();   // coarse first, then the frames in between
+  baseT = imgTex(b, gl.RGB8, gl.RGB, gl.LINEAR, true); stillT = [baseT, imgTex(s2, gl.RGB8, gl.RGB, gl.LINEAR, true), imgTex(s3, gl.RGB8, gl.RGB, gl.LINEAR, true)];
+  STILL3 = s3;
+  pas1T = imgTex(p1, gl.RGB8, gl.RGB, gl.NEAREST, false); pas2T = imgTex(p2, gl.RGB8, gl.RGB, gl.LINEAR, false);
+  flatT = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, flatT); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB8, 1, 1, 0, gl.RGB, gl.UNSIGNED_BYTE, new Uint8Array([128, 128, 255]));
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  hgtT = imgTex(h, gl.R8, gl.RED, gl.NEAREST, false); buildGround(h);
+  updateView(1);
+  { const p = P.obs; gl.useProgram(p.p); setGrid(p.u); bindT(p.u.hgt, 7, hgtT); draw(mskF, AW, AH); }
+  // let the fog bank roll in before showing anything: long steps, so it has crossed the harbour by the first frame
+  const pre = Q.has('pre') ? parseInt(Q.get('pre')) : 40, none = { emit: 0, push: 0, a: [-99, -99, -99], b: [-99, -99, -99], vel: [0, 0, 0] };
+  for (let i = 0; i < pre; i++) { simT += 1; step(1, simT, .9, none); }
+  render();
+  t0 = last = performance.now(); loadEl.style.opacity = 0; setTimeout(() => loadEl.remove(), 900); requestAnimationFrame(frame);
+  try { startWater(document.getElementById('wc')); } catch (e) { console.error('water', e); }
+}).catch(e => { loadEl.textContent = '载入失败 ' + e; console.error(e); });
+// ================= harbour water =================
+function startWater(cv) {
+
+// ---------- scene constants (same camera as keyframe 9) ----------
+const W = 1280, H = 720;                                        // the film frames and their sea masks
+const CAM = { pos: [-150, 350, 250], tilt: 81.7, az: 24.1, lens: 28 };
+const SEA_Z = 1.3;
+const DOM = { x0: -1900, y0: 150, size: 2160, n: 864 };     // b10: the sea seen from f308 on (every pixel whose ripples show; 2.5 m cells as before, 3.7x fewer)    // all the water seen from frame 190 to 440, 2.5 m cells      // simulation domain (metres) and grid
+const N = DOM.n, DX = DOM.size / DOM.n;
+const SIM = { dt: 1 / 60, g: 9.81, depth: 8, foamDecay: 0.9992, foamGen: 0.004, mouseGap: 8, mouseSpeed: 14, mousePush: 0.22, mouseR: 7, mouseFoam: 0.1, dropH: 2.5, dropR: 8, boatPush: 0.04, boatFoam: 0.02 };
+const R = [0, 0, 0], U = [0, 0, 0], F = [0, 0, 0]; let FPX = 1;        // the camera of the frame on screen (set per frame)
+function camSet(c) { CAM.pos = c[0]; CAM.tilt = c[1]; CAM.az = c[2]; CAM.lens = c[3]; const T = c[1] * Math.PI / 180, A = c[2] * Math.PI / 180;
+  R[0] = Math.cos(A); R[1] = Math.sin(A); R[2] = 0; U[0] = -Math.sin(A) * Math.cos(T); U[1] = Math.cos(A) * Math.cos(T); U[2] = Math.sin(T);
+  F[0] = -Math.sin(A) * Math.sin(T); F[1] = Math.cos(A) * Math.sin(T); F[2] = -Math.cos(T); FPX = c[3] / 36 * W;
+  if (c[4]) { R[0] = -R[0]; R[1] = -R[1]; }                             // sky water: the mirror camera, its right axis flipped so the picture lands the right way round
+  VP = makeVP(); }
+
+const msg = { textContent: '' };
+function fail(m) { throw new Error(m); }
+const gl = cv.getContext('webgl2', { antialias: true, alpha: false });
+if (!gl) fail('这个浏览器不支持 WebGL2。');
+if (!gl.getExtension('EXT_color_buffer_float')) fail('这个浏览器不支持浮点渲染（EXT_color_buffer_float）。');
+
+function sh(type, src) { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) fail(gl.getShaderInfoLog(s)); return s; }
+function prog(vs, fs) { const p = gl.createProgram(); gl.attachShader(p, sh(gl.VERTEX_SHADER, vs)); gl.attachShader(p, sh(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(p); if (!gl.getProgramParameter(p, gl.LINK_STATUS)) fail(gl.getProgramInfoLog(p)); return p; }
+const QUAD_VS = `#version 300 es
+in vec2 aP; out vec2 vUv; void main(){ vUv = aP * 0.5 + 0.5; gl_Position = vec4(aP, 0.0, 1.0); }`;
+
+// ---------- shallow water equations ----------
+// State texel (i, j) = (eta, u, v, foam): eta = surface height above rest at the cell centre, u = velocity on the cell's
+// east face, v = velocity on its north face (a staggered grid), foam = churned water carried by the flow.
+// One step = three passes: (A) carry u, v and foam along the flow (semi-Lagrangian) and apply the pushes,
+// (B) update eta from the flux divergence (upwind depth, so mass is conserved), (C) accelerate u, v down the new slope.
+// Faces that touch land are walls (u = 0), so the flow hits the quays, splits and rolls up into eddies.
+const SIM_HEAD = `#version 300 es
+precision highp float;
+uniform sampler2D uS; uniform sampler2D uSea; uniform float uK;
+out vec4 o;
+const int N = ${N};
+vec4 T(ivec2 q) { return texelFetch(uS, clamp(q, ivec2(0), ivec2(N - 1)), 0); }
+float sea(ivec2 q) { return (q.x < 0 || q.y < 0 || q.x >= N || q.y >= N) ? 0.0 : texelFetch(uSea, q, 0).r; }
+`;
+const ADV_FS = SIM_HEAD + `
+uniform float uDamp, uFoamDecay, uFoamGen, uT; uniform vec4 uP[32]; uniform vec4 uPV[32];
+float bil(vec2 x, int ch) { vec2 f = floor(x); ivec2 i = ivec2(f); vec2 t = x - f;
+  return mix(mix(T(i)[ch], T(i + ivec2(1, 0))[ch], t.x), mix(T(i + ivec2(0, 1))[ch], T(i + ivec2(1, 1))[ch], t.x), t.y); }
+float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+void main() {
+  ivec2 c = ivec2(gl_FragCoord.xy); vec4 s = T(c);
+  if (sea(c) < 0.5) { o = vec4(0.0); return; }
+  vec2 p = vec2(c);
+  float vAtU = 0.25 * (s.b + T(c + ivec2(1, 0)).b + T(c - ivec2(0, 1)).b + T(c + ivec2(1, -1)).b);
+  float un = bil(p - uK * vec2(s.g, vAtU), 1);
+  float uAtV = 0.25 * (s.g + T(c - ivec2(1, 0)).g + T(c + ivec2(0, 1)).g + T(c + ivec2(-1, 1)).g);
+  float vn = bil(p - uK * vec2(uAtV, s.b), 2);
+  vec2 vc = vec2(0.5 * (s.g + T(c - ivec2(1, 0)).g), 0.5 * (s.b + T(c - ivec2(0, 1)).b));
+  float fn = bil(p - uK * vc, 3) * uFoamDecay;
+  vec2 seed = floor(uT * 0.7) * vec2(31.7, 11.3);                                 // the speck pattern changes now and then
+  float nz = smoothstep(0.62, 0.95, 0.55 * hash(floor((p + seed) / 2.0)) + 0.45 * hash(p + seed));   // sparse specks: the flow stretches them into streaks
+  fn += uFoamGen * max(length(vc) - 4.0, 0.0) * nz;                              // fast water churns up foam
+  un *= uDamp; vn *= uDamp;
+  for (int n = 0; n < 32; n++) { vec4 P = uP[n]; vec2 d0 = (p + 0.5 - P.xy) / max(P.z, 1e-3); if (P.z > 0.0 && dot(d0, d0) < 20.0) { vec4 V = uPV[n];
+    vec2 du = (p + vec2(1.0, 0.5) - P.xy) / P.z; un += P.w * exp(-dot(du, du)) * (V.x - un);   // drag the water toward the pusher's velocity
+    vec2 dv = (p + vec2(0.5, 1.0) - P.xy) / P.z; vn += P.w * exp(-dot(dv, dv)) * (V.y - vn);
+    vec2 df = (p + 0.5 - P.xy) / P.z; fn += V.z * exp(-dot(df, df)) * nz; } }
+  if (sea(c + ivec2(1, 0)) < 0.5) un = 0.0;
+  if (sea(c + ivec2(0, 1)) < 0.5) vn = 0.0;
+  o = vec4(s.r, un, vn, min(fn, 2.0));
+}`;
+const HGT_FS = SIM_HEAD + `
+uniform float uDepth; uniform vec4 uDrop[4];
+void main() {
+  ivec2 c = ivec2(gl_FragCoord.xy); vec4 s = T(c);
+  if (sea(c) < 0.5) { o = vec4(0.0); return; }
+  vec4 L = T(c - ivec2(1, 0)), R = T(c + ivec2(1, 0)), B = T(c - ivec2(0, 1)), A = T(c + ivec2(0, 1));
+  float H = max(uDepth + s.r, 0.0), HL = max(uDepth + L.r, 0.0), HR = max(uDepth + R.r, 0.0), HB = max(uDepth + B.r, 0.0), HA = max(uDepth + A.r, 0.0);
+  float fxR = s.g * (s.g > 0.0 ? H : HR), fyT = s.b * (s.b > 0.0 ? H : HA);
+  float fxL = c.x == 0 ? 0.0 : L.g * (L.g > 0.0 ? HL : H), fyB = c.y == 0 ? 0.0 : B.b * (B.b > 0.0 ? HB : H);
+  float eta = s.r - uK * (fxR - fxL + fyT - fyB);
+  for (int n = 0; n < 4; n++) { vec4 q = uDrop[n]; if (q.z > 0.0) { vec2 d = (vec2(c) + 0.5 - q.xy) / q.z; eta += q.w * exp(-dot(d, d)); } }
+  o = vec4(eta, s.g, s.b, s.a);
+}`;
+const VEL_FS = SIM_HEAD + `
+uniform float uG; uniform vec4 uBP[12]; uniform vec4 uBD[12];
+float hull(vec2 x) { float p = 0.0;                                            // hull pressure, as metres of water pushed down
+  for (int n = 0; n < 12; n++) { vec4 b = uBP[n]; if (b.w != 0.0) { vec2 d = x - b.xy; if (dot(d, d) > 9.0 * b.z * b.z) continue; vec2 dr = uBD[n].xy;
+    float a = dot(d, dr) / b.z, q = dot(d, vec2(-dr.y, dr.x)) / uBD[n].z; p += b.w * exp(-(a * a + q * q)); } }
+  return p; }
+void main() {
+  ivec2 c = ivec2(gl_FragCoord.xy); vec4 s = T(c);
+  if (sea(c) < 0.5) { o = vec4(0.0); return; }
+  vec2 pc = vec2(c) + 0.5; float e0 = s.r + hull(pc);
+  float u = sea(c + ivec2(1, 0)) < 0.5 ? 0.0 : s.g - uG * uK * (T(c + ivec2(1, 0)).r + hull(pc + vec2(1, 0)) - e0);
+  float v = sea(c + ivec2(0, 1)) < 0.5 ? 0.0 : s.b - uG * uK * (T(c + ivec2(0, 1)).r + hull(pc + vec2(0, 1)) - e0);
+  u = clamp(u, -25.0, 25.0); v = clamp(v, -25.0, 25.0);
+  vec2 ed = min(vec2(c), vec2(N - 1) - vec2(c));
+  float sp = mix(0.95, 1.0, smoothstep(0.0, 40.0, min(ed.x, ed.y)));          // open-sea edges absorb
+  o = vec4(clamp(s.r * sp, -6.0, 6.0), u * sp, v * sp, s.a);
+}`;
+
+// ---------- water over the keyframe ----------
+const VIEW_FS = `#version 300 es
+precision highp float;
+uniform sampler2D uBg, uBg2, uMask, uState; uniform float uMix; uniform vec4 uCover;
+uniform vec3 uC, uR, uU, uF, uSkyH, uSkyZ; uniform float uFpx, uZ, uGain; uniform vec2 uD0; uniform float uS;
+in vec2 vUv; out vec4 o;
+const int N = ${N}; const float DX = ${DX.toFixed(4)};
+float hAt(vec2 g){ vec2 f = g - 0.5; ivec2 i = ivec2(floor(f)); vec2 t = fract(f); ivec2 m = ivec2(N - 1);
+  float a = texelFetch(uState, clamp(i, ivec2(0), m), 0).r, b = texelFetch(uState, clamp(i + ivec2(1, 0), ivec2(0), m), 0).r;
+  float c = texelFetch(uState, clamp(i + ivec2(0, 1), ivec2(0), m), 0).r, d = texelFetch(uState, clamp(i + ivec2(1, 1), ivec2(0), m), 0).r;
+  return mix(mix(a, b, t.x), mix(c, d, t.x), t.y); }
+vec3 sky(float e){ float a = clamp(e / 0.6, 0.0, 1.0); float w = (1.0 - a) * (1.0 - a);
+  return uSkyH * w + uSkyZ * (1.0 - w); }          // pink horizon to dark violet, as in the keyframe
+vec3 bgAt(vec2 q){ return mix(texture(uBg, q).rgb, texture(uBg2, q).rgb, uMix); }
+float fres(float c){ return 0.02 + 0.98 * pow(1.0 - clamp(c, 0.0, 1.0), 5.0); }
+void main(){
+  vec2 uv = uCover.xy + vec2(vUv.x, 1.0 - vUv.y) * uCover.zw;
+  vec3 bg = bgAt(uv); float m = texture(uMask, uv).r;
+  if (m < 0.01) { o = vec4(bg, 1.0); return; }
+  vec2 px = uv * vec2(1280.0, 720.0);
+  vec3 dir = normalize(uF + ((px.x - 640.0) / uFpx) * uR - ((px.y - 360.0) / uFpx) * uU);
+  float t = (uZ - uC.z) / min(dir.z, -1e-4); vec3 p = uC + t * dir;
+  vec2 g = (p.xy - uD0) / uS * float(N);
+  if (g.x < 1.0 || g.y < 1.0 || g.x > float(N) - 2.0 || g.y > float(N) - 2.0) { o = vec4(bg, 1.0); return; }
+  float hx = (hAt(g + vec2(1, 0)) - hAt(g - vec2(1, 0))) / (2.0 * DX);
+  float hy = (hAt(g + vec2(0, 1)) - hAt(g - vec2(0, 1))) / (2.0 * DX);
+  float fp = t / uFpx / max(-dir.z, 0.05);                               // metres of sea under one pixel
+  float fade = smoothstep(16.0, 4.0, fp);
+  vec3 n = normalize(vec3(-hx * uGain * fade, -hy * uGain * fade, 1.0));
+  vec2 fh = normalize(uF.xy);
+  vec2 dpx = vec2(dot(n.xy, uR.xy), -dot(n.xy, fh)) * 400.0;                    // reflections of the city wobble
+  vec2 uv2 = clamp(uv + dpx / vec2(1280.0, 720.0), vec2(0.0), vec2(1.0));
+  vec3 col = mix(bg, bgAt(uv2), texture(uMask, uv2).r);
+  vec3 rv = reflect(dir, n), rf = vec3(dir.xy, -dir.z);
+  col += (fres(-dot(dir, n)) * sky(rv.z) - fres(-dir.z) * sky(rf.z)) * 1.4;     // the sky in the tilted surface: ripples show on dark water too
+  vec3 L = normalize(vec3(fh, 0.10));
+  col += max(pow(max(dot(rv, L), 0.0), 90.0) - pow(max(dot(rf, L), 0.0), 90.0), 0.0) * 2.0 * fade * vec3(1.0, 0.55, 0.78);  // glints of the horizon, ripples only
+  col += clamp(length(n.xy) * 4.0, 0.0, 1.0) * 0.08 * vec3(0.2, 0.9, 1.0);       // faint cyan on the crests
+  vec2 f0 = g - 0.5; ivec2 fi = ivec2(floor(f0)); vec2 ft = fract(f0); ivec2 mm = ivec2(N - 1);
+  float foam = mix(mix(texelFetch(uState, clamp(fi, ivec2(0), mm), 0).a, texelFetch(uState, clamp(fi + ivec2(1, 0), ivec2(0), mm), 0).a, ft.x),
+                   mix(texelFetch(uState, clamp(fi + ivec2(0, 1), ivec2(0), mm), 0).a, texelFetch(uState, clamp(fi + ivec2(1, 1), ivec2(0), mm), 0).a, ft.x), ft.y);
+  foam = smoothstep(0.06, 0.5, foam);
+  col = mix(col, vec3(0.86, 0.98, 1.0), foam * 0.7 * smoothstep(26.0, 6.0, fp));     // foam streaks: pale cyan-white
+  o = vec4(mix(bg, max(col, 0.0), m), 1.0);
+}`;
+
+// ---------- boats ----------
+const BOAT_VS = `#version 300 es
+in vec3 aP; in vec3 aN; in float aK; uniform mat4 uVP, uM; uniform vec3 uC; uniform float uRefl; uniform vec4 uCover;
+uniform sampler2D uMk; uniform vec2 uSeaPt;
+out vec3 vN; out vec3 vV; out float vK; out float vZ;
+void main(){ vec4 w = uM * vec4(aP, 1.0); vN = normalize(mat3(uM) * aN); vV = normalize(uC - w.xyz); vK = aK; vZ = aP.z; vec4 cp = uVP * w;
+  vec2 im = vec2(cp.x / cp.w * 0.5 + 0.5, 0.5 - cp.y / cp.w * 0.5), sc = (im - uCover.xy) / uCover.zw;
+  gl_Position = vec4((sc.x * 2.0 - 1.0) * cp.w, (1.0 - sc.y * 2.0) * cp.w, cp.z, cp.w);
+  if (textureLod(uMk, uSeaPt, 0.0).r <= 0.5) gl_Position = vec4(2.0, 2.0, 2.0, 1.0); }`;                 // its water line is not on open sea: hidden
+const BOAT_FS = `#version 300 es
+precision highp float; in vec3 vN; in vec3 vV; in float vK; in float vZ; uniform float uAlpha; out vec4 o;
+void main(){
+  vec3 n = normalize(vN); float fr = pow(1.0 - abs(dot(n, vV)), 2.0); vec3 c;
+  if (vK < 0.5) c = mix(vec3(0.45, 0.10, 0.34), vec3(0.95, 0.50, 0.80), 0.5 + 0.5 * n.z) + fr * vec3(0.0, 0.9, 1.0) * 1.2;          // hull: pink glass, cyan edge
+  else if (vK < 1.5) c = vec3(1.0, 0.80, 0.55) * (0.85 + 0.3 * abs(n.z)) + fr * vec3(0.3, 0.9, 1.0) * 0.5;                        // lit cabin
+  else { float b = 0.5 + 0.5 * cos(vZ * 6.2831 / 2.2); c = mix(vec3(0.50, 0.02, 0.08), vec3(1.0, 0.18, 0.26), smoothstep(0.1, 0.6, b)) * (0.8 + 0.4 * fr); } // red battened sail
+  o = vec4(c, uAlpha);
+}`;
+
+const quad = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, quad); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+const pAdv = prog(QUAD_VS, ADV_FS), pHgt = prog(QUAD_VS, HGT_FS), pVel = prog(QUAD_VS, VEL_FS), pView = prog(QUAD_VS, VIEW_FS), pBoat = prog(BOAT_VS, BOAT_FS);
+function bindQuad(p) { const l = gl.getAttribLocation(p, 'aP'); gl.bindBuffer(gl.ARRAY_BUFFER, quad); gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l, 2, gl.FLOAT, false, 0, 0); }
+function tex(w, h, ifmt, fmt, type, data, filt) { const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+  gl.texImage2D(gl.TEXTURE_2D, 0, ifmt, w, h, 0, fmt, type, data);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filt); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filt);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE); return t; }
+const st = [0, 1].map(() => tex(N, N, gl.RGBA32F, gl.RGBA, gl.FLOAT, new Float32Array(N * N * 4), gl.NEAREST));
+const fb = st.map(t => { const f = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, f); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0); return f; });
+gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+function loadImg(src) { return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(src); i.src = src; }); }
+
+// ---------- camera helpers ----------
+const dot3 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+function worldOnSea(px, py) { const d = [0, 1, 2].map(k => F[k] + ((px - W / 2) / FPX) * R[k] - ((py - H / 2) / FPX) * U[k]);
+  if (d[2] > -1e-4) return null; const t = (SEA_Z - CAM.pos[2]) / d[2]; return [CAM.pos[0] + t * d[0], CAM.pos[1] + t * d[1], t * Math.hypot(...d)]; }
+function toScreen(x, y, z) { const v = [x - CAM.pos[0], y - CAM.pos[1], z - CAM.pos[2]]; const zc = dot3(v, F); return [dot3(v, R) / zc * FPX + W / 2, -dot3(v, U) / zc * FPX + H / 2, zc]; }
+const toGrid = (x, y) => [(x - DOM.x0) / DOM.size * N, (y - DOM.y0) / DOM.size * N];
+function mul4(a, b) { const m = new Float32Array(16); for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++) { let s = 0; for (let k = 0; k < 4; k++) s += a[k * 4 + r] * b[c * 4 + k]; m[c * 4 + r] = s; } return m; }
+let VP = null; function makeVP() { const n = 1, f = 20000, sx = 2 * CAM.lens / 36, sy = sx * W / H, B = F.map(v => -v), C = CAM.pos;
+  const V = [R[0], U[0], B[0], 0, R[1], U[1], B[1], 0, R[2], U[2], B[2], 0, -dot3(R, C), -dot3(U, C), -dot3(B, C), 1];
+  const P = [sx, 0, 0, 0, 0, sy, 0, 0, 0, 0, (f + n) / (n - f), -1, 0, 0, 2 * f * n / (n - f), 0]; return mul4(P, V); }
+camSet(CFG.wcam[CFG.wcam.length - 1]);
+
+// ---------- boats: routes start and end out of view, so the loop restarts unseen ----------
+const BOATS = [
+  { kind: 'junk',  a: [-1417, 921], b: [-61, 862],   len: 30, speed: 4.5, draft: 0.8, ph: 0.42 },
+  { kind: 'ferry', a: [-92, 1185],  b: [-1515, 860], len: 40, speed: 6.0, draft: 1.2, ph: 0.30 },
+  { kind: 'speed', a: [-1602, 671], b: [-146, 1055], len: 16, speed: 7.0, draft: 0.5, ph: 0.70 },
+  { kind: 'junk',  a: [-1383, 938], b: [-123, 1180], len: 26, speed: 4.0, draft: 0.7, ph: 0.05 },
+  { kind: 'speed', a: [-79, 864],   b: [-1531, 547], len: 14, speed: 7.5, draft: 0.45, ph: 0.55 },
+  { kind: 'tug',   a: [-1307, 590], b: [-194, 833],  len: 22, speed: 3.5, draft: 1.0, ph: 0.85 },
+  { kind: 'ferry', a: [-1423, 1941], b: [-1688, 475], len: 40, speed: 6.0, draft: 1.2, ph: 0.62 },
+  { kind: 'speed', a: [-1183, 750], b: [-542, 1297], len: 18, speed: 5.5, draft: 0.5, ph: 0.20 },
+  { kind: 'ferry', a: [45, 470],    b: [-615, -165], len: 34, speed: 5.0, draft: 1.0, ph: 0.10, pp: 12 },     // Star Ferry, TST <-> Central
+  { kind: 'ferry', a: [10, 500],    b: [-560, -200], len: 34, speed: 5.0, draft: 1.0, ph: 0.60, pp: 12 },
+  { kind: 'junk',  a: [2150, 350],  b: [700, 60],    len: 28, speed: 4.0, draft: 0.8, ph: 0.35 },
+  { kind: 'tug',   a: [-1300, 100], b: [600, 250],   len: 22, speed: 3.5, draft: 1.0, ph: 0.55 }];
+BOATS.forEach(b => { b.L = Math.hypot(b.b[0] - b.a[0], b.b[1] - b.a[1]); b.hd = Math.atan2(b.b[1] - b.a[1], b.b[0] - b.a[0]); b.T = b.pp ? 2 * (b.L / b.speed + b.pp) : b.L / b.speed + 25; });
+function boatState(b, t) { const s = ((t / b.T) + b.ph) % 1;
+  if (b.pp) { const leg = b.L / b.speed, half = leg + b.pp, u = s * b.T, back = u >= half, v = back ? u - half : u;   // there, wait at the pier, back, wait
+    const d = Math.min(v, leg) * b.speed, k = d / b.L, kk = back ? 1 - k : k, x = b.a[0] + (b.b[0] - b.a[0]) * kk, y = b.a[1] + (b.b[1] - b.a[1]) * kk;
+    return { x, y, on: v >= leg ? 0 : Math.min(1, d / 40, (b.L - d) / 40), hd: back ? b.hd + Math.PI : b.hd, vis: 1 }; }
+  const d = s * b.T * b.speed;                                       // one way, then 25 s out of view before the next run
+  const k = Math.min(d / b.L, 1); const x = b.a[0] + (b.b[0] - b.a[0]) * k, y = b.a[1] + (b.b[1] - b.a[1]) * k;
+  const on = d >= b.L ? 0 : Math.min(1, d / 60, (b.L - d) / 60); return { x, y, on, hd: b.hd, vis: on > 0 ? 1 : 0 }; }
+function boatMesh(bt) { const L = bt.len, Wd = L * 0.22, Hb = L * 0.07, out = [];
+  const tri = (a, b, c, k) => { const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], v = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+    let n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]]; const l = Math.hypot(...n) || 1; n = n.map(x => x / l);
+    for (const p of [a, b, c]) out.push(...p, ...n, k); };
+  const prism = (poly, z0, z1, k) => { const m = poly.length; const cx = poly.reduce((s, p) => s + p[0], 0) / m, cy = poly.reduce((s, p) => s + p[1], 0) / m;
+    for (let i = 0; i < m; i++) { const p = poly[i], q = poly[(i + 1) % m];
+      tri([p[0], p[1], z0], [q[0], q[1], z0], [q[0], q[1], z1], k); tri([p[0], p[1], z0], [q[0], q[1], z1], [p[0], p[1], z1], k);
+      tri([cx, cy, z1], [p[0], p[1], z1], [q[0], q[1], z1], k); } };
+  let hull = [[-L / 2, -Wd / 2], [L * 0.25, -Wd / 2], [L / 2, 0], [L * 0.25, Wd / 2], [-L / 2, Wd / 2]];
+  if (bt.kind === 'ferry') hull = [[-L / 2, 0], [-L * 0.3, -Wd / 2], [L * 0.3, -Wd / 2], [L / 2, 0], [L * 0.3, Wd / 2], [-L * 0.3, Wd / 2]];
+  if (bt.kind === 'tug') hull = [[-L / 2, -Wd * 0.7], [L * 0.2, -Wd * 0.7], [L / 2, 0], [L * 0.2, Wd * 0.7], [-L / 2, Wd * 0.7]];
+  if (bt.kind === 'junk') hull = [[-L / 2, -Wd * 0.45], [L * 0.2, -Wd / 2], [L / 2, -Wd * 0.15], [L / 2, Wd * 0.15], [L * 0.2, Wd / 2], [-L / 2, Wd * 0.45]];
+  prism(hull, -0.3 * Hb, Hb, 0);
+  if (bt.kind === 'junk') {
+    prism([[-L / 2, -Wd * 0.45], [-L * 0.3, -Wd * 0.45], [-L * 0.3, Wd * 0.45], [-L / 2, Wd * 0.45]], Hb, Hb + L * 0.08, 0);     // raised stern
+    // three battened sails, cut like the Hong Kong junk's: straight luff at the mast, rounded leech, raised peak.
+    // Set nearly fore-and-aft (26 degrees off the hull), which turns them broadside to this camera on the eastbound run.
+    const SAIL = [[0, 0], [0.80, 0], [0.98, 0.30], [1.06, 0.62], [1.0, 0.88], [0.72, 1.0], [0.08, 1.05], [-0.06, 0.55]];
+    for (const [pos, hg, wd] of [[0.30, 0.48, 0.36], [0.00, 0.78, 0.50], [-0.31, 0.50, 0.34]]) {
+      const z0 = Hb + L * 0.06, h = L * hg, w = L * wd, sa = 26 * Math.PI / 180, d = [-Math.cos(sa), -Math.sin(sa)], x = L * pos;
+      const P = SAIL.map(([u, v]) => [x + d[0] * u * w, d[1] * u * w, z0 + v * h]);
+      const cx = P.reduce((q, p) => q + p[0], 0) / P.length, cy = P.reduce((q, p) => q + p[1], 0) / P.length, cz = P.reduce((q, p) => q + p[2], 0) / P.length;
+      for (let i = 0; i < P.length; i++) tri([cx, cy, cz], P[i], P[(i + 1) % P.length], 2);
+      prism([[x - 0.25, -0.25], [x + 0.25, -0.25], [x + 0.25, 0.25], [x - 0.25, 0.25]], Hb, z0 + h * 1.08, 0); }   // mast
+  } else {
+    const cab = bt.kind === 'ferry' ? [[-L * 0.35, -Wd * 0.42], [L * 0.35, -Wd * 0.42], [L * 0.35, Wd * 0.42], [-L * 0.35, Wd * 0.42]]
+                                    : [[-L * 0.25, -Wd * 0.36], [L * 0.12, -Wd * 0.36], [L * 0.12, Wd * 0.36], [-L * 0.25, Wd * 0.36]];
+    prism(cab, Hb, Hb + L * (bt.kind === 'ferry' ? 0.06 : 0.05), 1);
+    if (bt.kind === 'ferry') prism([[-L * 0.25, -Wd * 0.35], [L * 0.25, -Wd * 0.35], [L * 0.25, Wd * 0.35], [-L * 0.25, Wd * 0.35]], Hb + L * 0.06, Hb + L * 0.11, 1);
+    if (bt.kind === 'tug') { prism([[-L * 0.12, -Wd * 0.3], [L * 0.1, -Wd * 0.3], [L * 0.1, Wd * 0.3], [-L * 0.12, Wd * 0.3]], Hb + L * 0.05, Hb + L * 0.13, 1);   // wheelhouse
+      prism([[-L * 0.22, -Wd * 0.1], [-L * 0.14, -Wd * 0.1], [-L * 0.14, Wd * 0.1], [-L * 0.22, Wd * 0.1]], Hb + L * 0.05, Hb + L * 0.2, 0); }               // funnel
+  }
+  return new Float32Array(out); }
+const boatBufs = BOATS.map(bt => { const d = boatMesh(bt); const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, d, gl.STATIC_DRAW); return { b, count: d.length / 7 }; });
+const bLoc = { p: gl.getAttribLocation(pBoat, 'aP'), n: gl.getAttribLocation(pBoat, 'aN'), k: gl.getAttribLocation(pBoat, 'aK'),
+  cov: gl.getUniformLocation(pBoat, 'uCover'), vp: gl.getUniformLocation(pBoat, 'uVP'), m: gl.getUniformLocation(pBoat, 'uM'), c: gl.getUniformLocation(pBoat, 'uC'), a: gl.getUniformLocation(pBoat, 'uAlpha'), mk: gl.getUniformLocation(pBoat, 'uMk'), sp: gl.getUniformLocation(pBoat, 'uSeaPt') };
+
+// ---------- input ----------
+const ui = { boats: { checked: true }, gain: { value: 8 }, speed: { value: 3 }, visc: { value: 0.01 } };      // the settings the user picked (11-18 01:03)
+let mouse = null, lastMouse = null, travel = 0; const clicks = [];
+function canvasPx(e) { return [(cover[0] + e.clientX / innerWidth * cover[2]) * W, (cover[1] + e.clientY / innerHeight * cover[3]) * H]; }   // screen -> picture, same crop as the film
+cv.addEventListener('pointermove', e => { mouse = canvasPx(e); });
+cv.addEventListener('pointerleave', () => { mouse = null; lastMouse = null; });
+cv.addEventListener('pointerdown', e => { clicks.push(canvasPx(e)); });
+let maskData = null, maskImg = null; const MSK = new Map(), MBUSY = new Set();
+function maskSrc(n) { const m = MSK.get(n); if (m) { m.used = performance.now(); return m.src; }
+  if (!MBUSY.has(n) && MBUSY.size < 2) { MBUSY.add(n); packBlob('masks/m' + String(n).padStart(3, '0') + '.png').then(b => b ? decodeBlob(b) : null).then(src => { MBUSY.delete(n);
+      if (!src) return; MSK.set(n, { src, used: performance.now() });
+      while (MSK.size > 6) { let old = null; for (const [k, v] of MSK) if (!old || v.used < old[1].used) old = [k, v]; if (old[1].src !== maskImg) freeSrc(old[1].src); MSK.delete(old[0]); } }, () => MBUSY.delete(n)); }
+  return null; }
+function isSea(px, py, cachedOnly) {                                   // pointer only (the boats test on the GPU): a half-size copy, made when first needed
+  if (!maskData && maskImg && !cachedOnly) { const c2 = document.createElement('canvas'); c2.width = W / 2; c2.height = H / 2; const x2 = c2.getContext('2d', { willReadFrequently: true });
+    x2.imageSmoothingEnabled = false; x2.drawImage(maskImg, 0, 0, W / 2, H / 2); maskData = x2.getImageData(0, 0, W / 2, H / 2).data; }
+  if (!maskData || px < 0 || py < 0 || px >= W || py >= H) return false; return maskData[(Math.floor(py / 2) * (W / 2) + Math.floor(px / 2)) * 4] > 127; }
+
+// ---------- main ----------
+Promise.all([loadImg('water/simsea_b10.png')]).then(([sea]) => {
+  const bg = STILL3, tBg = tex(W, H, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, bg, gl.LINEAR), tBg2 = tex(W, H, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, bg, gl.LINEAR); let bgImg = null;
+  const tMask = tex(W, H, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, null, gl.LINEAR); let camN = -1;
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);                                   // grid row 0 = south
+  const tSea = tex(N, N, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, sea, gl.NEAREST);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+
+  const dt = SIM.dt, uK = dt / DX;
+  for (const pr of [pAdv, pHgt, pVel]) { gl.useProgram(pr); gl.uniform1i(gl.getUniformLocation(pr, 'uS'), 0); gl.uniform1i(gl.getUniformLocation(pr, 'uSea'), 1); gl.uniform1f(gl.getUniformLocation(pr, 'uK'), uK); }
+  gl.useProgram(pAdv); gl.uniform1f(gl.getUniformLocation(pAdv, 'uFoamDecay'), SIM.foamDecay); gl.uniform1f(gl.getUniformLocation(pAdv, 'uFoamGen'), SIM.foamGen);
+  const aU = { damp: gl.getUniformLocation(pAdv, 'uDamp'), t: gl.getUniformLocation(pAdv, 'uT'), P: gl.getUniformLocation(pAdv, 'uP'), PV: gl.getUniformLocation(pAdv, 'uPV') };
+  gl.useProgram(pHgt); gl.uniform1f(gl.getUniformLocation(pHgt, 'uDepth'), SIM.depth); const uDrop = gl.getUniformLocation(pHgt, 'uDrop');
+  gl.useProgram(pVel); gl.uniform1f(gl.getUniformLocation(pVel, 'uG'), SIM.g); const uBP = gl.getUniformLocation(pVel, 'uBP'), uBD = gl.getUniformLocation(pVel, 'uBD');
+  gl.useProgram(pView); const vu = n => gl.getUniformLocation(pView, n);
+  gl.uniform1i(vu('uBg'), 0); gl.uniform1i(vu('uMask'), 1); gl.uniform1i(vu('uState'), 2); gl.uniform1i(vu('uBg2'), 3); const uMix = vu('uMix'), uCov = vu('uCover');
+  const uCv = vu('uC'), uRv = vu('uR'), uUv = vu('uU'), uFv = vu('uF'), uFpxv = vu('uFpx'), uSkyH = vu('uSkyH'), uSkyZ = vu('uSkyZ');
+  gl.uniform1f(vu('uZ'), SEA_Z); gl.uniform2f(vu('uD0'), DOM.x0, DOM.y0); gl.uniform1f(vu('uS'), DOM.size);
+  const uGain = vu('uGain');
+
+
+  let cur = 0, simT = 0;
+  function pass(pr) { gl.useProgram(pr); bindQuad(pr); gl.bindFramebuffer(gl.FRAMEBUFFER, fb[1 - cur]);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, st[cur]); gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, tSea);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); cur = 1 - cur; }
+  // pushes: [gx, gy, radius (cells), strength 0..1] + [vx, vy (m/s), foam, 0]; drops: [gx, gy, radius, height (m)]
+  function step(pushes, drops) {
+    const P = new Float32Array(128), PV = new Float32Array(128), Dr = new Float32Array(16);
+    pushes.slice(0, 32).forEach((q, i) => { P.set(q[0], i * 4); PV.set(q[1], i * 4); });
+    drops.slice(0, 4).forEach((q, i) => Dr.set(q, i * 4));
+    gl.viewport(0, 0, N, N);
+    gl.useProgram(pAdv); gl.uniform1f(aU.damp, 1 - (+ui.visc.value) * dt); gl.uniform1f(aU.t, simT); gl.uniform4fv(aU.P, P); gl.uniform4fv(aU.PV, PV);
+    pass(pAdv);
+    gl.useProgram(pHgt); gl.uniform4fv(uDrop, Dr); pass(pHgt);
+    const BP = new Float32Array(48), BD = new Float32Array(48); hulls().forEach((h, i) => { BP.set(h[0], i * 4); BD.set(h[1], i * 4); });
+    gl.useProgram(pVel); gl.uniform4fv(uBP, BP); gl.uniform4fv(uBD, BD); pass(pVel);
+    simT += dt; }
+  function hulls() { const out = []; if (!ui.boats.checked) return out; const ease = Math.min(1, simT / 10);
+    for (const b of BOATS) { const s = boatState(b, simT); if (s.on <= 0) continue; const g = toGrid(s.x, s.y);
+      out.push([[g[0], g[1], b.len * 0.45 / DX, b.draft * s.on * ease * ease], [Math.cos(s.hd), Math.sin(s.hd), Math.max(2.2, b.len * 0.12 / DX), 0]]); }
+    return out; }
+  function boatSources() { const out = []; if (!ui.boats.checked) return out;
+    const ease = Math.min(1, simT / 10);
+    for (const b of BOATS) { const s = boatState(b, simT); if (s.on <= 0) continue; s.on *= ease * ease;
+      const vx = Math.cos(s.hd) * b.speed, vy = Math.sin(s.hd) * b.speed, g = toGrid(s.x, s.y), gs = toGrid(s.x - Math.cos(s.hd) * b.len * 0.5, s.y - Math.sin(s.hd) * b.len * 0.5);
+      out.push([[g[0], g[1], b.len * 0.28 / DX, SIM.boatPush * s.on], [vx, vy, 0, 0]]);          // a little drag: the wake current
+      out.push([[gs[0], gs[1], b.len * 0.18 / DX, 0], [0, 0, SIM.boatFoam * s.on, 0]]); }        // and churns foam at the stern
+    return out; }
+  let still = 0;
+  function pointerSources() { const pushes = [], drops = [];
+    if (mouse && lastMouse) { const dx = mouse[0] - lastMouse[0], dy = mouse[1] - lastMouse[1], v = Math.hypot(dx, dy);
+      travel += v; const n = Math.min(6, Math.floor(travel / SIM.mouseGap));
+      if (n > 0) { travel -= n * SIM.mouseGap; if (travel > SIM.mouseGap) travel = 0; still = 0;
+        const w0 = worldOnSea(lastMouse[0], lastMouse[1]), w1 = worldOnSea(mouse[0], mouse[1]);
+        if (w0 && w1) { let vx = w1[0] - w0[0], vy = w1[1] - w0[1]; const l = Math.hypot(vx, vy) || 1; const sp = SIM.mouseSpeed * Math.min(1, v / 12);
+          vx = vx / l * sp; vy = vy / l * sp;                                    // the pointer is a paddle sweeping at up to 14 m/s
+          for (let i = 1; i <= n; i++) { const q = [lastMouse[0] + dx * i / n, lastMouse[1] + dy * i / n]; if (!isSea(q[0], q[1])) continue;
+            const w = worldOnSea(q[0], q[1]); if (!w) continue; const g = toGrid(w[0], w[1]);
+            pushes.push([[g[0], g[1], Math.min(14, Math.max(SIM.mouseR * 0.6, SIM.mouseR * w[2] / 900)), SIM.mousePush], [vx, vy, SIM.mouseFoam, 0]]); } } }
+      else if (++still % 50 === 25 && isSea(mouse[0], mouse[1], true)) { const w = worldOnSea(mouse[0], mouse[1]);   // resting pointer: a gentle tap now and then
+        if (w) { const g = toGrid(w[0], w[1]); drops.push([g[0], g[1], 4, 0.25]); } } }
+    lastMouse = mouse ? mouse.slice() : null;
+    while (clicks.length) { const q = clicks.shift(); if (!isSea(q[0], q[1])) continue; const w = worldOnSea(q[0], q[1]); if (!w) continue;
+      const g = toGrid(w[0], w[1]); const r = Math.min(16, Math.max(SIM.dropR * 0.7, SIM.dropR * w[2] / 900));
+      drops.push([g[0], g[1], r, SIM.dropH]); pushes.push([[g[0], g[1], r * 1.4, 0], [0, 0, 0.8, 0]]); }   // a heavy hit: a mound of water that collapses into a bore, with spray
+    return { pushes, drops }; }
+
+  function drawBoats() {
+    if (!ui.boats.checked) return;
+    gl.useProgram(pBoat); gl.uniform4fv(bLoc.cov, cover); gl.uniformMatrix4fv(bLoc.vp, false, VP); gl.uniform3fv(bLoc.c, CAM.pos); gl.uniform1i(bLoc.mk, 1); gl.enable(gl.DEPTH_TEST); gl.clear(gl.DEPTH_BUFFER_BIT);
+    BOATS.forEach((b, i) => { const s = boatState(b, simT); if (!s.vis) return;
+      const sc = toScreen(s.x, s.y, SEA_Z), qy = sc[1] - 2; if (sc[2] <= 0 || sc[0] < 0 || qy < 0 || sc[0] >= W || qy >= H) return;     // off screen
+      gl.uniform2f(bLoc.sp, (Math.floor(sc[0]) + .5) / W, (Math.floor(qy) + .5) / H);                                            // behind a pier: the shader hides it
+      const c = Math.cos(s.hd), sn = Math.sin(s.hd);
+      gl.bindBuffer(gl.ARRAY_BUFFER, boatBufs[i].b);
+      gl.enableVertexAttribArray(bLoc.p); gl.vertexAttribPointer(bLoc.p, 3, gl.FLOAT, false, 28, 0);
+      gl.enableVertexAttribArray(bLoc.n); gl.vertexAttribPointer(bLoc.n, 3, gl.FLOAT, false, 28, 12);
+      gl.enableVertexAttribArray(bLoc.k); gl.vertexAttribPointer(bLoc.k, 1, gl.FLOAT, false, 28, 24);
+      // reflection first (mirrored in the sea plane, faint), then the boat
+      gl.disable(gl.DEPTH_TEST); gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      gl.uniformMatrix4fv(bLoc.m, false, new Float32Array([c, sn, 0, 0, -sn, c, 0, 0, 0, 0, -1, 0, s.x, s.y, SEA_Z, 1]));
+      gl.uniform1f(bLoc.a, 0.22); gl.drawArrays(gl.TRIANGLES, 0, boatBufs[i].count);
+      gl.disable(gl.BLEND); gl.enable(gl.DEPTH_TEST);
+      gl.uniformMatrix4fv(bLoc.m, false, new Float32Array([c, sn, 0, 0, -sn, c, 0, 0, 0, 0, 1, 0, s.x, s.y, SEA_Z, 1]));
+      gl.uniform1f(bLoc.a, 1.0); gl.drawArrays(gl.TRIANGLES, 0, boatBufs[i].count); });
+    gl.disable(gl.DEPTH_TEST); }
+
+  // the sky the water mirrors, from noon (tag 5) through the pink dusk (6, 7) into night (8, 9)
+  const SKYK = [[194, [.80, .88, 1.0], [.30, .50, .88]], [232, [.80, .88, 1.0], [.30, .50, .88]], [258, [1.0, .42, .74], [.12, .05, .22]],   // b14: day -> dusk -> night 212-300
+    [286, [1.0, .42, .74], [.10, .03, .16]], [287, [1.0, .42, .74], [.10, .03, .16]]];   // b16 frame numbers
+  function skyAt(n) { for (let i = 1; i < SKYK.length; i++) if (n <= SKYK[i][0]) { const a = SKYK[i - 1], b = SKYK[i], t = (n - a[0]) / (b[0] - a[0]);
+      return [a[1].map((v, k) => v + (b[1][k] - v) * t), a[2].map((v, k) => v + (b[2][k] - v) * t)]; } return [SKYK[SKYK.length - 1][1], SKYK[SKYK.length - 1][2]]; }
+  const WT = new Map(); let curN = -1, curA = null, curB = null, curMix = 0;
+  function wTex(k) { const e = WT.get(k); if (e) { e.used = performance.now(); return e.t; }        // a few frames on this context's GPU side: stepping on re-uses the last one
+    const src = frameSrc(k); if (!src) return null;
+    const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, src);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    WT.set(k, { t, used: performance.now() });
+    while (WT.size > 4) { let old = null; for (const [q, v] of WT) if (v.t !== curA && v.t !== curB && (!old || v.used < old[1].used)) old = [q, v]; if (!old) break; gl.deleteTexture(old[1].t); WT.delete(old[0]); }
+    return t; }
+  function render() {
+    const nF = water.n, mk = maskSrc(nF), a = water.k0, b = water.k1;
+    if (mk && a >= 0) { const ta = wTex(a), tb = b === a ? ta : wTex(b);
+      if (ta && tb) { if (nF !== curN) { curN = nF; maskImg = mk; maskData = null; gl.bindTexture(gl.TEXTURE_2D, tMask); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, mk); camN = nF; camSet(CFG.wcam[nF - 190]); }
+        curA = ta; curB = tb; curMix = water.mix; } }
+    if (curN < 0) return false;                                             // nothing decoded yet: the film alone
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, cv.width, cv.height); gl.useProgram(pView); bindQuad(pView);
+    gl.uniform1f(uGain, +ui.gain.value); gl.uniform1f(uMix, curMix); gl.uniform4fv(uCov, cover);
+    gl.uniform3fv(uCv, CAM.pos); gl.uniform3fv(uRv, R); gl.uniform3fv(uUv, U); gl.uniform3fv(uFv, F); gl.uniform1f(uFpxv, FPX); const sk = skyAt(nF); gl.uniform3fv(uSkyH, sk[0]); gl.uniform3fv(uSkyZ, sk[1]);
+    gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, curB);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, curA); gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, tMask);
+    gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, st[cur]); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    drawBoats(); return true; }
+
+  // the sea only runs once the film gets near it; the boats sail ahead unseen first, so their wakes already trail behind them
+  const WARM = Q.has('ww') ? parseInt(Q.get('ww')) : 1800; let warmed = 0, acc = 0, last = performance.now(), shown = 0;
+  function resizeW() { const d = Math.min(devicePixelRatio || 1, 1.5, Math.sqrt((MOB ? 1.6e6 : 4.2e6) / (innerWidth * innerHeight))); cv.width = Math.round(innerWidth * d); cv.height = Math.round(innerHeight * d); }
+  addEventListener('resize', resizeW); resizeW();
+  window.__water = { step, render, clicks, get simT() { return simT; }, get warmed() { return warmed; } };
+  let wk = 2, ftA = 16, vs = 16, lastF = performance.now();
+  function wframe(now) {
+    const fdt = Math.min(100, now - lastF); lastF = now; ftA += (fdt - ftA) * .1; vs = Math.min(vs * 1.002, Math.max(4, fdt));   // vs ~ the display's frame interval
+    const near = VIEW.f > 200; let on = water.active > 0;
+    if (warmed < WARM && (near || on)) { wk = ftA < vs * 1.3 ? Math.min(on ? 24 : 12, wk + 1) : Math.max(1, wk >> 1);   // the boats sail ahead unseen, a few steps a frame
+      const n = Math.min(wk, WARM - warmed); for (let i = 0; i < n; i++) step(boatSources(), []); warmed += n; last = now; }
+    else if (on) { acc += Math.min(0.1, (now - last) / 1000) * +ui.speed.value; last = now;
+      let n = 0; const ps = pointerSources();
+      while (acc >= dt && n < 6) { step(boatSources().concat(n === 0 ? ps.pushes : []), n === 0 ? ps.drops : []); acc -= dt; n++; }
+      if (n === 0 && (ps.pushes.length || ps.drops.length)) step(boatSources().concat(ps.pushes), ps.drops); }
+    else last = now;
+    if (on && !render()) on = false;
+    const op = on ? water.active : 0; if (op !== shown) { shown = op; cv.style.opacity = op.toFixed(3); cv.style.pointerEvents = op > .5 ? 'auto' : 'none'; }
+    water.cover = on && op >= .999;
+    requestAnimationFrame(wframe); }
+  requestAnimationFrame(wframe);
+}).catch(e => console.error('water images', e));
+
+}
+</script>
+</body>
+</html>

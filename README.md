@@ -13,6 +13,7 @@ Yang Tang 的科研主页，加上孩子们做的浏览器游戏。
 | mozi.tang.ninja | `kids/mozi/games/` |
 | liangzi.tang.ninja | `kids/liangzi/games/` |
 | wind.tang.ninja | `apps/wind/index.html`（3D 风场 CFD 演示，源码在电脑上的 `Desktop/Claude/CFD/garden-wind-3d/`） |
+| tang.ninja/harbour/ | `apps/harbour/`（维港水晶模型滚动影片，4K 帧，由 Claude 从 Mac mini 上的渲染生成；要用 harbour.tang.ninja 需在 Cloudflare 加这个域名） |
 
 孩子们的页面是根据 `games/` 文件夹里的 `.html` 自动生成的。主页和孩子们的页面互相不放链接，工作和家里的分开。
 

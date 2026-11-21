@@ -1,11 +1,30 @@
 {
   "domain": "tang.ninja",
   "kids": [
-    { "id": "chizi", "name": "Chizi", "theme": "hazard" },
-    { "id": "mozi", "name": "Mozi", "theme": "comic" },
-    { "id": "liangzi", "name": "Liangzi", "theme": "dossier" }
+    {
+      "id": "chizi",
+      "name": "Chizi",
+      "theme": "hazard"
+    },
+    {
+      "id": "mozi",
+      "name": "Mozi",
+      "theme": "comic"
+    },
+    {
+      "id": "liangzi",
+      "name": "Liangzi",
+      "theme": "dossier"
+    }
   ],
   "apps": [
-    { "id": "wind", "name": "CFD Garden: 3D wind over the Mechanical Garden" }
+    {
+      "id": "wind",
+      "name": "CFD Garden: 3D wind over the Mechanical Garden"
+    },
+    {
+      "id": "harbour",
+      "name": "Victoria Harbour crystal model: scroll film (4K)"
+    }
   ]
 }
