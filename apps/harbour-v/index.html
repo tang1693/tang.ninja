@@ -438,7 +438,7 @@ function trimDec() { while (DEC.size > DECMAX) { let old = null;          // dro
 function decodeKey(key, force) { if (VID.on && key[0] === 'f') return vDecode(+key.slice(1), force); if (DEC.has(key) || BUSY.has(key) || (!force && cache.has(key)) || BUSY.size >= DECPAR + (force ? 1 : 0)) return;
   const b = ENC.get(key); if (!b) return; BUSY.add(key); STAT.dec++;
   decodeBlob(b).then(src => { BUSY.delete(key); DEC.set(key, { src, used: performance.now() }); trimDec(); }, () => BUSY.delete(key)); }
-const STAT = { up: 0, dec: 0, worst: 0 }, POOL = [];                     // POOL: spare 4K frame textures, re-used instead of freed and made again
+const STAT = { up: 0, dec: 0, worst: 0 }, POOL = []; let TESTING = false;                     // POOL: spare 4K frame textures, re-used instead of freed and made again
 function trimTex(kind) { const max = kind === 'p' ? PTEX : FTEX; let n = 0; for (const k of cache.keys()) if (k[0] === kind) n++;   // frames and depth pictures: separate budgets
   while (n > max) { let old = null; for (const [k, v] of cache) if (k[0] === kind && (!old || v.used < old[1].used)) old = [k, v];
     if (old[1].pool) POOL.push(old[1]); else gl.deleteTexture(old[1].t); cache.delete(old[0]); n--; } }
@@ -697,9 +697,9 @@ function frame(now) {
   else render();
   // keep it smooth on slower machines: a coarser fog layer if frames run long
   fpsAcc += rdt; fpsN++; if (rdt * 1000 > STAT.worst && rdt < 2) STAT.worst = rdt * 1000;
-  if (fpsN === 60 && !BENCH) { const ms = fpsAcc / fpsN * 1000; if (fpsEl) fpsEl.textContent = ms.toFixed(1) + ' ms/帧 · 最慢 ' + STAT.worst.toFixed(0) + ' ms · 画布 ' + cv.width + '×' + cv.height + ' · 雾 ' + fogW + ' px · 上传 ' + (STAT.up / fpsAcc).toFixed(1) + '/s · 解码 ' + (STAT.dec / fpsAcc).toFixed(1) + '/s';
+  if (fpsN === 30 && !BENCH && !TESTING) { const ms = fpsAcc / fpsN * 1000; if (fpsEl) fpsEl.textContent = ms.toFixed(1) + ' ms/帧 · 最慢 ' + STAT.worst.toFixed(0) + ' ms · 画布 ' + cv.width + '×' + cv.height + ' · 雾 ' + fogW + ' px · 上传 ' + (STAT.up / fpsAcc).toFixed(1) + '/s · 解码 ' + (STAT.dec / fpsAcc).toFixed(1) + '/s';
     STAT.up = 0; STAT.dec = 0; STAT.worst = 0;
-    if (ms > 24 && ++slow >= 2) { if (FOGMAX > 760) { FOGMAX = Math.round(FOGMAX * .8); makeFog(); } else if (SIMEVERY < 4) SIMEVERY *= 2; else if (CAPMP > 3.7e6) { CAPMP *= .7; resize(); } slow = 0; } fpsAcc = 0; fpsN = 0; }
+    if (ms > 22 && ++slow >= 2) { if (FOGMAX > 760) { FOGMAX = Math.round(FOGMAX * .8); makeFog(); } else if (SIMEVERY < 4) SIMEVERY *= 2; else if (CAPMP > 3.7e6) { CAPMP *= .7; resize(); } slow = 0; } fpsAcc = 0; fpsN = 0; }
   if (fc % 8 === 0) boardGPU();
   if (time > 6) css(hint, 'opacity', '.55');
   requestAnimationFrame(frame);
@@ -935,6 +935,39 @@ function vOut(vf) {                                                       // fra
   createImageBitmap(vf).then(b => { vf.close(); const o = DEC.get(key); if (o) freeSrc(o.src);
     DEC.set(key, { src: b, used: performance.now() - (w === undefined ? 1e5 : w) }); trimDec(); },
     e => { vf.close(); if (++VID.bmpFails > 2) { VID.fails = 99; vFail(e); } }); }
+// ?test: measures this machine (frame time with and without the simulation / fog / full canvas, then a scroll) and shows a result to copy
+async function runTest() {
+  const box = document.createElement('div'); box.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:99;background:#fff;color:#111;font:13px/1.5 ui-monospace,Menlo,monospace;padding:16px 20px;border-radius:10px;box-shadow:0 8px 40px rgba(0,0,0,.4);white-space:pre;max-width:92vw;overflow:auto';
+  document.body.appendChild(box); const say = t => { box.textContent = t; }, sleep = ms => new Promise(r => setTimeout(r, ms));
+  say('测试准备中（先把视频下载完）…'); TESTING = true; slow = -1e9;
+  if (VID.on) { const names = new Set(); VID.ix.gops.forEach(g => g.forEach(c => names.add(c[0]))); names.forEach(vFile);
+    while (Object.keys(VID.buf).length < names.size) { say('下载中 ' + Object.keys(VID.buf).length + ' / ' + names.size); await sleep(300); } }
+  const yFor = f => { let lo = 0, hi = TOT; for (let i = 0; i < 50; i++) { const m = (lo + hi) / 2; if (frameAt(m) < f) lo = m; else hi = m; } return lo; };
+  const rafs = (ms, fn) => new Promise(res => { const ts = []; let last = performance.now(), t0 = last, miss = 0, n = 0;
+    (function st(now) { const dt = (now - last) / 1000; last = now; if (n++ > 3) ts.push(dt * 1000); if (fn) { fn(dt); const k = Math.floor(VIEW.f); if (!water.cover && !cache.has('f' + k)) miss++; }
+      if (now - t0 < ms) requestAnimationFrame(st); else { ts.sort((a, b) => a - b); const avg = ts.reduce((a, b) => a + b, 0) / ts.length;
+        res({ avg, p95: ts[Math.floor(ts.length * .95)], max: ts[ts.length - 1], miss: Math.round(100 * miss / n) }); } })(t0); });
+  const fmt = r => r.avg.toFixed(1).padStart(5) + ' ms  (95%: ' + r.p95.toFixed(0) + ', 最慢 ' + r.max.toFixed(0) + ')';
+  const cap0 = CAPMP, fog0 = FOGMAX, se0 = SIMEVERY; FOGMAX = 1280; SIMEVERY = 2; CAPMP = MOB ? 2.2e6 : 8.3e6; resize(); fogW = 0; makeFog();
+  vY = yS = yFor(120); say('静止画面…'); await sleep(3000);
+  const out = [];
+  const phase = async (name, set, unset) => { say('测试：' + name + ' …'); set(); await sleep(400); const r = await rafs(2500); unset(); out.push(name.padEnd(8, '　') + fmt(r)); };
+  await phase('完整', () => {}, () => {});
+  await phase('不算风', () => { skipSim = true; }, () => { skipSim = false; });
+  await phase('不画雾', () => { skipSim = true; skipFog = true; }, () => { skipSim = false; skipFog = false; });
+  await phase('画布减半', () => { CAPMP = (MOB ? 2.2e6 : 8.3e6) / 4; resize(); }, () => { CAPMP = MOB ? 2.2e6 : 8.3e6; resize(); });
+  say('测试：滚动 …'); vY = yS = yFor(40); await sleep(1500);
+  const sr = await rafs(7000, dt => moveBy(.6 * dt)); out.push('滚动'.padEnd(8, '　') + fmt(sr) + '  缺帧 ' + sr.miss + '%');
+  let gpu = '?'; try { const e = gl.getExtension('WEBGL_debug_renderer_info'); gpu = e ? gl.getParameter(e.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER); } catch (x) {}
+  const ua = navigator.userAgent.match(/(Edg|Chrome|Firefox|Version)\/[\d.]+/g) || [navigator.userAgent];
+  out.push('', '帧：' + vinfo.textContent, '画布 ' + cv.width + '×' + cv.height + ' · 窗口 ' + innerWidth + '×' + innerHeight + ' @' + devicePixelRatio + ' · 雾 ' + fogW + ' px',
+    'GPU ' + gpu, '浏览器 ' + ua.join(' ') + (navigator.deviceMemory ? ' · 内存≥' + navigator.deviceMemory + 'GB' : '') + ' · ' + (navigator.platform || ''));
+  CAPMP = cap0; FOGMAX = fog0; SIMEVERY = se0; resize(); fogW = 0; makeFog(); TESTING = false; slow = 0;
+  const txt = out.join('\n'); say(txt + '\n');
+  const b = document.createElement('button'); b.textContent = '复制结果'; b.style.cssText = 'margin-top:10px;font:14px system-ui;padding:6px 14px;border-radius:6px;border:1px solid #888;background:#f4f4f4;cursor:pointer';
+  b.onclick = () => { navigator.clipboard && navigator.clipboard.writeText(txt).then(() => { b.textContent = '已复制'; }); }; box.appendChild(b);
+  const c = document.createElement('button'); c.textContent = '关闭'; c.style.cssText = b.style.cssText + ';margin-left:8px'; c.onclick = () => box.remove(); box.appendChild(c); }
+if (Q.has('test')) addEventListener('load', () => VID.ready.then(() => setTimeout(runTest, 800)));
 VID.ready = pickCodec().catch(e => { console.warn(e); return false; }).then(ok => {
   VID.on = ok; VID.settled = true; if (ok) DECMAX = MOB ? 6 : 8;
   vinfo.textContent = ok ? '视频 ' + VID.name : '图片包' + (typeof VideoDecoder !== 'function' ? '（浏览器不支持 WebCodecs）' : '');

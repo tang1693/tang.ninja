@@ -437,7 +437,7 @@ function trimDec() { while (DEC.size > DECMAX) { let old = null;          // dro
 function decodeKey(key, force) { if (DEC.has(key) || BUSY.has(key) || (!force && cache.has(key)) || BUSY.size >= DECPAR + (force ? 1 : 0)) return;
   const b = ENC.get(key); if (!b) return; BUSY.add(key); STAT.dec++;
   decodeBlob(b).then(src => { BUSY.delete(key); DEC.set(key, { src, used: performance.now() }); trimDec(); }, () => BUSY.delete(key)); }
-const STAT = { up: 0, dec: 0, worst: 0 }, POOL = [];                     // POOL: spare 4K frame textures, re-used instead of freed and made again
+const STAT = { up: 0, dec: 0, worst: 0 }, POOL = []; let TESTING = false;                     // POOL: spare 4K frame textures, re-used instead of freed and made again
 function trimTex(kind) { const max = kind === 'p' ? PTEX : FTEX; let n = 0; for (const k of cache.keys()) if (k[0] === kind) n++;   // frames and depth pictures: separate budgets
   while (n > max) { let old = null; for (const [k, v] of cache) if (k[0] === kind && (!old || v.used < old[1].used)) old = [k, v];
     if (old[1].pool) POOL.push(old[1]); else gl.deleteTexture(old[1].t); cache.delete(old[0]); n--; } }
@@ -694,9 +694,9 @@ function frame(now) {
   else render();
   // keep it smooth on slower machines: a coarser fog layer if frames run long
   fpsAcc += rdt; fpsN++; if (rdt * 1000 > STAT.worst && rdt < 2) STAT.worst = rdt * 1000;
-  if (fpsN === 60 && !BENCH) { const ms = fpsAcc / fpsN * 1000; if (fpsEl) fpsEl.textContent = ms.toFixed(1) + ' ms/帧 · 最慢 ' + STAT.worst.toFixed(0) + ' ms · 画布 ' + cv.width + '×' + cv.height + ' · 雾 ' + fogW + ' px · 上传 ' + (STAT.up / fpsAcc).toFixed(1) + '/s · 解码 ' + (STAT.dec / fpsAcc).toFixed(1) + '/s';
+  if (fpsN === 30 && !BENCH && !TESTING) { const ms = fpsAcc / fpsN * 1000; if (fpsEl) fpsEl.textContent = ms.toFixed(1) + ' ms/帧 · 最慢 ' + STAT.worst.toFixed(0) + ' ms · 画布 ' + cv.width + '×' + cv.height + ' · 雾 ' + fogW + ' px · 上传 ' + (STAT.up / fpsAcc).toFixed(1) + '/s · 解码 ' + (STAT.dec / fpsAcc).toFixed(1) + '/s';
     STAT.up = 0; STAT.dec = 0; STAT.worst = 0;
-    if (ms > 24 && ++slow >= 2) { if (FOGMAX > 760) { FOGMAX = Math.round(FOGMAX * .8); makeFog(); } else if (SIMEVERY < 4) SIMEVERY *= 2; else if (CAPMP > 3.7e6) { CAPMP *= .7; resize(); } slow = 0; } fpsAcc = 0; fpsN = 0; }
+    if (ms > 22 && ++slow >= 2) { if (FOGMAX > 760) { FOGMAX = Math.round(FOGMAX * .8); makeFog(); } else if (SIMEVERY < 4) SIMEVERY *= 2; else if (CAPMP > 3.7e6) { CAPMP *= .7; resize(); } slow = 0; } fpsAcc = 0; fpsN = 0; }
   if (fc % 8 === 0) boardGPU();
   if (time > 6) css(hint, 'opacity', '.55');
   requestAnimationFrame(frame);
