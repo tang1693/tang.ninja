@@ -853,7 +853,7 @@ let STILL3 = null;
 
 // ================= frames from video (WebCodecs) =================
 // v/index.json: the variants, best first; v/<name>/index.json: gops[g] = the GOP's chunks in decode order, [file, offset, length, key, frame]
-const VID = { on: false, settled: false, ready: null, name: 'img', ix: null, dec: null, cfg: null, buf: {}, req: {}, busy: false, last: {}, want: new Map(), force: new Set(), fails: 0 };
+const VID = { on: false, settled: false, ready: null, name: 'img', ix: null, dec: null, cfg: null, buf: {}, req: {}, busy: false, last: {}, want: new Map(), force: new Set(), fails: 0, bmpFails: 0, t0: 0 };
 const vinfo = document.getElementById('vinfo');
 function b64(s) { const b = atob(s), u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
 async function pickCodec() {
@@ -876,7 +876,7 @@ function vOpen() {
   try { VID.dec = new VideoDecoder({ output: vOut, error: e => vFail(e) }); VID.dec.configure(VID.cfg); VID.busy = false; return true; }
   catch (e) { console.warn('video decoder', e); return false; } }
 function vFail(e) {                       // a decoder error: try once more with a fresh decoder, then go back to the pictures
-  console.warn('video decode error', e); VID.busy = false;
+  console.warn('video decode error', e); VID.busy = false; if (!VID.on) return;
   try { VID.dec && VID.dec.state !== 'closed' && VID.dec.close(); } catch (x) {}
   if (++VID.fails <= 2 && vOpen()) return;
   VID.on = false; VID.name = 'img'; vinfo.textContent = '图片包（视频解码失败）';
@@ -886,13 +886,15 @@ function vFile(nm) { if (VID.req[nm]) return; const dir = 'v/' + VID.ix.name + '
 function vWant(k) { const ch = VID.ix.gops[k >> 3]; if (!ch) return; vFile(ch[0][0]); if (k & 7) for (const c of ch) if (!c[3]) { vFile(c[0]); break; } }
 function vDecode(k, force) {
   if (force && !DEC.has('f' + k)) VID.force.add(k);
-  if (VID.busy || !VID.dec || VID.dec.state !== 'configured') return;
+  if (VID.busy && performance.now() - VID.t0 > 5000) { VID.fails = 99; vFail('decoder stalled'); return; }    // no answer for 5 s: back to the pictures
+  if (!VID.dec || VID.dec.state === 'closed') { vFail('decoder closed'); return; }
+  if (VID.busy || VID.dec.state !== 'configured') return;
   const g = k >> 3, ch = VID.ix.gops[g]; if (!ch) return;
   const full = ch.every(c => VID.buf[c[0]]), key = !full && (k & 7) === 0 && VID.buf[ch[0][0]];
   if (!full && !key) { vWant(k); return; }
   const now = performance.now(), L = VID.last[g];                         // a GOP just decoded: give its pictures time to reach the GPU before decoding it again
   if (L && L.full >= (full ? 1 : 0) && now - L.t < 600 && !VID.force.has(k)) return;
-  VID.last[g] = { t: now, full: full ? 1 : 0 }; VID.busy = true;
+  VID.last[g] = { t: now, full: full ? 1 : 0 }; VID.busy = true; VID.t0 = now;
   try {
     for (const c of (full ? ch : [ch[0]])) VID.dec.decode(new EncodedVideoChunk({ type: c[3] ? 'key' : 'delta', timestamp: c[4] * 1000, data: new Uint8Array(VID.buf[c[0]], c[1], c[2]) }));
     VID.dec.flush().then(() => { VID.busy = false; }, e => vFail(e));
@@ -903,9 +905,10 @@ function vOut(vf) {                                                       // kee
   if (!need) { vf.close(); return; }
   VID.force.delete(k);
   createImageBitmap(vf).then(b => { vf.close(); const o = DEC.get(key); if (o) freeSrc(o.src);
-    DEC.set(key, { src: b, used: performance.now() - (w === undefined ? 1e5 : w) }); trimDec(); }, () => vf.close()); }
+    DEC.set(key, { src: b, used: performance.now() - (w === undefined ? 1e5 : w) }); trimDec(); },
+    e => { vf.close(); if (++VID.bmpFails > 2) { VID.fails = 99; vFail(e); } }); }
 VID.ready = pickCodec().catch(e => { console.warn(e); return false; }).then(ok => {
-  VID.on = ok; VID.settled = true; if (ok) DECMAX = MOB ? 9 : 12;
+  VID.on = ok; VID.settled = true; if (ok) DECMAX = MOB ? 8 : 12;
   vinfo.textContent = ok ? '视频 ' + VID.name : '图片包' + (typeof VideoDecoder !== 'function' ? '（浏览器不支持 WebCodecs）' : '');
   console.log('frames:', vinfo.textContent); });
 const loadEl = document.getElementById('load');
