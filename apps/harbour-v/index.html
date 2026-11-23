@@ -424,7 +424,7 @@ const VIEW = { b0: null, b1: null, mix: 0, p1: null, p2: null, bend: 0, fogK: 1,
 const FR = [], PS = [];                                                  // FR[k] / PS[k]: requested from the packs
 // frames: Blob (ENC) -> decoded off the main thread by createImageBitmap (DEC) -> texture (cache), for a window around the playhead
 const ENC = new Map(), DEC = new Map(), BUSY = new Set(), cache = new Map();
-const MOB = matchMedia('(pointer: coarse)').matches, FTEX = MOB ? 8 : 14, PTEX = MOB ? 24 : 40, TEXMAX = FTEX; let DECMAX = 6; const DECPAR = MOB ? 2 : 4, WATER0 = 252;   // b16: 1080p pictures (8 MB a texture) -> fewer kept; water from 252
+const MOB = matchMedia('(pointer: coarse)').matches, FTEX = MOB ? 8 : 18, PTEX = MOB ? 24 : 40, TEXMAX = FTEX; let DECMAX = 6; const DECPAR = MOB ? 2 : 4, WATER0 = 252;   // b16: 1080p pictures (8 MB a texture) -> fewer kept; water from 252
 let IBOK = typeof createImageBitmap === 'function';
 function decodeBlob(b) {
   const viaImg = () => new Promise((ok, no) => { const i = new Image(), u = URL.createObjectURL(b);
@@ -463,10 +463,10 @@ function frameSrc(k) { const key = 'f' + k, d = DEC.get(key); if (d) { d.used = 
 let velF = 0, fLast = 0;                                                 // playhead speed, frames per second
 function feedFrames(f, dt) {                                             // decode and upload the frames around the playhead, most needed first, within a small time budget
   velF += ((f - fLast) / Math.max(dt, 1e-3) - velF) * Math.min(1, dt * 6); fLast = f;
-  const dir = velF >= 0 ? 1 : -1, ah = Math.min(FTEX - 5, 4 + Math.round(Math.abs(velF) * .3)), c0 = Math.floor(f), list = [c0, c0 + 1];
+  const dir = velF >= 0 ? 1 : -1, ah = Math.min(9, FTEX - 5, 4 + Math.round(Math.abs(velF) * .3)), c0 = Math.floor(f), list = [c0, c0 + 1];
   for (let o = 1; o <= ah; o++) list.push(dir > 0 ? c0 + 1 + o : c0 - o);
   for (let o = 1; o <= 2; o++) list.push(dir > 0 ? c0 - o : c0 + 1 + o);
-  VID.want = new Map(list.map((k, i) => [k, i]));
+  if (VID.on) vKeep(list, c0, dir);
   const now = performance.now(), fog = VIEW.fogK > 0; let ups = 0;
   for (let i = 0; i < list.length; i++) { const k = list[i]; if (k < 0 || k >= NA) continue; want(k);
     for (const key of (fog && k < NF) ? ['f' + k, 'p' + k] : ['f' + k]) {
@@ -870,7 +870,7 @@ let STILL3 = null;
 
 // ================= frames from video (WebCodecs) =================
 // v/index.json: the variants, best first; v/<name>/index.json: gops[g] = the GOP's chunks in decode order, [file, offset, length, key, frame]
-const VID = { on: false, settled: false, ready: null, name: 'img', ix: null, dec: null, cfg: null, buf: {}, req: {}, busy: false, last: {}, want: new Map(), force: new Set(), fails: 0, bmpFails: 0, t0: 0, noDirect: false };
+const VID = { on: false, settled: false, ready: null, name: 'img', ix: null, dec: null, cfg: null, buf: {}, req: {}, busy: false, last: {}, want: new Map(), force: new Set(), fails: 0, bmpFails: 0, t0: 0, noDirect: false, c0: 0, dir: 1 };
 const vinfo = document.getElementById('vinfo');
 function b64(s) { const b = atob(s), u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
 async function pickCodec() {
@@ -911,18 +911,25 @@ function vDecode(k, force) {
   const full = ch.every(c => VID.buf[c[0]]), key = !full && (k & 7) === 0 && VID.buf[ch[0][0]];
   if (!full && !key) { vWant(k); return; }
   const now = performance.now(), L = VID.last[g];                         // a GOP just decoded: give its pictures time to reach the GPU before decoding it again
-  if (L && L.full >= (full ? 1 : 0) && now - L.t < 600 && !VID.force.has(k)) return;
-  VID.last[g] = { t: now, full: full ? 1 : 0 }; VID.busy = true; VID.t0 = now; STAT.dec++;
+  const r = VID.want.get(k);                                              // ...unless this frame was not kept last time (it was not wanted then)
+  if (L && L.full >= (full ? 1 : 0) && now - L.t < 600 && !VID.force.has(k) && !(r !== undefined && L.kept && !L.kept.has(k))) return;
+  VID.last[g] = { t: now, full: full ? 1 : 0, kept: new Set() }; VID.busy = true; VID.t0 = now; STAT.dec++;
   try {
     for (const c of (full ? ch : [ch[0]])) VID.dec.decode(new EncodedVideoChunk({ type: c[3] ? 'key' : 'delta', timestamp: c[4] * 1000, data: new Uint8Array(VID.buf[c[0]], c[1], c[2]) }));
     VID.dec.flush().then(() => { VID.busy = false; }, e => vFail(e));
   } catch (e) { vFail(e); } }
+function vKeep(list, c0, dir) {                                          // the frames to keep on the GPU: the playhead's window, then the rest of its GOP and all of the next
+  const W = new Map(); list.forEach((k, i) => W.set(k, i)); const g0 = c0 >> 3;   // (a GOP is decoded whole, so it is decoded once if all of it can be kept)
+  for (const g of [g0, g0 + dir]) for (let j = 0; j < 8; j++) { const k = g * 8 + j; if (k >= 0 && k < NA && !W.has(k) && (k - c0) * dir >= -2) W.set(k, 20 + Math.abs(k - c0)); }
+  const ks = [...W.entries()].sort((a, b) => a[1] - b[1]).slice(0, FTEX); VID.want = new Map(ks); VID.c0 = c0; VID.dir = dir;
+  const tn = performance.now(); for (const [k, r] of ks) { const c = cache.get('f' + k); if (c) c.used = tn - r; } }
 function vOut(vf) {                                                       // frames the playhead wants: straight into a pooled texture; the water layer's: also a picture
-  const k = Math.round(vf.timestamp / 1000), key = 'f' + k, w = VID.want.get(k), forced = VID.force.has(k);
+  const k = Math.round(vf.timestamp / 1000), key = 'f' + k, w0 = VID.want.get(k), forced = VID.force.has(k);
+  const w = w0;
   if (w !== undefined && !cache.has(key) && !water.cover && !VID.noDirect) {
-    try { const e = frameTex(vf); e.used = performance.now() - w; putTex(key, e); }
+    try { const e = frameTex(vf); e.used = performance.now() - w; putTex(key, e); const L = VID.last[k >> 3]; if (L && L.kept) L.kept.add(k); }
     catch (x) { VID.noDirect = true; console.warn('VideoFrame upload', x); } }      // this browser can't: pictures and the usual upload
-  const pic = forced || (w !== undefined && !DEC.has(key) && ((k >= WATER0 && w < 4) || (VID.noDirect && !cache.has(key))));
+  const pic = forced || (w0 !== undefined && !DEC.has(key) && ((k >= WATER0 && w0 < 4) || (VID.noDirect && !cache.has(key))));
   if (!pic) { vf.close(); return; }
   VID.force.delete(k);
   createImageBitmap(vf).then(b => { vf.close(); const o = DEC.get(key); if (o) freeSrc(o.src);
