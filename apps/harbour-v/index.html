@@ -128,7 +128,7 @@
 <div class="card ui" id="rail"><div class="k">高度</div><div class="v" id="rAlt">0</div><div class="bar"><div class="tick" style="top:0"></div><div class="tick" style="top:50%"></div><div class="tick" style="top:100%"></div><div class="dot" id="rDot"></div></div><div class="v" id="rTilt">0°</div><div class="k">俯角</div></div>
 <div class="card ui" id="scrollhint"><i></i>向下滚动</div>
 <div class="ui" id="hint"></div>
-<div id="vinfo" style="position:fixed;left:10px;bottom:8px;z-index:50;font:11px/1.3 -apple-system,system-ui,sans-serif;color:#fff;opacity:.45;pointer-events:none;text-shadow:0 1px 2px #000"></div>
+<div id="vinfo" style="position:fixed;left:10px;bottom:24px;z-index:50;font:11px/1.3 -apple-system,system-ui,sans-serif;color:#fff;opacity:.45;pointer-events:none;text-shadow:0 1px 2px #000"></div>
 <div class="ui" id="load"><div class="marks"><span></span><span></span><span></span></div>模型载入中</div>
 <div class="ui" id="err"></div>
 
@@ -424,7 +424,7 @@ const VIEW = { b0: null, b1: null, mix: 0, p1: null, p2: null, bend: 0, fogK: 1,
 const FR = [], PS = [];                                                  // FR[k] / PS[k]: requested from the packs
 // frames: Blob (ENC) -> decoded off the main thread by createImageBitmap (DEC) -> texture (cache), for a window around the playhead
 const ENC = new Map(), DEC = new Map(), BUSY = new Set(), cache = new Map();
-const MOB = matchMedia('(pointer: coarse)').matches, TEXMAX = MOB ? 8 : 14; let DECMAX = 6; const DECPAR = MOB ? 2 : 4, WATER0 = 252;   // b16: 1080p pictures (8 MB a texture) -> fewer kept; water from 252
+const MOB = matchMedia('(pointer: coarse)').matches, FTEX = MOB ? 8 : 14, PTEX = MOB ? 24 : 40, TEXMAX = FTEX; let DECMAX = 6; const DECPAR = MOB ? 2 : 4, WATER0 = 252;   // b16: 1080p pictures (8 MB a texture) -> fewer kept; water from 252
 let IBOK = typeof createImageBitmap === 'function';
 function decodeBlob(b) {
   const viaImg = () => new Promise((ok, no) => { const i = new Image(), u = URL.createObjectURL(b);
@@ -436,27 +436,42 @@ function trimDec() { while (DEC.size > DECMAX) { let old = null;          // dro
     for (const [k, v] of DEC) { const sc = (cache.has(k) ? 0 : 1e12) + v.used; if (!old || sc < old[2]) old = [k, v, sc]; }
     freeSrc(old[1].src); DEC.delete(old[0]); } }
 function decodeKey(key, force) { if (VID.on && key[0] === 'f') return vDecode(+key.slice(1), force); if (DEC.has(key) || BUSY.has(key) || (!force && cache.has(key)) || BUSY.size >= DECPAR + (force ? 1 : 0)) return;
-  const b = ENC.get(key); if (!b) return; BUSY.add(key);
+  const b = ENC.get(key); if (!b) return; BUSY.add(key); STAT.dec++;
   decodeBlob(b).then(src => { BUSY.delete(key); DEC.set(key, { src, used: performance.now() }); trimDec(); }, () => BUSY.delete(key)); }
-function trimTex() { while (cache.size > TEXMAX) { let old = null; for (const [k, v] of cache) if (!old || v.used < old[1].used) old = [k, v]; gl.deleteTexture(old[1].t); cache.delete(old[0]); } }
+const STAT = { up: 0, dec: 0, worst: 0 }, POOL = [];                     // POOL: spare 4K frame textures, re-used instead of freed and made again
+function trimTex(kind) { const max = kind === 'p' ? PTEX : FTEX; let n = 0; for (const k of cache.keys()) if (k[0] === kind) n++;   // frames and depth pictures: separate budgets
+  while (n > max) { let old = null; for (const [k, v] of cache) if (k[0] === kind && (!old || v.used < old[1].used)) old = [k, v];
+    if (old[1].pool) POOL.push(old[1]); else gl.deleteTexture(old[1].t); cache.delete(old[0]); n--; } }
+function frameTex(src) {                                                 // a frame into a pooled texture of its size
+  const w = src.displayWidth || src.naturalWidth || src.width, h = src.displayHeight || src.naturalHeight || src.height;
+  let p = POOL.pop(); if (p && (p.w !== w || p.h !== h)) { gl.deleteTexture(p.t); p = null; }
+  if (!p) { const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t); gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA8, w, h);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE); p = { t, w, h, pool: true }; }
+  gl.bindTexture(gl.TEXTURE_2D, p.t); gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE); gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+  try { gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, src); } catch (e) { POOL.push(p); throw e; }
+  STAT.up++; return { t: p.t, w, h, pool: true, used: performance.now() }; }
+function putTex(key, e) { const o = cache.get(key); if (o) { if (o.pool) POOL.push(o); else gl.deleteTexture(o.t); } cache.set(key, e); trimTex(key[0]); }
 function upload(key) { const d = DEC.get(key); if (!d) return null;
-  const t = imgTex(d.src, gl.RGBA8, gl.RGBA, key[0] === 'p' ? gl.NEAREST : gl.LINEAR, false); cache.set(key, { t, used: performance.now() });
+  const e = key[0] === 'f' ? frameTex(d.src) : { t: imgTex(d.src, gl.RGBA8, gl.RGBA, gl.NEAREST, false), used: performance.now() }; if (key[0] !== 'f') STAT.up++;
+  putTex(key, e); const t = e.t;
   if (!(key[0] === 'f' && +key.slice(1) >= WATER0)) { freeSrc(d.src); DEC.delete(key); }       // the water layer needs the late frames' pictures as well
-  trimTex(); return t; }
+  return t; }
 function texFor(key) { const c = cache.get(key); if (!c) return null; c.used = performance.now(); return c.t; }
 function nearestTex(pre, i, n) { for (let d = 0; d < n; d++) for (const j of [i - d, i + d]) if (j >= 0 && j < n && cache.has(pre + j)) return j; return -1; }
 function frameSrc(k) { const key = 'f' + k, d = DEC.get(key); if (d) { d.used = performance.now(); return d.src; } want(k); decodeKey(key, true); return null; }
 let velF = 0, fLast = 0;                                                 // playhead speed, frames per second
 function feedFrames(f, dt) {                                             // decode and upload the frames around the playhead, most needed first, within a small time budget
   velF += ((f - fLast) / Math.max(dt, 1e-3) - velF) * Math.min(1, dt * 6); fLast = f;
-  const dir = velF >= 0 ? 1 : -1, ah = Math.min(MOB ? 12 : 22, 4 + Math.round(Math.abs(velF) * .3)), c0 = Math.floor(f), list = [c0, c0 + 1];
+  const dir = velF >= 0 ? 1 : -1, ah = Math.min(FTEX - 5, 4 + Math.round(Math.abs(velF) * .3)), c0 = Math.floor(f), list = [c0, c0 + 1];
   for (let o = 1; o <= ah; o++) list.push(dir > 0 ? c0 + 1 + o : c0 - o);
-  for (let o = 1; o <= 3; o++) list.push(dir > 0 ? c0 - o : c0 + 1 + o);
+  for (let o = 1; o <= 2; o++) list.push(dir > 0 ? c0 - o : c0 + 1 + o);
   VID.want = new Map(list.map((k, i) => [k, i]));
   const now = performance.now(), fog = VIEW.fogK > 0; let ups = 0;
   for (let i = 0; i < list.length; i++) { const k = list[i]; if (k < 0 || k >= NA) continue; want(k);
     for (const key of (fog && k < NF) ? ['f' + k, 'p' + k] : ['f' + k]) {
       const c = cache.get(key); if (c) { c.used = now - i; continue; }   // keep the window warm (nearest = most recent)
+      if (water.cover && key[0] === 'f') { if (i < 4 && !DEC.has(key)) decodeKey(key); continue; }   // sky world: the water layer covers the film and needs only the nearest frames, as pictures
       if (DEC.has(key)) { if (ups < (i < 2 ? 3 : 2) && (ups === 0 || performance.now() - now < (MOB ? 5 : 4))) { upload(key); cache.get(key).used = now - i; ups++; } }
       else decodeKey(key); } } }
 const mskT = (() => { const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t); gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8UI, AW, AH, 0, gl.RED_INTEGER, gl.UNSIGNED_BYTE, null);
@@ -487,7 +502,8 @@ function makeFog() { const fw = Math.min(FOGMAX, cv.width, Math.round(Math.sqrt(
   if (fw === fogW && fh === fogH) return; fogW = fw; fogH = fh;
   fogA = [0, 1].map(() => [0, 1, 2].map(() => tex(fw, fh, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, gl.LINEAR)));
   fogFB = fogA.map(s => fbo(...s)); firstFog = true; }
-function resize() { const dpr = Math.min(devicePixelRatio || 1, 2, Math.sqrt((MOB ? 2.2e6 : 8.3e6) / (innerWidth * innerHeight)));   /* 4K build: the canvas may go up to 3840x2160 */   // the film is 720p: more pixels only cost time
+let CAPMP = MOB ? 2.2e6 : 8.3e6;
+function resize() { const dpr = Math.min(devicePixelRatio || 1, 2, Math.sqrt(CAPMP / (innerWidth * innerHeight)));   /* 4K build: the canvas may go up to 3840x2160 */   // the film is 720p: more pixels only cost time
  cv.width = Math.round(innerWidth * dpr); cv.height = Math.round(innerHeight * dpr);
   const sa = innerHeight / innerWidth;
   if (sa > ASP) { const w = ASP / sa; cover = [(1 - w) / 2, 0, w, 1]; } else { const h = sa / ASP; cover = [0, (1 - h) / 2, 1, h]; }
@@ -680,9 +696,10 @@ function frame(now) {
   else if (skipFog || VIEW.fogK <= 0) comp(fogA[fogCur]);
   else render();
   // keep it smooth on slower machines: a coarser fog layer if frames run long
-  fpsAcc += rdt; fpsN++;
-  if (fpsN === 60 && !BENCH) { const ms = fpsAcc / fpsN * 1000; if (fpsEl) fpsEl.textContent = ms.toFixed(1) + ' ms · fog ' + fogW + 'px';
-    if (ms > 24 && ++slow >= 2) { if (FOGMAX > 760) { FOGMAX = Math.round(FOGMAX * .8); makeFog(); } else if (SIMEVERY < 4) SIMEVERY *= 2; slow = 0; } fpsAcc = 0; fpsN = 0; }
+  fpsAcc += rdt; fpsN++; if (rdt * 1000 > STAT.worst && rdt < 2) STAT.worst = rdt * 1000;
+  if (fpsN === 60 && !BENCH) { const ms = fpsAcc / fpsN * 1000; if (fpsEl) fpsEl.textContent = ms.toFixed(1) + ' ms/帧 · 最慢 ' + STAT.worst.toFixed(0) + ' ms · 画布 ' + cv.width + '×' + cv.height + ' · 雾 ' + fogW + ' px · 上传 ' + (STAT.up / fpsAcc).toFixed(1) + '/s · 解码 ' + (STAT.dec / fpsAcc).toFixed(1) + '/s';
+    STAT.up = 0; STAT.dec = 0; STAT.worst = 0;
+    if (ms > 24 && ++slow >= 2) { if (FOGMAX > 760) { FOGMAX = Math.round(FOGMAX * .8); makeFog(); } else if (SIMEVERY < 4) SIMEVERY *= 2; else if (CAPMP > 3.7e6) { CAPMP *= .7; resize(); } slow = 0; } fpsAcc = 0; fpsN = 0; }
   if (fc % 8 === 0) boardGPU();
   if (time > 6) css(hint, 'opacity', '.55');
   requestAnimationFrame(frame);
@@ -853,7 +870,7 @@ let STILL3 = null;
 
 // ================= frames from video (WebCodecs) =================
 // v/index.json: the variants, best first; v/<name>/index.json: gops[g] = the GOP's chunks in decode order, [file, offset, length, key, frame]
-const VID = { on: false, settled: false, ready: null, name: 'img', ix: null, dec: null, cfg: null, buf: {}, req: {}, busy: false, last: {}, want: new Map(), force: new Set(), fails: 0, bmpFails: 0, t0: 0 };
+const VID = { on: false, settled: false, ready: null, name: 'img', ix: null, dec: null, cfg: null, buf: {}, req: {}, busy: false, last: {}, want: new Map(), force: new Set(), fails: 0, bmpFails: 0, t0: 0, noDirect: false };
 const vinfo = document.getElementById('vinfo');
 function b64(s) { const b = atob(s), u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
 async function pickCodec() {
@@ -886,7 +903,8 @@ function vFile(nm) { if (VID.req[nm]) return; const dir = 'v/' + VID.ix.name + '
 function vWant(k) { const ch = VID.ix.gops[k >> 3]; if (!ch) return; vFile(ch[0][0]); if (k & 7) for (const c of ch) if (!c[3]) { vFile(c[0]); break; } }
 function vDecode(k, force) {
   if (force && !DEC.has('f' + k)) VID.force.add(k);
-  if (VID.busy && performance.now() - VID.t0 > 5000) { VID.fails = 99; vFail('decoder stalled'); return; }    // no answer for 5 s: back to the pictures
+  if (document.visibilityState !== 'visible') VID.t0 = Math.max(VID.t0, performance.now() - 1000);   // hidden: the browser may hold the decoder
+  if (VID.busy && performance.now() - VID.t0 > 8000) { VID.fails = 99; vFail('decoder stalled'); return; }    // no answer for 8 s: back to the pictures
   if (!VID.dec || VID.dec.state === 'closed') { vFail('decoder closed'); return; }
   if (VID.busy || VID.dec.state !== 'configured') return;
   const g = k >> 3, ch = VID.ix.gops[g]; if (!ch) return;
@@ -894,21 +912,24 @@ function vDecode(k, force) {
   if (!full && !key) { vWant(k); return; }
   const now = performance.now(), L = VID.last[g];                         // a GOP just decoded: give its pictures time to reach the GPU before decoding it again
   if (L && L.full >= (full ? 1 : 0) && now - L.t < 600 && !VID.force.has(k)) return;
-  VID.last[g] = { t: now, full: full ? 1 : 0 }; VID.busy = true; VID.t0 = now;
+  VID.last[g] = { t: now, full: full ? 1 : 0 }; VID.busy = true; VID.t0 = now; STAT.dec++;
   try {
     for (const c of (full ? ch : [ch[0]])) VID.dec.decode(new EncodedVideoChunk({ type: c[3] ? 'key' : 'delta', timestamp: c[4] * 1000, data: new Uint8Array(VID.buf[c[0]], c[1], c[2]) }));
     VID.dec.flush().then(() => { VID.busy = false; }, e => vFail(e));
   } catch (e) { vFail(e); } }
-function vOut(vf) {                                                       // keep the pictures the playhead wants (or that were asked for), as ImageBitmaps in DEC
-  const k = Math.round(vf.timestamp / 1000), key = 'f' + k, w = VID.want.get(k);
-  const need = VID.force.has(k) || (w !== undefined && !DEC.has(key) && (!cache.has(key) || k >= WATER0));
-  if (!need) { vf.close(); return; }
+function vOut(vf) {                                                       // frames the playhead wants: straight into a pooled texture; the water layer's: also a picture
+  const k = Math.round(vf.timestamp / 1000), key = 'f' + k, w = VID.want.get(k), forced = VID.force.has(k);
+  if (w !== undefined && !cache.has(key) && !water.cover && !VID.noDirect) {
+    try { const e = frameTex(vf); e.used = performance.now() - w; putTex(key, e); }
+    catch (x) { VID.noDirect = true; console.warn('VideoFrame upload', x); } }      // this browser can't: pictures and the usual upload
+  const pic = forced || (w !== undefined && !DEC.has(key) && ((k >= WATER0 && w < 4) || (VID.noDirect && !cache.has(key))));
+  if (!pic) { vf.close(); return; }
   VID.force.delete(k);
   createImageBitmap(vf).then(b => { vf.close(); const o = DEC.get(key); if (o) freeSrc(o.src);
     DEC.set(key, { src: b, used: performance.now() - (w === undefined ? 1e5 : w) }); trimDec(); },
     e => { vf.close(); if (++VID.bmpFails > 2) { VID.fails = 99; vFail(e); } }); }
 VID.ready = pickCodec().catch(e => { console.warn(e); return false; }).then(ok => {
-  VID.on = ok; VID.settled = true; if (ok) DECMAX = MOB ? 8 : 12;
+  VID.on = ok; VID.settled = true; if (ok) DECMAX = MOB ? 6 : 8;
   vinfo.textContent = ok ? '视频 ' + VID.name : '图片包' + (typeof VideoDecoder !== 'function' ? '（浏览器不支持 WebCodecs）' : '');
   console.log('frames:', vinfo.textContent); });
 const loadEl = document.getElementById('load');
