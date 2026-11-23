@@ -1,0 +1,18 @@
+[
+ {
+  "name": "av1",
+  "codec": "av01.0.12M.08",
+  "desc": "gQwMAAoPAAAAYu+/4bwC+BAQ0BBA",
+  "w": 3840,
+  "h": 2160,
+  "mb": 40.7
+ },
+ {
+  "name": "h264",
+  "codec": "avc1.640033",
+  "desc": "AWQAM//hAB5nZAAzrNmAPABD7AWoCGgKAAADAAIAAAMAeB4wYzQBAAZo6XgjLIv9+PgA",
+  "w": 3840,
+  "h": 2160,
+  "mb": 51.7
+ }
+]

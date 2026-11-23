@@ -25,6 +25,10 @@
     {
       "id": "harbour",
       "name": "Victoria Harbour crystal model: scroll film (4K)"
+    },
+    {
+      "id": "harbour-v",
+      "name": "Victoria Harbour crystal model: scroll film (4K, video frames)"
     }
   ]
 }
