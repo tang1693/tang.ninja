@@ -437,7 +437,10 @@ function trimDec() { while (DEC.size > DECMAX) { let old = null;          // dro
 function decodeKey(key, force) { if (DEC.has(key) || BUSY.has(key) || (!force && cache.has(key)) || BUSY.size >= DECPAR + (force ? 1 : 0)) return;
   const b = ENC.get(key); if (!b) return; BUSY.add(key); STAT.dec++;
   decodeBlob(b).then(src => { BUSY.delete(key); DEC.set(key, { src, used: performance.now() }); trimDec(); }, () => BUSY.delete(key)); }
-const STAT = { up: 0, dec: 0, worst: 0 }, POOL = []; let TESTING = false;                     // POOL: spare 4K frame textures, re-used instead of freed and made again
+const STAT = { up: 0, dec: 0, worst: 0, long: 0 }, POOL = []; let TESTING = false, SIMQ = [], SIMI = 0, SIMN = 0, DLEV = 0;
+const DEGR = [() => { SIMEVERY = 3; }, () => { SIMEVERY = 4; }, () => { FOGMAX = 1024; makeFog(); }, () => { SIMEVERY = 6; }, () => { FOGMAX = 800; makeFog(); },
+  () => { CAPMP *= .7; resize(); }, () => { CAPMP *= .7; resize(); }];       // lighter, step by step: the wind first (it costs most), then the fog, then the canvas
+function degrade(save) { if (DLEV >= DEGR.length) return false; DEGR[DLEV++](); if (save) try { localStorage.setItem('harbourLevel', DLEV); } catch (e) {} return true; }                     // POOL: spare 4K frame textures, re-used instead of freed and made again
 function trimTex(kind) { const max = kind === 'p' ? PTEX : FTEX; let n = 0; for (const k of cache.keys()) if (k[0] === kind) n++;   // frames and depth pictures: separate budgets
   while (n > max) { let old = null; for (const [k, v] of cache) if (k[0] === kind && (!old || v.used < old[1].used)) old = [k, v];
     if (old[1].pool) POOL.push(old[1]); else gl.deleteTexture(old[1].t); cache.delete(old[0]); n--; } }
@@ -561,11 +564,29 @@ function stepB(dt, time, src, m) { let p = P.jac; gl.useProgram(p.p); setGrid(p.
   gl.uniform1f(p.u.mAmt, m.emit); gl.uniform1f(p.u.mR, PR.fogR); gl.uniform1f(p.u.slow, Math.max(1.5, PR.windSpd * .72 * .35)); gl.uniform1f(p.u.stay, PR.stay * TS); gl.uniform1f(p.u.fade, PR.fadeT * TS); gl.uniform3fv(p.u.mA, m.a); gl.uniform3fv(p.u.mB, m.b); gl.uniform4f(p.u.dom, CFG.dom.X0, CFG.dom.Y0, CFG.dom.S, 0); draw(den.w.f, AW, AH); den.swap();
 }
 
+function simPasses(dt, time, m) {                                  // one wind step as a list of GPU passes, so it can be spread over several frames
+  const L = [
+    () => { let p = P.advV; gl.useProgram(p.p); setGrid(p.u); bindT(p.u.hgt, 7, hgtT); bindT(p.u.vel, 0, vel.r.t); bindT(p.u.den, 1, den.r.t);
+  gl.uniform1f(p.u.dt, dt); gl.uniform1f(p.u.buoy, PR.buoy); gl.uniform1f(p.u.relax, PR.relax); gl.uniform1f(p.u.init, INIT ? 1 : 0); INIT = false; gl.uniform3fv(p.u.wind, WIND);
+  gl.uniform1f(p.u.mOn, m.push); gl.uniform1f(p.u.mR, PR.mR); gl.uniform3fv(p.u.mA, m.a); gl.uniform3fv(p.u.mB, m.b); gl.uniform3fv(p.u.mV, m.vel); draw(vel.w.f, AW, AH); vel.swap(); },
+    () => { let p = P.curl; gl.useProgram(p.p); setGrid(p.u); bindT(p.u.hgt, 7, hgtT); bindT(p.u.vel, 0, vel.r.t); draw(cuF, AW, AH); },
+    () => { let p = P.conf; gl.useProgram(p.p); setGrid(p.u); bindT(p.u.hgt, 7, hgtT); bindT(p.u.vel, 0, vel.r.t); bindT(p.u.cu, 1, cuT); gl.uniform1f(p.u.dt, dt); gl.uniform1f(p.u.eps, PR.eps); draw(vel.w.f, AW, AH); vel.swap(); },
+    () => { let p = P.div; gl.useProgram(p.p); setGrid(p.u); bindT(p.u.msk, 6, mskT); bindT(p.u.vel, 0, vel.r.t); draw(dvF, AW, AH); }];
+  const jac = () => { const p = P.jac; gl.useProgram(p.p); setGrid(p.u); bindT(p.u.msk, 6, mskT); bindT(p.u.dv, 1, dvT); bindT(p.u.prs, 0, prs.r.t); draw(prs.w.f, AW, AH); prs.swap(); };
+  for (let i = 0; i < JAC; i++) L.push(jac);
+  L.push(
+    () => { let p = P.grad; gl.useProgram(p.p); setGrid(p.u); bindT(p.u.msk, 6, mskT); bindT(p.u.prs, 0, prs.r.t); bindT(p.u.vel, 1, vel.r.t); draw(vel.w.f, AW, AH); vel.swap(); },
+    () => { let p = P.advD1; gl.useProgram(p.p); setGrid(p.u); bindT(p.u.hgt, 7, hgtT); bindT(p.u.vel, 0, vel.r.t); bindT(p.u.den, 1, den.r.t); gl.uniform1f(p.u.dt, dt); draw(fwdF, AW, AH); },
+    () => { let p = P.advD2; gl.useProgram(p.p); setGrid(p.u); bindT(p.u.hgt, 7, hgtT); bindT(p.u.vel, 0, vel.r.t); bindT(p.u.den, 1, den.r.t); bindT(p.u.fwd, 2, fwdT);
+  gl.uniform1f(p.u.dt, dt); gl.uniform1f(p.u.tau, 3000); gl.uniform1f(p.u.time, time);
+  gl.uniform1f(p.u.mAmt, m.emit); gl.uniform1f(p.u.mR, PR.fogR); gl.uniform1f(p.u.slow, Math.max(1.5, PR.windSpd * .72 * .35)); gl.uniform1f(p.u.stay, PR.stay * TS); gl.uniform1f(p.u.fade, PR.fadeT * TS); gl.uniform3fv(p.u.mA, m.a); gl.uniform3fv(p.u.mB, m.b); gl.uniform4f(p.u.dom, CFG.dom.X0, CFG.dom.Y0, CFG.dom.S, 0); draw(den.w.f, AW, AH); den.swap(); });
+  return L; }
 function step(dt, time, src, m) { stepA(dt, m); stepB(dt, time, src, m); }
 
 // ---------- frame ----------
 const hint = document.getElementById('hint'), fpsEl = Q.has('fps') ? document.getElementById('err') : null;
 let TS = PR.ts; let M = { emit: 0, push: 0, a: [-99, -99, -99], b: [-99, -99, -99], vel: [0, 0, 0] }, JAC = 12, sdt = 0, SIMEVERY = Q.has('se') ? parseInt(Q.get('se')) : 2, simAcc = 0;                                            // simulated seconds per real second
+try { const L = Math.max(0, (parseInt(localStorage.getItem('harbourLevel')) || 0) - 1); if (!Q.has('test')) while (DLEV < L) degrade(false); } catch (e) {}   // start one step back toward full quality from where this browser ended last time
 let t0 = 0, last = 0, simT = 0, fpsAcc = 0, fpsN = 0, slow = 0;
 let cur = null, from = null, fromT = 0, ringP = [0, 0, -1e4], ringA = 0;
 function pointerNow(now, dt) {
@@ -686,17 +707,18 @@ function frame(now) {
   pointerNow(now, dt);
   fc++; if (BENCH) bench(rdt);
   simAcc += dt;
-  if (!skipSim && VIEW.fogK > 0 && !water.cover) { const ph = fc % SIMEVERY;
-    if (ph === 0) { sdt = Math.min(.1, simAcc) * TS; simAcc = 0; M = stroke(now); stepA(sdt, M); }
-    if (ph === (SIMEVERY >> 1)) { simT += sdt; stepB(sdt, simT, .9, M); } }
+  if (!skipSim && VIEW.fogK > 0 && !water.cover) {                    // one wind step spread evenly over SIMEVERY frames (twice as many while the film runs fast)
+    if (SIMI >= SIMQ.length) { const se = SIMEVERY * (Math.abs(velF) > 8 ? 2 : 1); sdt = Math.min(.1, simAcc) * TS; simAcc = 0; M = stroke(now); simT += sdt;
+      SIMQ = simPasses(sdt, simT, M); SIMI = 0; SIMN = Math.ceil(SIMQ.length / se); }
+    for (let n = 0; n < SIMN && SIMI < SIMQ.length; n++) SIMQ[SIMI++](); }
   if (water.cover) { }                                                    // the water layer (opaque) covers the film: nothing to draw here
   else if (skipFog || VIEW.fogK <= 0) comp(fogA[fogCur]);
   else render();
   // keep it smooth on slower machines: a coarser fog layer if frames run long
-  fpsAcc += rdt; fpsN++; if (rdt * 1000 > STAT.worst && rdt < 2) STAT.worst = rdt * 1000;
-  if (fpsN === 30 && !BENCH && !TESTING) { const ms = fpsAcc / fpsN * 1000; if (fpsEl) fpsEl.textContent = ms.toFixed(1) + ' ms/帧 · 最慢 ' + STAT.worst.toFixed(0) + ' ms · 画布 ' + cv.width + '×' + cv.height + ' · 雾 ' + fogW + ' px · 上传 ' + (STAT.up / fpsAcc).toFixed(1) + '/s · 解码 ' + (STAT.dec / fpsAcc).toFixed(1) + '/s';
-    STAT.up = 0; STAT.dec = 0; STAT.worst = 0;
-    if (ms > 22 && ++slow >= 2) { if (FOGMAX > 760) { FOGMAX = Math.round(FOGMAX * .8); makeFog(); } else if (SIMEVERY < 4) SIMEVERY *= 2; else if (CAPMP > 3.7e6) { CAPMP *= .7; resize(); } slow = 0; } fpsAcc = 0; fpsN = 0; }
+  fpsAcc += rdt; fpsN++; if (rdt * 1000 > STAT.worst && rdt < 2) STAT.worst = rdt * 1000; if (rdt > .03 && rdt < 2) STAT.long++;
+  if (fpsN === 30 && !BENCH && !TESTING) { const ms = fpsAcc / fpsN * 1000; if (fpsEl) fpsEl.textContent = ms.toFixed(1) + ' ms/帧 · 最慢 ' + STAT.worst.toFixed(0) + ' ms · 画布 ' + cv.width + '×' + cv.height + ' · 雾 ' + fogW + ' px · 上传 ' + (STAT.up / fpsAcc).toFixed(1) + '/s · 解码 ' + (STAT.dec / fpsAcc).toFixed(1) + '/s · 档 ' + DLEV + ' (风每 ' + SIMEVERY + ' 帧)';
+    STAT.up = 0; STAT.dec = 0; STAT.worst = 0; STAT.long = 0;
+    if ((ms > 19 || STAT.long >= 3) && time > 2) { if (++slow >= 2) { degrade(true); slow = 0; } } else slow = 0; fpsAcc = 0; fpsN = 0; }
   if (fc % 8 === 0) boardGPU();
   if (time > 6) css(hint, 'opacity', '.55');
   requestAnimationFrame(frame);
