@@ -710,8 +710,8 @@ function frame(now) {
   pointerNow(now, dt);
   fc++; if (BENCH) bench(rdt);
   simAcc += dt;
-  if (!skipSim && VIEW.fogK > 0 && !water.cover) {                    // one wind step spread evenly over SIMEVERY frames (twice as many while the film runs fast)
-    if (SIMI >= SIMQ.length) { const se = SIMEVERY * (Math.abs(velF) > 8 ? 2 : 1); sdt = Math.min(.1, simAcc) * TS; simAcc = 0; M = stroke(now); simT += sdt;
+  if (!skipSim && VIEW.fogK > 0 && !water.cover) {                    // one wind step spread evenly over SIMEVERY frames (4x as many while the film runs fast)
+    if (SIMI >= SIMQ.length) { const se = SIMEVERY * (Math.abs(velF) > 8 ? 4 : 1); sdt = Math.min(.1, simAcc) * TS; simAcc = 0; M = stroke(now); simT += sdt;
       SIMQ = simPasses(sdt, simT, M); SIMI = 0; SIMN = Math.ceil(SIMQ.length / se); }
     for (let n = 0; n < SIMN && SIMI < SIMQ.length; n++) SIMQ[SIMI++](); }
   if (water.cover) { }                                                    // the water layer (opaque) covers the film: nothing to draw here
