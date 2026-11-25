@@ -1599,7 +1599,10 @@ PAL.behemax = { armor: 0x2e2434, frame: 0x140e16, trim: 0xd8ccb8, glow: 0xff2a6a
 PAL.colossus = { armor: 0xd9a63a, frame: 0x2e2416, trim: 0xfff0b8, glow: 0xff3a2a, blade: 0xffd080 };
 
 const SPEC = {
-  magmaw:    { plan: 'biped', hunch: 0.24, rocks: true, cracks: 11, core: true, jets: true, horns: 'fwd', gaitV: 11 },
+  magmaw:    { plan: 'biped', hunch: 0.24, rocks: true, cracks: 11, core: true, jets: true, horns: 'fwd', tail: 6, tailW: 1.75, tailL: 1.05, gaitV: 11 },
+  frostusk:  { plan: 'quad', mammoth: true, heads: 1, neck: 1, neckL: 0.45, legs: 4, legL: 2.2, legW: 1.9, tail: 3, tailL: 0.5, fur: true, ice: true, bodyL: 3.8, bodyW: 2.4, bodyH: 2.0, gaitV: 13 },
+  krakenox:  { plan: 'octo', gaitV: 14, gaitK: 1.2 },
+  nightfang: { plan: 'biped', head: 'bat', bw: 0.72, armK: 0.7, legK: 0.75, hunch: 0.12, wings: { span: 7.6, chord: 3.6 }, gaitV: 13 },
   brute:     { plan: 'biped', hunch: 0.3, rocks: true, cracks: 6, horns: 'side', tail: 4, gaitV: 9 },
   behemax:   { plan: 'biped', hunch: 0.16, spikes: true, cracks: 14, horns: 'crown', tail: 7, wings: { span: 8.5, chord: 3.8 }, gaitV: 9 },
   stormwing: { plan: 'quad', heads: 6, neck: 3, neckL: 0.8, legs: 4, legL: 2.0, tail: 7, tailL: 0.62, crystal: true, wings: { span: 6.6, chord: 3.0, style: 'crystal' }, bodyL: 3.4, bodyW: 1.9, bodyH: 1.35, gaitV: 16 },
@@ -1660,12 +1663,16 @@ function buildWing(parent, M, side, x, y, z, W) {
   return { g, side };
 }
 
-function tailChain(parent, M, y, z, n, w, L, spikes) {
+function tailChain(parent, M, y, z, n, w, L, deco) {
   const segs = []; let g = parent;
   for (let i = 0; i < n; i++) {
     const s = grp(g, 0, i ? 0 : y, i ? L : z), wi = w * (1 - 0.7 * i / n);
     part(s, GEO.box, M.armor, wi, wi * 0.85, L * 1.18, 0, 0, L / 2);
-    if (spikes && i < n - 1) part(s, GEO.cone, M.trim, wi * 0.16, wi * 0.6, wi * 0.16, 0, wi * 0.55, L * 0.45).rotation.x = 0.5;
+    if ((deco === true || deco === 'spikes') && i < n - 1) part(s, GEO.cone, M.trim, wi * 0.16, wi * 0.6, wi * 0.16, 0, wi * 0.55, L * 0.45).rotation.x = 0.5;
+    if (deco === 'rocks' || deco === 'lava') {
+      const rk = part(s, GEO.ico, M.trim, wi * 0.42, wi * 0.32, wi * 0.45, 0, wi * 0.42, L * 0.5); rk.rotation.set(i, i * 2, 0);
+      if (deco === 'lava') for (const sx of [-1, 1]) part(s, GEO.box, M.glow, 0.04, 0.07, L * 0.7, sx * wi * 0.51, ((i % 3) - 1) * wi * 0.18, L * 0.5, false).rotation.x = sx * (i % 2 ? 0.3 : -0.25);
+    }
     segs.push(s); g = s;
   }
   segs.tip = grp(g, 0, 0, L);
@@ -1699,13 +1706,13 @@ function beastHead(parent, M, k, opt = {}) {
 
 // two-legged titans: Magmaw, Brute, Behemax
 function buildBiped(root, P, M, sp) {
-  const H = sp.H = 3.05;
+  const H = sp.H = 3.05, bw = sp.bw || 1, ak = sp.armK || 1, lk = sp.legK || 1;
   const body = P.body = grp(root, 0, H, 0);
-  part(body, GEO.box, M.frame, 1.7, 0.9, 1.2, 0, 0, 0);
+  part(body, GEO.box, M.frame, 1.7 * bw, 0.9, 1.2, 0, 0, 0);
   const torso = P.torso = grp(body, 0, 0.35, 0);
-  part(torso, GEO.box, M.armor, 2.9, 2.0, 1.8, 0, 1.3, 0);
-  part(torso, GEO.box, M.belly, 2.0, 1.25, 1.5, 0, 0.35, -0.14);
-  part(torso, GEO.box, M.armor, 2.4, 0.6, 1.4, 0, 2.45, 0.08);
+  part(torso, GEO.box, M.armor, 2.9 * bw, 2.0, 1.8 * Math.sqrt(bw), 0, 1.3, 0);
+  part(torso, GEO.box, M.belly, 2.0 * bw, 1.25, 1.5 * Math.sqrt(bw), 0, 0.35, -0.14);
+  part(torso, GEO.box, M.armor, 2.4 * bw, 0.6, 1.4, 0, 2.45, 0.08);
   if (sp.rocks) for (const [x, y, z, r] of [[-1.5, 2.3, 0.1, 0.85], [1.5, 2.3, 0.1, 0.85], [0, 2.55, 0.75, 0.7], [-0.8, 1.7, 0.85, 0.6], [0.8, 1.7, 0.85, 0.6]]) {
     const rk = part(torso, GEO.ico, M.trim, r, r * 0.8, r, x, y, z); rk.rotation.set(x * 0.7, y, z * 2);
   }
@@ -1722,7 +1729,22 @@ function buildBiped(root, P, M, sp) {
     part(torso, GEO.box, M.frame, 1.0, 0.66, 0.1, 0, 1.35, -0.9);
     P.core = part(torso, GEO.box, M.glow, 0.76, 0.44, 0.06, 0, 1.35, -0.95, false);
   }
-  const head = P.head = grp(torso, 0, 2.3, -0.95);
+  const head = P.head = grp(torso, 0, 2.3, -0.95 * Math.sqrt(bw));
+  if (sp.head === 'bat') {
+    part(head, GEO.box, M.armor, 1.0, 0.85, 0.95, 0, 0.18, -0.1);
+    part(head, GEO.box, M.belly, 0.55, 0.42, 0.5, 0, -0.02, -0.65);
+    part(head, GEO.box, M.frame, 0.32, 0.16, 0.1, 0, 0.1, -0.92);
+    for (const sx of [-1, 1]) {
+      part(head, GEO.cone, M.armor, 0.32, 1.35, 0.14, sx * 0.4, 1.05, -0.02).rotation.z = -sx * 0.28;
+      part(head, GEO.cone, M.belly, 0.2, 1.0, 0.05, sx * 0.39, 0.98, -0.1, false).rotation.z = -sx * 0.28;
+      part(head, GEO.box, M.glow, 0.17, 0.11, 0.05, sx * 0.26, 0.36, -0.58, false);
+      part(head, GEO.cone, M.trim, 0.07, 0.34, 0.07, sx * 0.16, -0.3, -0.84, false).rotation.x = PI;
+    }
+    P.jaw = grp(head, 0, -0.2, -0.3);
+    part(P.jaw, GEO.box, M.belly, 0.5, 0.16, 0.55, 0, -0.08, -0.32);
+    part(head, GEO.box, M.glow, 0.36, 0.06, 0.4, 0, -0.24, -0.55, false);
+    P.mouth = grp(head, 0, -0.28, -0.98);
+  } else {
   part(head, GEO.box, M.armor, 1.15, 0.8, 1.05, 0, 0.15, -0.1);
   part(head, GEO.box, M.trim, 1.3, 0.28, 0.45, 0, 0.5, -0.45);
   for (const sx of [-1, 1]) part(head, GEO.box, M.glow, 0.22, 0.09, 0.05, sx * 0.3, 0.3, -0.68, false);
@@ -1740,32 +1762,33 @@ function buildBiped(root, P, M, sp) {
   }
   part(head, GEO.box, M.glow, 0.8, 0.1, 0.7, 0, -0.32, -0.3, false);
   P.mouth = grp(head, 0, -0.3, -1.1);
+  }
   for (const side of [-1, 1]) {
     const k = side < 0 ? 'L' : 'R';
-    const sh = P['sh' + k] = grp(torso, side * 1.8, 1.85, 0);
-    part(sh, GEO.box, M.armor, 0.85, 1.5, 0.85, side * 0.1, -0.7, 0);
-    part(sh, GEO.ico, M.trim, 0.62, 0.5, 0.62, side * 0.25, 0.05, 0).rotation.y = side;
+    const sh = P['sh' + k] = grp(torso, side * (1.8 * bw + 0.1 * (1 - bw)), 1.85, 0);
+    part(sh, GEO.box, M.armor, 0.85 * ak, 1.5, 0.85 * ak, side * 0.1, -0.7, 0);
+    part(sh, GEO.ico, sp.head === 'bat' ? M.armor : M.trim, 0.62 * ak, 0.5 * ak, 0.62 * ak, side * 0.25, 0.05, 0).rotation.y = side;
     const el = P['el' + k] = grp(sh, side * 0.1, -1.45, 0);
-    part(el, GEO.box, M.trim, 1.05, 1.5, 1.05, 0, -0.7, 0);
+    part(el, GEO.box, sp.head === 'bat' ? M.armor : M.trim, 1.05 * ak, 1.5, 1.05 * ak, 0, -0.7, 0);
     if (sp.cracks) part(el, GEO.box, M.glow, 0.06, 0.9, 0.04, side * 0.2, -0.7, -0.54, false).rotation.z = 0.3 * side;
     const hand = P['hand' + k] = grp(el, 0, -1.55, 0);
-    part(hand, GEO.ico, M.frame, 0.72, 0.62, 0.72, 0, -0.1, 0);
+    part(hand, GEO.ico, M.frame, 0.72 * ak, 0.62 * ak, 0.72 * ak, 0, -0.1, 0);
     for (let c = -1; c <= 1; c++) part(hand, GEO.cone, M.trim, 0.1, 0.5, 0.1, c * 0.3, -0.55, -0.35).rotation.x = -0.5;
   }
   P.bladeTip = grp(P.handR, 0, -0.6, 0); P.bladeMid = grp(P.handL, 0, -0.6, 0);
   for (const side of [-1, 1]) {
     const k = side < 0 ? 'L' : 'R';
-    const hip = P['hip' + k] = grp(body, side * 0.85, -0.25, 0);
-    part(hip, GEO.box, M.armor, 1.05, 1.35, 1.1, 0, -0.6, 0);
+    const hip = P['hip' + k] = grp(body, side * 0.85 * Math.max(bw, 0.8), -0.25, 0);
+    part(hip, GEO.box, M.armor, 1.05 * lk, 1.35, 1.1 * lk, 0, -0.6, 0);
     const kn = P['kn' + k] = grp(hip, 0, -1.25, 0);
-    part(kn, GEO.box, M.armor, 0.9, 1.25, 1.0, 0, -0.6, 0);
-    part(kn, GEO.ico, M.trim, 0.45, 0.4, 0.4, 0, 0, -0.45);
+    part(kn, GEO.box, M.armor, 0.9 * lk, 1.25, 1.0 * lk, 0, -0.6, 0);
+    part(kn, GEO.ico, sp.head === 'bat' ? M.armor : M.trim, 0.45 * lk, 0.4 * lk, 0.4 * lk, 0, 0, -0.45 * lk);
     const an = P['an' + k] = grp(kn, 0, -1.2, 0);
-    part(an, GEO.box, M.frame, 1.15, 0.38, 1.55, 0, -0.18, -0.25);
+    part(an, GEO.box, M.frame, 1.15 * lk, 0.38, 1.55 * lk, 0, -0.18, -0.25);
     for (let c = -1; c <= 1; c++) part(an, GEO.cone, M.trim, 0.1, 0.4, 0.1, c * 0.36, -0.2, -1.12).rotation.x = -PI / 2;
     if (sp.jets) P.flames.push(makeFlame(an, 0, -0.4, 0.1, 0.45, 1.9));
   }
-  if (sp.tail) P.tail = tailChain(body, M, -0.1, 0.5, sp.tail, 1.15, 0.85, sp.spikes);
+  if (sp.tail) P.tail = tailChain(body, M, -0.1, 0.5, sp.tail, sp.tailW || 1.15, sp.tailL || 0.85, sp.spikes ? 'spikes' : sp.rocks ? (sp.cracks > 8 ? 'lava' : 'rocks') : null);
   if (sp.wings) P.wings = [-1, 1].map(s => buildWing(torso, M, s, 0.7, 2.3, 0.75, sp.wings));
   P.pods = [grp(torso, -1.3, 2.7, 0.5), grp(torso, 1.3, 2.7, 0.5)];
   P.muzzleR = P.muzzleL = P.coreTip = P.mouth;
@@ -1785,6 +1808,15 @@ function buildQuad(root, P, M, sp) {
     part(torso, GEO.box, M.armor, BW * 0.9, BH * 0.9, BL * 0.5, 0, 0, BL * 0.24);
     part(torso, GEO.box, M.belly, BW * 0.78, BH * 0.3, BL * 0.86, 0, -BH * 0.45, 0);
     part(torso, GEO.box, M.armor, BW * 1.12, BH * 0.7, BL * 0.26, 0, 0.22, -BL * 0.36);
+    if (sp.fur) {
+      part(torso, GEO.box, M.armor, BW * 0.92, BH * 0.45, BL * 0.42, 0, BH * 0.6, -BL * 0.2);
+      for (let i = 0; i < 6; i++) for (const sx of [-1, 1]) part(torso, GEO.box, M.frame, 0.16, BH * 0.55, BL * 0.15, sx * BW * 0.5, -BH * 0.45, -BL * 0.4 + i * BL * 0.16);
+      for (let i = 0; i < 4; i++) part(torso, GEO.box, M.frame, BW * 0.7, BH * 0.4, 0.14, 0, -BH * 0.5, -BL * 0.35 + i * BL * 0.2, false);
+    }
+    if (sp.ice) for (let i = 0; i < 7; i++) {
+      const c = part(torso, GEO.cone, M.glow, 0.14 + (i % 3) * 0.05, 0.6 + (i % 2) * 0.35, 0.1, ((i * 37) % 7 - 3) * 0.16, BH * 0.85 + 0.1, -BL * 0.35 + i * BL * 0.11, false);
+      c.rotation.set(0.35, i, ((i * 13) % 5 - 2) * 0.15);
+    }
     if (sp.spikes || sp.crystal) for (let i = 0; i < 6; i++) {
       const c = part(torso, GEO.cone, sp.crystal ? M.glow : M.trim, sp.crystal ? 0.09 : 0.13, sp.crystal ? 0.42 : 0.55, sp.crystal ? 0.05 : 0.13, 0, BH / 2 + 0.2, -BL * 0.4 + i * BL * 0.16, !sp.crystal);
       c.rotation.x = 0.45;
@@ -1808,20 +1840,20 @@ function buildQuad(root, P, M, sp) {
       }
       g = grp(g, 0, 0, -segL);
     } else g = grp(torso, 0, sp.bat ? 0.1 : 0.2, -BL * 0.5);
-    const hd = beastHead(g, M, hk, { bat: sp.bat, crystal: sp.crystal });
-    P.heads.push({ base, segs, g, jaw: hd.jaw, yaw0: -u * (nH > 1 ? 1.15 : 0), pitch0: nk ? (nH > 1 ? 0.12 + Math.pow(1 - Math.abs(u), 0.8) * 1.0 : 0.45) : 0, ph: i * 1.37 });
+    const hd = sp.mammoth ? mammothHead(g, M, 1.15) : beastHead(g, M, hk, { bat: sp.bat, crystal: sp.crystal });
+    P.heads.push({ base, segs, g, jaw: hd.jaw, trunk: hd.trunk, yaw0: -u * (nH > 1 ? 1.15 : 0), pitch0: nk ? (nH > 1 ? 0.12 + Math.pow(1 - Math.abs(u), 0.8) * 1.0 : 0.45) : 0, ph: i * 1.37 });
     P.mouths.push(hd.mouth);
   }
   P.head = P.heads[nH >> 1].g; P.mouth = P.mouths[nH >> 1];
   P.legs = [];
   const defs = sp.legs === 4 ? [[-1, 1], [1, 1], [-1, 0], [1, 0]] : sp.legs === 2 ? [[-1, 0], [1, 0]] : [];
   for (const [sx, front] of defs) {
-    const hip = grp(torso, sx * BW * 0.48, -BH * 0.2, front ? -BL * 0.32 : BL * 0.3), ul = legL * 0.5;
-    part(hip, GEO.box, M.armor, 0.52, ul + 0.3, 0.62, 0, -ul / 2, 0);
+    const hip = grp(torso, sx * BW * (sp.mammoth ? 0.36 : 0.48), -BH * 0.2, front ? -BL * 0.32 : BL * 0.3), ul = legL * 0.5, lw = sp.legW || 1;
+    part(hip, GEO.box, M.armor, 0.52 * lw, ul + 0.3, 0.62 * lw, 0, -ul / 2, 0);
     const kn = grp(hip, 0, -ul, 0);
-    part(kn, GEO.box, M.armor, 0.38, ul, 0.42, 0, -ul / 2, 0);
+    part(kn, GEO.box, M.armor, 0.38 * lw, ul, 0.42 * lw, 0, -ul / 2, 0);
     const ft = grp(kn, 0, -ul, 0);
-    part(ft, GEO.box, M.frame, 0.55, 0.22, 0.75, 0, -0.06, -0.15);
+    part(ft, GEO.box, M.frame, 0.55 * lw, 0.22, 0.75 * lw, 0, -0.06, -0.15 * lw);
     for (let c = -1; c <= 1; c++) part(ft, GEO.cone, M.trim, 0.06, 0.3, 0.06, c * 0.17, -0.08, -0.6, false).rotation.x = -PI / 2;
     P.legs.push({ hip, kn, ft, sx, front });
   }
@@ -1831,7 +1863,7 @@ function buildQuad(root, P, M, sp) {
   P.hipL = R0 ? R0.hip : T; P.hipR = R1 ? R1.hip : T; P.knL = R0 ? R0.kn : T; P.knR = R1 ? R1.kn : T;
   P.bladeTip = L[1] ? L[1].ft : P.mouth; P.bladeMid = L[0] ? L[0].ft : P.mouth;
   if (sp.tail) {
-    P.tail = tailChain(torso, M, 0.1, BL * 0.48, sp.tail, BW * 0.5, sp.tailL || 0.7, sp.spikes);
+    P.tail = tailChain(torso, M, 0.1, BL * 0.48, sp.tail, BW * (sp.mammoth ? 0.25 : 0.5), sp.tailL || 0.7, sp.spikes);
     const tip = P.tail.tip;
     if (sp.crystal) { part(tip, GEO.cone, M.trim, 0.35, 1.3, 0.08, 0, 0, 0.55).rotation.x = PI / 2; part(tip, GEO.cone, M.glow, 0.16, 0.9, 0.05, 0, 0, 0.5, false).rotation.x = PI / 2; }
     else if (!sp.bat) part(tip, GEO.cone, M.trim, 0.2, 0.7, 0.2, 0, 0, 0.3).rotation.x = PI / 2;
@@ -1902,10 +1934,79 @@ function buildScorp(root, P, M, sp) {
   P.muzzleR = P.muzzleL = P.coreTip = P.sting; P.pods = [P.sting, P.sting];
 }
 
+// mammoth head: dome, flat ears, curved tusks and a trunk (the trunk tip is the muzzle)
+function mammothHead(parent, M, k) {
+  const h = grp(parent, 0, 0, 0);
+  part(h, GEO.box, M.armor, 1.3 * k, 1.2 * k, 1.15 * k, 0, 0.1 * k, -0.1 * k);
+  part(h, GEO.sphere, M.armor, 0.7 * k, 0.55 * k, 0.65 * k, 0, 0.72 * k, 0.05 * k);
+  for (const sx of [-1, 1]) {
+    part(h, GEO.box, M.glow, 0.15 * k, 0.08 * k, 0.05 * k, sx * 0.5 * k, 0.28 * k, -0.68 * k, false);
+    part(h, GEO.box, M.frame, 0.12 * k, 0.95 * k, 0.8 * k, sx * 0.72 * k, 0.02 * k, 0.12 * k).rotation.y = sx * 0.35;
+    let g = grp(h, sx * 0.36 * k, -0.4 * k, -0.5 * k); g.rotation.set(-0.75, -sx * 0.28, 0);
+    for (let j = 0; j < 4; j++) {
+      const w = (0.22 - j * 0.035) * k, L = 0.55 * k;
+      part(g, GEO.box, M.trim, w, w, L * 1.1, 0, 0, -L / 2);
+      g = grp(g, 0, 0, -L); g.rotation.x = 0.5;
+    }
+  }
+  const trunk = [];
+  let g = grp(h, 0, -0.15 * k, -0.68 * k); g.rotation.x = -1.2; trunk.base = g;
+  for (let j = 0; j < 6; j++) {
+    const s = grp(g, 0, 0, j ? -0.42 * k : 0), w = (0.42 - j * 0.045) * k;
+    part(s, GEO.box, M.armor, w, w, 0.48 * k, 0, 0, -0.21 * k);
+    trunk.push(s); g = s;
+  }
+  const mouth = grp(g, 0, 0, -0.5 * k);
+  part(g, GEO.box, M.glow, 0.16 * k, 0.16 * k, 0.05 * k, 0, 0, -0.44 * k, false);
+  const jaw = grp(h, 0, -0.55 * k, -0.3 * k);
+  part(jaw, GEO.box, M.belly, 0.5 * k, 0.15 * k, 0.4 * k, 0, 0, -0.1 * k);
+  return { h, jaw, mouth, trunk };
+}
+
+// Krakenox: a giant octopus that walks on eight tentacles
+function buildOcto(root, P, M, sp) {
+  const H = sp.H = 2.4;
+  const body = P.body = grp(root, 0, H, 0);
+  const torso = P.torso = grp(body, 0, 0, 0);
+  part(torso, GEO.sphere, M.armor, 1.45, 1.25, 1.45, 0, 0.55, 0);
+  const mantle = part(torso, GEO.sphere, M.armor, 1.25, 1.75, 1.35, 0, 2.0, 0.6); mantle.rotation.x = 0.4;
+  for (let i = 0; i < 9; i++) part(torso, GEO.sphere, M.belly, 0.18, 0.12, 0.18, ((i * 5) % 7 - 3) * 0.3, 1.4 + (i % 4) * 0.5, 1.0 + (i % 3) * 0.3, false);
+  for (const sx of [-1, 1]) {
+    part(torso, GEO.sphere, M.trim, 0.46, 0.46, 0.32, sx * 0.72, 0.85, -1.12);
+    part(torso, GEO.box, M.glow, 0.34, 0.13, 0.08, sx * 0.74, 0.85, -1.42, false);
+  }
+  P.head = grp(torso, 0, 0.85, -1.1);
+  P.jaw = grp(torso, 0, -0.28, -1.28);
+  part(P.jaw, GEO.box, M.frame, 0.42, 0.2, 0.36, 0, -0.05, -0.12);
+  part(torso, GEO.box, M.frame, 0.46, 0.22, 0.4, 0, -0.12, -1.38);
+  P.mouth = grp(torso, 0, -0.3, -1.6);
+  P.tents = [];
+  const L = 0.62;
+  for (let i = 0; i < 8; i++) {
+    const a = (i + 0.5) / 8 * TAU, r = grp(torso, Math.cos(a) * 0.95, -0.35, Math.sin(a) * 0.95);
+    r.rotation.order = 'YXZ';
+    const segs = []; let g = r;
+    for (let j = 0; j < 6; j++) {
+      const sg = grp(g, 0, 0, j ? L : 0), w = 0.52 * (1 - j * 0.13);
+      part(sg, GEO.box, M.armor, w, w * 0.8, L * 1.15, 0, 0, L / 2);
+      if (j < 5) part(sg, GEO.box, M.trim, w * 0.5, 0.06, L * 0.5, 0, -w * 0.42, L / 2, false);
+      segs.push(sg); g = sg;
+    }
+    segs.tip = grp(g, 0, 0, L);
+    P.tents.push({ root: r, segs, yaw: Math.atan2(Math.cos(a), Math.sin(a)) });
+  }
+  const T = P.tents;
+  P.shL = T[5].root; P.shR = T[6].root; P.elL = T[5].segs[2]; P.elR = T[6].segs[2];
+  P.hipL = T[3].root; P.hipR = T[0].root; P.knL = T[3].segs[2]; P.knR = T[0].segs[2];
+  P.bladeTip = T[6].segs.tip; P.bladeMid = T[1].segs.tip;
+  P.muzzleR = P.muzzleL = P.coreTip = P.mouth; P.pods = [P.mouth, P.mouth];
+}
+
 function buildBeast(spec, pal, scale = 1) {
   const sp = Object.assign({}, spec), M = beastMats(pal), root = new THREE.Group(), P = { flames: [], footFlames: [] };
   if (sp.plan === 'biped') buildBiped(root, P, M, sp);
   else if (sp.plan === 'scorp') buildScorp(root, P, M, sp);
+  else if (sp.plan === 'octo') buildOcto(root, P, M, sp);
   else buildQuad(root, P, M, sp);
   root.scale.setScalar(scale);
   return { root, P, M, scale, morph: 0, walk: 0, air: 0, thrust: 0, flick: 0, t: 0, form: sp.form || 'beast', beast: true, spec: sp };
@@ -1925,6 +2026,8 @@ function poseBeast(m, dt, s) {
   m.jawB = damp(m.jawB || 0, Math.min(1, (s.beam ? 1 : m.spit > 0 ? 0.8 : 0) + (s.roar || 0)), 14, dt);
   m.beamB = damp(m.beamB || 0, s.beam ? 1 : 0, 8, dt);
   const mel = s.melee >= 0 ? s.melee : -1, look = clamp(s.aimPitch || 0, -0.6, 0.75);
+  const swk = s.swarm ? smooth(clamp(s.swarm * 1.25, 0, 1)) : 0; // splits into a swarm: the body folds away
+  P.body.scale.setScalar(Math.max(0.001, 1 - swk));
   // wings: folded on the ground, open and beating in the air
   if (P.wings) {
     const wk = m.wingK === undefined ? 1 : m.wingK, insect = sp.wings.style === 'insect';
@@ -1989,14 +2092,36 @@ function poseBeast(m, dt, s) {
     for (const hd of P.heads) {
       const sw = Math.sin(T * 1.3 + hd.ph);
       if (hd.base) {
-        const pitch = lerp(hd.pitch0, 0.18, fb * 0.7) + sw * 0.05 + (mel >= 0 ? -Math.max(0, -lunge) * 0.3 : 0);
+        const pitch = lerp(hd.pitch0, 0.18, fb * 0.7) + sw * 0.05 + (mel >= 0 ? -Math.max(0, -lunge) * 0.3 : 0) - (s.charge || 0) * 0.45;
         hd.base.rotation.set(pitch, hd.yaw0 * spread + sw * 0.06, 0);
         hd.segs.forEach((sg, j) => { sg.rotation.x = -pitch * 0.3 + Math.sin(T * 1.7 + hd.ph + j) * 0.04; sg.rotation.y = Math.sin(T * 1.2 + hd.ph + j * 0.7) * 0.06; });
         hd.g.rotation.set(-(pitch - pitch * 0.3 * hd.segs.length) + look - bodyX, -hd.yaw0 * spread * (P.heads.length > 1 ? 0.35 : 0.55), 0);
       } else hd.g.rotation.set(look * 0.5, 0, 0);
       const snap = P.heads.length > 1 ? Math.pow(Math.max(0, Math.sin(T * 1.9 + hd.ph * 2.3)), 12) * 0.5 : 0;
       hd.jaw.rotation.x = -Math.min(0.75, m.jawB * 0.6 + snap + (mel >= 0 ? Math.max(0, lunge) * 0.5 : 0));
+      if (hd.trunk) { // hangs and swings; lifts straight out to fire
+        const up = Math.max(m.beamB, m.jawB * 0.7);
+        hd.trunk.base.rotation.x = lerp(-1.2, -0.05 + look * 0.6, up) + (mel >= 0 ? Math.max(0, lunge) * 0.9 : 0);
+        hd.trunk.forEach((sg, j) => { sg.rotation.x = lerp(0.12 + Math.sin(T * 1.8 + j * 0.6) * 0.06, 0, up); sg.rotation.y = Math.sin(T * 1.3 - j * 0.5) * 0.1 * (1 - up); });
+      }
     }
+  } else if (sp.plan === 'octo') {
+    m.climbB = damp(m.climbB || 0, s.climb ? 1 : 0, 8, dt);
+    if (s.climb && s.climbSpeed) m.walk += dt * 5;
+    const cb = m.climbB;
+    let spin = 0, reach = 0;
+    if (mel >= 0) { spin = smooth(clamp((mel - 0.15) / 0.6, 0, 1)) * TAU; reach = Math.sin(clamp(mel, 0, 1) * PI); }
+    P.body.position.y = sp.H + Math.sin(W * 2) * 0.12 * st + A * 0.3 - cb * 0.3;
+    P.body.rotation.set(lerp(-clamp(s.fwd || 0, -30, 30) * 0.006 - m.beamB * 0.15, 1.2, cb), spin, 0);
+    P.tents.forEach((t, i) => {
+      const ph = W * 1.3 + i * 0.8, wav = Math.sin(ph);
+      let pitch = 0.95 + wav * 0.22 * st - A * 0.6;
+      pitch = lerp(pitch, 0.35 + wav * 0.25, cb); pitch = lerp(pitch, 0.1, reach);
+      t.root.rotation.set(pitch, t.yaw + Math.cos(ph) * 0.15 * (st + cb), 0);
+      const flat = Math.max(reach, cb * 0.6);
+      t.segs.forEach((sg, j) => { sg.rotation.x = lerp(-0.14, 0.02, flat) + Math.sin(T * 2.2 + i + j * 0.7) * 0.08 + A * 0.12; sg.rotation.y = Math.sin(T * 1.6 + i * 1.7 + j * 0.5) * 0.08; });
+    });
+    P.jaw.rotation.x = -m.jawB * 0.5;
   } else if (sp.plan === 'scorp') {
     const bur = smooth(clamp(s.burrow || 0, 0, 1));
     P.base.position.y = -2.75 * bur;
@@ -2026,10 +2151,13 @@ function poseBeast(m, dt, s) {
       sg.rotation.y = Math.sin(T * 1.4 - i * 0.4) * 0.06;
     });
   }
-  if (P.tail && sp.plan !== 'scorp') P.tail.forEach((sg, i) => {
-    sg.rotation.x = (i === 0 ? (sp.plan === 'biped' ? 0.4 : 0.15) : 0.05) * (1 - fb * 0.8) + Math.sin(T * 2 + i * 0.6) * 0.03;
-    sg.rotation.y = Math.sin(T * 1.4 - i * 0.5) * (0.1 + 0.08 * st);
-  });
+  if (P.tail && sp.plan !== 'scorp') {
+    const bp = sp.plan === 'biped';
+    P.tail.forEach((sg, i) => {
+      sg.rotation.x = (i === 0 ? (bp ? 0.42 : 0.15) : bp ? -0.07 : 0.05) * (1 - fb * 0.8) + Math.sin(T * 2 + i * 0.6) * 0.03;
+      sg.rotation.y = Math.sin(T * 1.4 - i * 0.5) * (bp ? 0.06 + 0.05 * st : 0.1 + 0.08 * st);
+    });
+  }
   // jets of fire under the feet
   if (P.flames.length) {
     const f = A > 0.3 ? s.thrust : 0, fl = 0.85 + Math.random() * 0.25;
@@ -2047,7 +2175,11 @@ Object.assign(FORM_INFO, {
   burrow: { label: 'Burrow', btn: 'DIG', center: 0.6, camY: 3.0, camD: 10.5, voice: 'Burrowing', back: 'Erupt!', backLabel: 'ERUPT', rate: 2.4, hint: 'Burrow · tunnel fast, attack to burst out', melee: true }
 });
 Object.assign(FORM_INFO.giant, { mega: true, grow: 0.4, melee: true });
-FORM_INFO.ape.melee = FORM_INFO.dog.melee = true;
+FORM_INFO.ape.melee = FORM_INFO.dog.melee = FORM_INFO.ape.climber = true;
+Object.assign(FORM_INFO, {
+  charge: { label: 'Stampede', btn: 'CHARGE', center: 3.4, camY: 5.0, camD: 12.5, voice: 'Stampede!', back: 'Beast mode', backLabel: 'STOP', rate: 2.0, hint: 'Stampede · charge into enemies to ram them', melee: true },
+  climb:  { label: 'Climb', btn: 'CLIMB', center: 2.4, camY: 4.4, camD: 11.5, voice: 'Climb mode', back: 'Beast mode', backLabel: 'WALK', rate: 2.4, hint: 'Climb · run at a wall to climb up, jump to leap', melee: true, climber: true }
+});
 FORM_INFO.jet.wide = FORM_INFO.swarm.wide = true;
 
 CHARS.push(
@@ -2074,7 +2206,33 @@ CHARS.push(
     gun: { name: 'Venom darts', rate: 0.09, heat: 3, dmg: 7, speed: 250, color: 0xb4ff8a, size: 0.9, sfx: 'pulse' },
     msl: { name: 'Stinger Laser', beam: true, salvo: 1, cap: 1, regen: 99, dmg: 0, locks: 0, cd: 7, color: 0x6cff4a, core: 0xeaffe0 },
     blade: { name: 'Pincer crush', dmg: 120, reach: 7, cd: 0.7, dash: 26 },
-    stats: [4, 4, 3, 4, 4] }
+    stats: [4, 4, 3, 4, 4] },
+  { id: 'frostusk', beast: true, name: 'Frostusk', code: 'FT-2', role: 'Ice mammoth', form: 'charge', say: 'Frostusk. The ice mammoth.',
+    perk: 'A giant ice mammoth. Its Frost Beam shoots from the trunk and freezes robots in place, and Stampede mode charges and rams them.',
+    pal: { armor: 0x637688, frame: 0x34404e, trim: 0xf0e6d0, glow: 0x8af0ff, blade: 0xc8f8ff, belly: 0x8696a6 }, scale: 1.45, spec: SPEC.frostusk, look: { bulk: 1.1 },
+    hp: 260, walk: 11, boost: 20, jump: 11, charge: [30, 46], eRegen: 1, armorMul: 0.5, baseC: 3.2, camY0: 5.6, camD0: 11.5,
+    gun: { name: 'Ice shards', rate: 0.22, heat: 4.5, dmg: 9, speed: 220, color: 0xbff4ff, size: 1.2, spread: 3, sfx: 'zap' },
+    msl: { name: 'Frost Beam', beam: true, salvo: 1, cap: 1, regen: 99, dmg: 0, locks: 0, cd: 9, color: 0x6ae4ff, core: 0xf0ffff, freeze: true },
+    blade: { name: 'Tusk stomp', dmg: 140, reach: 10, cd: 1.0, dash: 16, slam: true },
+    stats: [5, 2, 3, 4, 4] },
+  { id: 'krakenox', beast: true, name: 'Krakenox', code: 'KR-8', role: 'Giant octopus', form: 'climb', say: 'Krakenox. The giant octopus.',
+    perk: 'A giant octopus. Fires a Tidal Beam, spins its eight tentacles to hit everything around it, and climbs up buildings to leap from roof to roof.',
+    pal: { armor: 0xc2486a, frame: 0x5a1a30, trim: 0xf6e8ec, glow: 0x5ae8ff, blade: 0x9af0ff, belly: 0xf0a0b8 }, scale: 1.35, spec: SPEC.krakenox, look: {},
+    hp: 180, walk: 14, boost: 28, jump: 14, ape: [22, 36], eRegen: 1.15, baseC: 2.6, camY0: 4.8, camD0: 11,
+    gun: { name: 'Ink blobs', rate: 0.18, heat: 4, dmg: 13, speed: 180, color: 0x9a6aff, size: 1.4, splash: 3.5, sfx: 'spit' },
+    msl: { name: 'Tidal Beam', beam: true, salvo: 1, cap: 1, regen: 99, dmg: 0, locks: 0, cd: 8, color: 0x3ad8ff, core: 0xe8ffff },
+    blade: { name: 'Tentacle spin', dmg: 110, reach: 10, cd: 0.9, dash: 10, spin: true },
+    stats: [3, 4, 4, 4, 4] },
+  { id: 'nightfang', beast: true, name: 'Nightfang', code: 'NF-5', role: 'Giant bat', form: 'swarm', say: 'Nightfang. The giant bat.',
+    perk: 'A giant bat. Flies on huge wings (hold jump), blasts a Sonic Scream, and bursts into a swarm of bats that latch onto robots and bite.',
+    formVoice: 'Bat swarm!', formHint: 'Bat swarm · missile button sends bats to bite',
+    pal: { armor: 0x3e3040, frame: 0x1a141c, trim: 0xece0d0, glow: 0xff3a5a, blade: 0xff9ad8, belly: 0x6a5262, wing: 0x4a2a40, wingA: 0.96 }, scale: 1.3, spec: SPEC.nightfang, look: {},
+    hp: 130, walk: 15, boost: 30, jump: 15, swarm: [28, 50], drones: 16, eRegen: 1.1, armorMul: 0.6, baseC: 4.0, camY0: 5.6, camD0: 11,
+    gun: { name: 'Screech darts', rate: 0.1, heat: 3, dmg: 7.5, speed: 250, color: 0xff8ae0, size: 0.9, sfx: 'zap' },
+    altGun: { name: 'Bat screeches', rate: 0.05, heat: 1.7, dmg: 3.4, speed: 270, color: 0xff8ae0, size: 0.55, sfx: 'pulse' },
+    msl: { name: 'Sonic Scream', beam: true, salvo: 1, cap: 1, regen: 99, dmg: 0, locks: 0, cd: 8, color: 0xff5ad8, core: 0xffeefa, sonic: true },
+    blade: { name: 'Wing slash', dmg: 100, reach: 7, cd: 0.7, dash: 26, diveSlam: true },
+    stats: [2, 4, 3, 5, 3] }
 );
 const hexRGB = h => [(h >> 16 & 255) / 255, (h >> 8 & 255) / 255, (h & 255) / 255];
 for (const ch of CHARS) { ch.beamRGB = ch.msl.color ? hexRGB(ch.msl.color) : null; ch.bladeRGB = hexRGB(ch.pal.blade || ch.pal.glow); }
@@ -2820,8 +2978,9 @@ function transform() {
     else if (F === 'giant' || F === 'rage') { spawnRing(p.pos.clone(), 22, true, p.ch.pal.glow, 0.9); addShake(0.7); }
     else if (F === 'wing') { p.vel.y = Math.max(p.vel.y, 13); p.grounded = false; p.pos.y += 0.3; spawnRing(p.pos.clone(), 12, true, 0xd8c8b0, 0.5); }
     else if (F === 'burrow') { p.vel.multiplyScalar(0.4); dirtBurst(p.pos, 1); p.digHold = input.fire; }
-    Voice.say(FORM_INFO[F].voice, { key: 'mode', cool: 0.6, prio: 2, show: false });
-    showCallout(FORM_INFO[F].hint, 'good');
+    else if (F === 'charge') { p.tankSpeed = Math.hypot(p.vel.x, p.vel.z); spawnRing(p.pos.clone(), 14, true, p.ch.pal.glow, 0.5); addShake(0.4); }
+    Voice.say(p.ch.formVoice || FORM_INFO[F].voice, { key: 'mode', cool: 0.6, prio: 2, show: false });
+    showCallout(p.ch.formHint || FORM_INFO[F].hint, 'good');
   } else {
     if (F === 'jet') p.vel.copy(p.jetDir).multiplyScalar(p.jetSpeed * 0.45);
     if (F === 'swarm') p.vel.set(0, 0, 0);
@@ -2832,9 +2991,9 @@ function transform() {
 
 function fireMissiles() {
   if (player.ch.form === 'burrow' && player.mode === 1) { if (player.mech.morph > 0.9) transform(); return; }
-  if (player.ch.msl.beam) { startBeam(); return; }
   if (player.ch.form === 'dog' && inForm()) { howl(); return; }
   if (player.ch.form === 'swarm' && inForm()) { latchDrones(); return; }
+  if (player.ch.msl.beam) { startBeam(); return; }
   if (player.salvoCd > 0 || player.missiles <= 0) return;
   let targets = enemies.filter(e => e.alive && e.lock >= 1).sort((a, b) => a.c.distanceToSquared(player.pos) - b.c.distanceToSquared(player.pos));
   if (!targets.length) { const t = nearestEnemyInFront(320, 0.55); if (t) targets = [t]; }
@@ -2882,8 +3041,9 @@ function meleeStrike(power = 1, slamHit) {
   if (slamHit !== undefined) B.slam = slamHit;
   const pc = playerCenter();
   const fx = -Math.sin(p.yaw), fz = -Math.cos(p.yaw);
-  const ahead = (B.slam ? 2.5 : 3.6) * curScale();
+  const ahead = B.spin ? 0 : (B.slam ? 2.5 : 3.6) * curScale();
   _a.set(pc.x + fx * ahead, B.slam ? p.pos.y + 1.5 : pc.y, pc.z + fz * ahead);
+  if (B.spin) { spawnRing(p.pos.clone().setY(p.pos.y + 0.4), B.reach * 2.2, true, p.ch.pal.glow, 0.45); SFX.swish(); }
   const reach = B.reach * (power > 1 ? 1.35 : 1) * (curScale() / p.ch.scale);
   let hit = false;
   if (B.slam) {
@@ -2906,6 +3066,25 @@ function meleeStrike(power = 1, slamHit) {
   }
   for (const t of tanks) if (t.alive && t.pos.distanceTo(_a) < reach) { damageTank(t, 99); hit = true; }
   if (hit) { hitStop = 0.085; SFX.clang(); addShake(0.55); }
+}
+
+/* ---------------- ramming: Titan's tank and Frostusk's stampede ---------------- */
+function ramEnemies(R0, dmg, bossDmg) {
+  const p = player;
+  for (const e of enemies) {
+    if (!e.alive || e.warp > 0 || e.type === 'drone' || e.type === 'flyer' || e.pos.y > p.pos.y + 3) continue;
+    const dx = e.pos.x - p.pos.x, dz = e.pos.z - p.pos.z, d = Math.hypot(dx, dz) || 0.01, R = e.r * 0.7 + R0;
+    if (d >= R) continue;
+    const nx = dx / d, nz = dz / d;
+    if (!e.boss) { e.pos.x += nx * (R - d); e.pos.z += nz * (R - d); }
+    else { p.pos.x -= nx * (R - d); p.pos.z -= nz * (R - d); }
+    const closing = (p.vel.x * nx + p.vel.z * nz);
+    if (closing > 12 && (e.ramCd || 0) < gameTime) {
+      e.ramCd = gameTime + 0.7;
+      damageEnemy(e, e.boss ? bossDmg : dmg); sparks(e.c, 24, [1, 0.8, 0.4], 18); SFX.clang(); addShake(0.5); hitStop = 0.05;
+      if (!e.boss) { e.vel.x += nx * 30; e.vel.z += nz * 30; e.vel.y += 12; } else p.tankSpeed *= 0.3;
+    }
+  }
 }
 
 /* ---------------- Scorpix: dig in, burst out ---------------- */
@@ -2949,17 +3128,20 @@ function buildSwarm(ch) {
   for (const d of swarmDrones) scene.remove(d.g);
   swarmDrones.length = 0;
   if (ch.form !== 'swarm') return;
-  const body = new THREE.MeshStandardMaterial({ color: ch.pal.armor, metalness: 0.4, roughness: 0.4, flatShading: true });
+  const bat = !!ch.beast; // a monster's swarm is a cloud of bats
+  const body = new THREE.MeshStandardMaterial({ color: ch.pal.armor, metalness: bat ? 0.1 : 0.4, roughness: bat ? 0.8 : 0.4, flatShading: true });
   const dark = new THREE.MeshStandardMaterial({ color: ch.pal.frame, metalness: 0.5, roughness: 0.5 });
   const eye = new THREE.MeshBasicMaterial({ color: ch.pal.glow });
-  const wingM = new THREE.MeshBasicMaterial({ color: ch.pal.glow, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+  const wingM = bat ? new THREE.MeshStandardMaterial({ color: ch.pal.wing || ch.pal.frame, roughness: 0.6, side: THREE.DoubleSide, flatShading: true })
+    : new THREE.MeshBasicMaterial({ color: ch.pal.glow, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
   for (let i = 0; i < ch.drones; i++) {
     const g = new THREE.Group();
-    const b = new THREE.Mesh(sdGeo, body); b.scale.set(0.9, 0.7, 1.4); b.castShadow = true; g.add(b);
-    const band = new THREE.Mesh(GEO.box, dark); band.scale.set(0.95, 0.25, 0.3); band.position.z = 0.15; g.add(band);
-    const e = new THREE.Mesh(GEO.sphere, eye); e.scale.setScalar(0.17); e.position.set(0, 0.06, -0.62); g.add(e);
+    const b = new THREE.Mesh(bat ? GEO.sphere : sdGeo, body); b.scale.set(...(bat ? [0.42, 0.38, 0.55] : [0.9, 0.7, 1.4])); b.castShadow = true; g.add(b);
+    if (bat) for (const sx of [-1, 1]) { const ear = new THREE.Mesh(GEO.cone, body); ear.scale.set(0.12, 0.35, 0.08); ear.position.set(sx * 0.16, 0.42, -0.2); g.add(ear); }
+    else { const band = new THREE.Mesh(GEO.box, dark); band.scale.set(0.95, 0.25, 0.3); band.position.z = 0.15; g.add(band); }
+    const e = new THREE.Mesh(GEO.sphere, eye); e.scale.setScalar(bat ? 0.1 : 0.17); e.position.set(0, bat ? 0.12 : 0.06, bat ? -0.5 : -0.62); g.add(e);
     const wings = [];
-    for (const sx of [-1, 1]) { const w = new THREE.Mesh(GEO.box, wingM); w.scale.set(0.9, 0.02, 0.45); w.position.set(sx * 0.6, 0.3, 0.1); g.add(w); wings.push(w); }
+    for (const sx of [-1, 1]) { const w = new THREE.Mesh(GEO.box, wingM); w.scale.set(bat ? 1.2 : 0.9, 0.02, bat ? 0.6 : 0.45); w.position.set(sx * (bat ? 0.7 : 0.6), bat ? 0.1 : 0.3, 0.1); w.userData.sx = bat ? 1.2 : 0.9; g.add(w); wings.push(w); }
     g.visible = false; scene.add(g);
     swarmDrones.push({ g, pos: g.position, state: 'home', a: i / ch.drones * TAU, r: rand(1.6, 3.4), h: rand(-1.4, 1.4), w: rand(0.8, 1.6) * (i % 2 ? 1 : -1), target: null, off: new V3(), life: 0, acc: 0, wings, eye: e });
   }
@@ -2969,7 +3151,7 @@ function latchDrones() {
   const p = player;
   if (p.salvoCd > 0) return;
   const free = swarmDrones.filter(d => d.state === 'swarm');
-  if (!free.length) { Voice.say('No drones available', { key: 'nodr', cool: 4, prio: 1, cls: 'alert' }); return; }
+  if (!free.length) { Voice.say(p.ch.beast ? 'No bats ready' : 'No drones available', { key: 'nodr', cool: 4, prio: 1, cls: 'alert' }); return; }
   let targets = enemies.filter(e => e.alive && e.warp <= 0 && e.lock >= 1).sort((a, b) => a.c.distanceToSquared(p.pos) - b.c.distanceToSquared(p.pos));
   if (!targets.length) { const t = nearestEnemyInFront(260, 0.6); if (t) targets = [t]; }
   if (!targets.length) { Voice.say('No target', { key: 'notg', cool: 3, prio: 1 }); return; }
@@ -2982,7 +3164,7 @@ function latchDrones() {
   }
   p.salvoCd = 0.5;
   SFX.launch();
-  Voice.say('Drones latching on', { key: 'latch', cool: 6, prio: 1 });
+  Voice.say(p.ch.beast ? 'Bats, attack!' : 'Drones latching on', { key: 'latch', cool: 6, prio: 1 });
 }
 function recallDrones() { for (const d of swarmDrones) { d.state = 'home'; d.g.visible = false; d.target = null; } }
 function updateSwarm(dt) {
@@ -3029,8 +3211,8 @@ function updateSwarm(dt) {
         if (inSwarm) d.state = 'swarm'; else { d.state = 'home'; d.g.visible = false; }
       } else { d.pos.addScaledVector(_d, Math.min(1, 70 * dt / L)); d.g.rotation.y = Math.atan2(-_d.x, -_d.z); }
     }
-    const fl = Math.sin(swarmT * 60 + d.a * 10) * 0.5 + 0.6;
-    for (const w of d.wings) w.scale.x = 0.9 * fl;
+    const fl = Math.sin(swarmT * (p.ch.beast ? 24 : 60) + d.a * 10) * 0.5 + 0.6;
+    for (const w of d.wings) w.scale.x = w.userData.sx * fl;
   }
 }
 
@@ -3103,13 +3285,15 @@ function updateBeam(dt) {
   for (const e of enemies) {
     if (!e.alive || e.warp > 0 || !segSphere(beamO, beamEnd, e.c, e.r + 1.1 * S)) continue;
     damageEnemy(e, 150 * dt * (mega ? 1.3 : 1) * (gold ? 2 : 1), true);
-    e.flash = 0.05; hitMarker = 0.08; e.stun = Math.max(e.stun || 0, 0.25);
+    e.flash = 0.05; hitMarker = 0.08; e.stun = Math.max(e.stun || 0, msl.freeze ? 1.4 : 0.25);
+    if (msl.freeze) { e.jam = Math.max(e.jam || 0, 1.4); if (Math.random() < 0.3) sparks(e.c, 4, [0.85, 0.97, 1], 6); }
     if (Math.random() < 0.5) sparks(e.c, 5, rgb, 16);
   }
   for (const t of tanks) if (t.alive && segSphere(beamO, beamEnd, t.pos, 2.6)) damageTank(t, 200 * dt);
   for (const ms of missiles) if (!ms.friendly && segSphere(beamO, beamEnd, ms.pos, 2)) ms.life = 0;
   fire.spawn(beamO.x, beamO.y, beamO.z, 0, 0, 0, 0.08, 2.4 * S, 1.2 * S, rgb[0], rgb[1], rgb[2], 0.4, 0.9, 1, 1, 0, 0);
   sparks(beamEnd, 4, rgb, 22);
+  if (msl.sonic && !gold) { beam.ringT = (beam.ringT || 0) - dt; if (beam.ringT <= 0) { beam.ringT = 0.09; spawnRing(_bm.copy(beamO).addScaledVector(beamDir, rand(0.1, 0.8) * L), rand(3, 5) * S, false, msl.color, 0.3); } }
   beam.boomT -= dt;
   if (beam.boomT <= 0) { beam.boomT = 0.14; explode(beamEnd.clone(), 0.5, { debris: false, quiet: true }); spawnLight(beamEnd, 4, 40, gold ? 0xffc640 : msl.color || 0x72f2ff, 0.2); }
   if (P.core) P.core.scale.set(1.2, 0.8, 0.06);
@@ -3268,21 +3452,7 @@ function updatePlayer(dt) {
     if (boosting) p.energy -= 16 * dt; else p.energy += 25 * p.ch.eRegen * dt;
     p.pitch = damp(p.pitch, 0, 8, dt); p.roll = damp(p.roll, 0, 8, dt);
     turret = wrapA(camYaw - p.yaw); treadSpeed = p.tankSpeed;
-    // hull contact: shove walkers aside, and ram them when moving fast
-    for (const e of enemies) {
-      if (!e.alive || e.warp > 0 || e.type === 'drone' || e.type === 'flyer' || e.pos.y > p.pos.y + 3) continue;
-      const dx = e.pos.x - p.pos.x, dz = e.pos.z - p.pos.z, d = Math.hypot(dx, dz) || 0.01, R = e.r * 0.7 + 3.2 * S;
-      if (d >= R) continue;
-      const nx = dx / d, nz = dz / d;
-      if (!e.boss) { e.pos.x += nx * (R - d); e.pos.z += nz * (R - d); }
-      else { p.pos.x -= nx * (R - d); p.pos.z -= nz * (R - d); }
-      const closing = (p.vel.x * nx + p.vel.z * nz);
-      if (closing > 12 && (e.ramCd || 0) < gameTime) {
-        e.ramCd = gameTime + 0.7;
-        damageEnemy(e, e.boss ? 30 : 55); sparks(e.c, 24, [1, 0.8, 0.4], 18); SFX.clang(); addShake(0.5); hitStop = 0.05;
-        if (!e.boss) { e.vel.x += nx * 30; e.vel.z += nz * 30; e.vel.y += 12; } else p.tankSpeed *= 0.3;
-      }
-    }
+    ramEnemies(3.2 * S, 55, 30);
     if (p.grounded && Math.abs(p.tankSpeed) > 6 && Math.random() < 0.6) {
       const bx = p.pos.x + Math.sin(p.yaw) * 3.2 * S, bz = p.pos.z + Math.cos(p.yaw) * 3.2 * S, side = Math.random() < 0.5 ? -1 : 1, ox = Math.cos(p.yaw) * 2.2 * S * side, oz = -Math.sin(p.yaw) * 2.2 * S * side;
       smoke.spawn(bx + ox, p.pos.y + 0.4, bz + oz, rand(-2, 2), rand(1, 3), rand(-2, 2), 1, 1.2, 4, 0.5, 0.46, 0.42, 0.55, 0.52, 0.5, 0.4, 2, 0, 1);
@@ -3313,8 +3483,31 @@ function updatePlayer(dt) {
     }
     if (p.grounded && !boosting) p.energy += 28 * p.ch.eRegen * dt; else p.energy += 6 * dt;
     p.pitch = damp(p.pitch, 0, 8, dt); p.roll = damp(p.roll, 0, 8, dt);
-  } else if (F === 'ape') {
-    // ---- ape: gallop, leap between rooftops, climb walls ----
+  } else if (F === 'charge') {
+    // ---- Frostusk stampede: build up speed, steer wide, ram everything ----
+    const C = p.ch.charge;
+    boosting = boostHeld && canThrust;
+    let target = 0;
+    if (il > 0.1) {
+      const wx = sx * iz + rx * ix, wz = sz * iz + rz * ix, d = wrapA(Math.atan2(-wx, -wz) - p.yaw);
+      p.yaw += clamp(d, -1.9 * dt, 1.9 * dt);
+      target = (boosting ? C[1] : C[0]) * Math.min(1, il) * (Math.abs(d) > 1.6 ? 0.4 : 1);
+    }
+    p.tankSpeed = damp(p.tankSpeed || 0, target, 2.2, dt);
+    p.vel.x = -Math.sin(p.yaw) * p.tankSpeed; p.vel.z = -Math.cos(p.yaw) * p.tankSpeed;
+    if (jumpPressed && p.grounded) { p.vel.y = 12; p.grounded = false; }
+    p.vel.y -= 32 * dt;
+    p.pos.addScaledVector(p.vel, dt);
+    if (landWalk(2.4 * S)) p.tankSpeed *= 1 - dt * 6;
+    if (boosting) p.energy -= 14 * dt; else p.energy += 22 * p.ch.eRegen * dt;
+    p.pitch = damp(p.pitch, 0, 8, dt); p.roll = damp(p.roll, 0, 8, dt);
+    ramEnemies(3.4 * S, 70, 35);
+    if (p.grounded && p.tankSpeed > 10 && Math.random() < 0.7) {
+      const bx = p.pos.x + Math.sin(p.yaw) * 2 * S, bz = p.pos.z + Math.cos(p.yaw) * 2 * S;
+      smoke.spawn(bx + rand(-1.5, 1.5) * S, p.pos.y + 0.4, bz + rand(-1.5, 1.5) * S, rand(-3, 3), rand(1, 4), rand(-3, 3), 1, 1.4 * S, 4 * S, 0.85, 0.9, 0.95, 0.8, 0.85, 0.9, 0.5, 2, 0, 1);
+    }
+  } else if (FI.climber) {
+    // ---- ape and Krakenox: gallop, leap between rooftops, climb walls ----
     const AP = p.ch.ape;
     if (p.climb) {
       const c = p.climb, s = c.s;
@@ -3513,7 +3706,7 @@ function updatePlayer(dt) {
   updateBeam(dt);
   const sp = Math.hypot(p.vel.x, p.vel.z);
   poseAny(m, dt, {
-    fly: F === 'wing' ? tM : 0, burrow: F === 'burrow' ? tM : 0, rage: F === 'rage' ? tM : 0,
+    fly: F === 'wing' ? tM : 0, burrow: F === 'burrow' ? tM : 0, rage: F === 'rage' ? tM : 0, charge: F === 'charge' ? tM : 0, swarm: F === 'swarm' ? m.morph : 0,
     speed: sp, fwd: p.vel.x * -Math.sin(p.yaw) + p.vel.z * -Math.cos(p.yaw), side: p.vel.x * Math.cos(p.yaw) - p.vel.z * Math.sin(p.yaw),
     grounded: p.grounded || !!p.climb, thrust, aim: !p.climb && !beamOn, aimL: !!p.ch.gun.twin && p.melee < 0 && input.fire, aimPitch: camPitch, melee: p.melee,
     slam: !!p.ch.blade.slam && !(F === 'dog' && p.mode === 1), climb: !!p.climb, beam: beamOn || omega.state === 'power', summon: omega.state === 'gather', climbSpeed: p.climb ? Math.abs(p.vel.y) > 1 : false, turret, treadSpeed
@@ -3910,11 +4103,11 @@ function updateMenuCamera(dt) {
   m.root.position.copy(p.pos); m.root.rotation.set(jet ? 0.12 * tM : 0, 0.62, jet ? Math.sin(performance.now() / 900) * 0.15 * tM : 0);
   const SC = curScale(); if (FI.mega) m.root.scale.setScalar(SC);
   poseAny(m, dt, { speed: 0, fwd: 0, side: 0, grounded: !jet || tM < 0.1, thrust: jet && tM > 0.5 ? 0.6 : 0, aim: false, aimPitch: 0, melee: -1, turret: F === 'tank' ? Math.sin(performance.now() / 1300) * 0.6 : 0,
-    fly: F === 'wing' ? tM : 0, burrow: F === 'burrow' ? tM : 0, rage: F === 'rage' ? tM : 0 });
+    fly: F === 'wing' ? tM : 0, burrow: F === 'burrow' ? tM : 0, rage: F === 'rage' ? tM : 0, charge: F === 'charge' ? tM : 0, swarm: F === 'swarm' ? m.morph : 0 });
   const narrow = innerWidth < 700, rosterPinned = innerWidth > 1000 && innerHeight > 660;
   const r = (narrow ? 17 : 15) * SC;
   const ang = PI + 0.62 + Math.sin(menuAng * 0.9) * 0.7; // swing in front of the mech, on the sunlit side
-  const ground = F === 'tank' || F === 'ape' || F === 'dog' || F === 'burrow';
+  const ground = F === 'tank' || F === 'ape' || F === 'dog' || F === 'burrow' || F === 'charge' || F === 'climb';
   camera.position.set(Math.sin(ang) * r, (5 + tM * (jet ? 2 : F === 'swarm' ? 0.5 : ground ? -1 : 0)) * SC, Math.cos(ang) * r);
   _a.set(0, ((rosterPinned ? 1.5 : 3.4) + tM * (jet ? 3 : F === 'swarm' ? 1.2 : ground ? -0.8 : 0)) * SC, 0);
   camera.lookAt(_a);
@@ -3977,12 +4170,12 @@ function drawHUD(dt) {
   if (hudEl.omegaBar.hidden === showOmega) hudEl.omegaBar.hidden = !showOmega;
   if (showOmega) setStyle('omegaFill', 'width', (omega.state === 'on' ? (OMEGA_TIME - omega.t) / OMEGA_TIME * 100 : 100).toFixed(1) + '%');
   const dogF = inF && p.ch.form === 'dog', beamC = !!p.ch.msl.beam;
-  setText('wMslName', swarmF ? 'Latch drones' : dogF ? 'Howl' : p.ch.msl.name);
-  setText('tMslL', swarmF ? 'DRONE' : dogF ? 'HOWL' : beamC ? 'BEAM' : 'MSL');
+  setText('wMslName', swarmF ? (bst ? 'Bat attack' : 'Latch drones') : dogF ? 'Howl' : p.ch.msl.name);
+  setText('tMslL', swarmF ? (bst ? 'BATS' : 'DRONE') : dogF ? 'HOWL' : beamC ? 'BEAM' : 'MSL');
   setText('wBladeName', p.climb ? 'Climbing' : p.ch.blade.name);
   setText('plasmaTxt', p.overheat ? 'OVERHEAT' : 'HEAT ' + Math.round(p.heat) + '%');
   setClass('wPlasma', 'warn', p.overheat);
-  const special = beamC ? (beam.state === 'fire' ? 'FIRING' : beam.state === 'charge' ? 'CHARGING' : beam.cd > 0 ? Math.ceil(beam.cd) + 's' : 'READY')
+  const special = beamC && !swarmF ? (beam.state === 'fire' ? 'FIRING' : beam.state === 'charge' ? 'CHARGING' : beam.cd > 0 ? Math.ceil(beam.cd) + 's' : 'READY')
     : dogF ? ((p.howlCd || 0) > 0 ? Math.ceil(p.howlCd) + 's' : 'READY') : null;
   setText('missileTxt', special || (swarmF ? freeDrones() + ' / ' + p.ch.drones : p.missiles + ' / ' + p.ch.msl.cap));
   setText('tMslN', special ? (special === 'READY' ? 'GO' : special.endsWith('s') ? special : '··') : String(swarmF ? freeDrones() : p.missiles));
